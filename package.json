@@ -1,0 +1,12 @@
+{
+  "name": "home-alexistobon",
+  "version": "1.0.0",
+  "description": "Página de inicio y portafolio personal para alexistobon.com con visor en vivo de NotiTec y Mis Gastos",
+  "scripts": {
+    "dev": "npx serve -l 3000 .",
+    "start": "npx serve -l 3000 ."
+  },
+  "keywords": ["portfolio", "showcase", "notitec", "mis-gastos", "alexis-tobon"],
+  "author": "Alexis Tobón",
+  "license": "MIT"
+}
