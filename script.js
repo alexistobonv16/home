@@ -1,16 +1,17 @@
 /**
  * ALEXIS TOBÓN - HOME & PROJECT SHOWCASE
- * Client-side script for Live Previews, Scaling, Theme Toggle & Modal
+ * Client-side script for Live Previews, Responsive Views, Theme Toggle & Modal
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  initResponsiveDefaults();
   initIframeScaling();
   initIframeLoaders();
   initDeviceToggles();
   initReloadButtons();
   initCopyButtons();
-  initInteractionBarriers();
+  initInteractionHandlers();
   initFullscreenModal();
   initFooterYear();
 });
@@ -25,7 +26,6 @@ function initTheme() {
   if (storedTheme) {
     document.documentElement.setAttribute('data-theme', storedTheme);
   } else {
-    // Default to dark, matching the vibe of NotiTec and Mis Gastos
     document.documentElement.setAttribute('data-theme', 'dark');
   }
 
@@ -40,8 +40,40 @@ function initTheme() {
 }
 
 /* ==========================================================================
-   2. DYNAMIC IFRAME SCALING
-   Computes exact scale factor so desktop sites render without distortion
+   2. RESPONSIVE DEFAULTS
+   Sets smart default views based on device screen size and project type
+   ========================================================================== */
+function initResponsiveDefaults() {
+  const isMobileScreen = window.innerWidth <= 768;
+  const browserWindows = document.querySelectorAll('.browser-window');
+
+  browserWindows.forEach(bw => {
+    const project = bw.getAttribute('data-project');
+    
+    // On mobile devices, both projects should default to mobile view for readability
+    // On desktop, Mis Gastos defaults to mobile (PWA) and NotiTec to desktop
+    let defaultView = 'desktop';
+    if (isMobileScreen || project === 'gastos') {
+      defaultView = 'mobile';
+    }
+
+    bw.setAttribute('data-view', defaultView);
+
+    // Sync button states
+    const btns = bw.querySelectorAll('.device-btn');
+    btns.forEach(btn => {
+      if (btn.getAttribute('data-view-target') === defaultView) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  });
+}
+
+/* ==========================================================================
+   3. DYNAMIC IFRAME SCALING
+   Computes exact scale factor for desktop views without distortion
    ========================================================================== */
 function initIframeScaling() {
   const browserWindows = document.querySelectorAll('.browser-window');
@@ -52,24 +84,17 @@ function initIframeScaling() {
       if (!viewport) return;
 
       const viewportWidth = viewport.clientWidth;
-      const viewportHeight = viewport.clientHeight;
-
+      
       // Desktop scaling: baseline is 1280px wide
       const desktopScale = Math.min(1, viewportWidth / 1280);
       bw.style.setProperty('--scale', desktopScale.toFixed(4));
-
-      // Mobile scaling: baseline is 375px wide, 667px high
-      const scaleX = (viewportWidth - 24) / 375;
-      const scaleY = (viewportHeight - 24) / 667;
-      const mobileScale = Math.min(1, Math.min(scaleX, scaleY));
-      bw.style.setProperty('--scale-mobile', mobileScale.toFixed(4));
     });
   }
 
   // Initial calculation
   updateScales();
 
-  // Recalculate on resize (debounced via requestAnimationFrame)
+  // Recalculate on resize (debounced)
   let resizeTimeout;
   window.addEventListener('resize', () => {
     cancelAnimationFrame(resizeTimeout);
@@ -78,7 +103,7 @@ function initIframeScaling() {
 }
 
 /* ==========================================================================
-   3. IFRAME LOADERS & ERROR HANDLING
+   4. IFRAME LOADERS & ERROR HANDLING
    ========================================================================== */
 function initIframeLoaders() {
   const previewIframes = document.querySelectorAll('.browser-window .preview-iframe');
@@ -93,23 +118,23 @@ function initIframeLoaders() {
       }
     });
 
-    // Fallback: hide loader after 7 seconds even if onload is blocked or slow
+    // Fallback: hide loader after 6 seconds even if onload is blocked or slow
     setTimeout(() => {
       if (loader && !loader.classList.contains('hidden')) {
         loader.classList.add('hidden');
       }
-    }, 7000);
+    }, 6000);
   });
 }
 
 /* ==========================================================================
-   4. DEVICE VIEW TOGGLE (DESKTOP VS MOBILE)
+   5. DEVICE VIEW TOGGLE (DESKTOP VS MOBILE)
    ========================================================================== */
 function initDeviceToggles() {
   const toggleButtons = document.querySelectorAll('.device-btn');
 
   toggleButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', () => {
       const targetView = btn.getAttribute('data-view-target');
       const browserWindow = btn.closest('.browser-window');
       if (!browserWindow) return;
@@ -122,14 +147,14 @@ function initDeviceToggles() {
       // Update view mode on the browser window
       browserWindow.setAttribute('data-view', targetView);
 
-      // Trigger resize update
+      // Trigger resize update for smooth scaling
       window.dispatchEvent(new Event('resize'));
     });
   });
 }
 
 /* ==========================================================================
-   5. RELOAD BUTTON
+   6. RELOAD BUTTON
    ========================================================================== */
 function initReloadButtons() {
   const reloadButtons = document.querySelectorAll('.reload-btn');
@@ -162,7 +187,7 @@ function initReloadButtons() {
 }
 
 /* ==========================================================================
-   6. COPY URL BUTTON & TOAST NOTIFICATION
+   7. COPY URL BUTTON & TOAST NOTIFICATION
    ========================================================================== */
 function initCopyButtons() {
   const copyBtns = document.querySelectorAll('.copy-url-btn');
@@ -176,7 +201,6 @@ function initCopyButtons() {
         await navigator.clipboard.writeText(urlToCopy);
         showToast(`Enlace copiado: ${urlToCopy}`);
       } catch (err) {
-        // Fallback for non-https or restricted environments
         const tempInput = document.createElement('input');
         tempInput.value = urlToCopy;
         document.body.appendChild(tempInput);
@@ -205,30 +229,55 @@ function showToast(message) {
 }
 
 /* ==========================================================================
-   7. INTERACTION BARRIER
-   Allows scrolling the main page smoothly until user clicks to navigate inside
+   8. INTERACTION HANDLERS & NAVIGATION BARRIER
+   Allows scrolling the main page smoothly without iframe capturing scrolls
    ========================================================================== */
-function initInteractionBarriers() {
-  const barriers = document.querySelectorAll('.interaction-barrier');
-
-  barriers.forEach(barrier => {
-    barrier.addEventListener('click', () => {
-      const browserWindow = barrier.closest('.browser-window');
-      if (browserWindow) {
-        browserWindow.classList.add('interactive');
-      }
-    });
-  });
-
-  // When mouse leaves the browser window, re-engage barrier after 1.5s
+function initInteractionHandlers() {
   const browserWindows = document.querySelectorAll('.browser-window');
+
   browserWindows.forEach(bw => {
+    const barrier = bw.querySelector('.interaction-barrier');
+    const exitBtn = bw.querySelector('.interactive-exit-btn');
+    const header = bw.querySelector('.browser-header');
+
+    // Click/Tap barrier to activate interaction
+    if (barrier) {
+      barrier.addEventListener('click', () => {
+        bw.classList.add('interactive');
+        showToast('Navegación interactiva activada');
+      });
+    }
+
+    // Click exit button to pause interaction and restore page scrolling
+    if (exitBtn) {
+      exitBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        bw.classList.remove('interactive');
+        showToast('Scroll de página restaurado');
+      });
+    }
+
+    // Tapping the header also exits interactive mode on mobile
+    if (header) {
+      header.addEventListener('click', (e) => {
+        // Only if not clicking buttons inside header
+        if (!e.target.closest('button') && !e.target.closest('a')) {
+          if (bw.classList.contains('interactive')) {
+            bw.classList.remove('interactive');
+            showToast('Scroll de página restaurado');
+          }
+        }
+      });
+    }
+
+    // On desktop, mouseleave re-engages barrier after 2s
     let leaveTimer;
     bw.addEventListener('mouseleave', () => {
       leaveTimer = setTimeout(() => {
         bw.classList.remove('interactive');
-      }, 1500);
+      }, 2000);
     });
+
     bw.addEventListener('mouseenter', () => {
       clearTimeout(leaveTimer);
     });
@@ -236,7 +285,7 @@ function initInteractionBarriers() {
 }
 
 /* ==========================================================================
-   8. FULLSCREEN MODAL VIEWER
+   9. FULLSCREEN MODAL VIEWER
    ========================================================================== */
 function initFullscreenModal() {
   const modal = document.getElementById('fullscreen-modal');
@@ -295,7 +344,6 @@ function initFullscreenModal() {
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
-    // Clear iframe to halt background processes and audio/video if any
     modalIframe.src = '';
   }
 
@@ -312,7 +360,7 @@ function initFullscreenModal() {
 }
 
 /* ==========================================================================
-   9. FOOTER YEAR
+   10. FOOTER YEAR
    ========================================================================== */
 function initFooterYear() {
   const yearEl = document.getElementById('current-year');
