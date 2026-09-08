@@ -40,12 +40,20 @@
       </a>
 
       <nav class="nav-menu">
-        <a href="#proyectos" class="nav-link active">Proyectos</a>
+        <a href="#proyectos" class="nav-link">Proyectos</a>
+        <a href="#articulos" class="nav-link">Artículos</a>
         <a href="#sobre-mi" class="nav-link">Sobre Mí</a>
         <a href="#contacto" class="nav-link">Contacto</a>
       </nav>
 
       <div class="header-actions">
+        <!-- Command Palette Trigger -->
+        <button id="cmd-k-trigger" class="cmd-k-badge" title="Abrir paleta de comandos (Ctrl + K)">
+          <svg class="cmd-search-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="cmd-k-text">Buscar</span>
+          <kbd class="cmd-k-key">Ctrl K</kbd>
+        </button>
+
         <!-- Live Status Pill -->
         <div class="status-badge" title="Disponible para colaborar en proyectos">
           <span class="status-dot"></span>
@@ -54,7 +62,7 @@
 
         <!-- Theme Toggle -->
         <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
-          <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="12" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
           <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         </button>
       </div>
@@ -157,7 +165,7 @@
 
               <div class="preview-tips">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                <span>Usa la barra del navegador adyacente para cambiar a modo móvil o interactuar libremente.</span>
+                <span>Usa los controles del navegador para alternar entre vista móvil y escritorio.</span>
               </div>
             </div>
 
@@ -279,13 +287,13 @@
 
               <div class="preview-tips">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                <span>Por ser una PWA optimizada para teléfonos, pruébala en vista Móvil usando el botón de teléfono en la barra superior.</span>
+                <span>Por ser una PWA móvil, puedes probarla en modo smartphone con el botón de teléfono superior.</span>
               </div>
             </div>
 
             <!-- Live Browser Mockup -->
             <div class="browser-mockup-wrapper">
-              <div class="browser-window" data-project="gastos" data-view="desktop">
+              <div class="browser-window" data-project="gastos" data-view="mobile">
                 <!-- Window Chrome / Header -->
                 <div class="browser-header">
                   <div class="window-dots">
@@ -305,10 +313,10 @@
                   <div class="browser-controls">
                     <!-- View toggle: Desktop vs Mobile -->
                     <div class="device-toggle-group">
-                      <button class="device-btn active" data-view-target="desktop" title="Vista Escritorio">
+                      <button class="device-btn" data-view-target="desktop" title="Vista Escritorio">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                       </button>
-                      <button class="device-btn" data-view-target="mobile" title="Vista Móvil (PWA)">
+                      <button class="device-btn active" data-view-target="mobile" title="Vista Móvil (PWA)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                       </button>
                     </div>
@@ -366,6 +374,92 @@
       </div>
     </section>
 
+    <!-- SECTION 1: NotiTec Recent Articles Feed -->
+    <section id="articulos" class="articles-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Divulgación & Actualidad</span>
+          <h2 class="section-title">Lo más reciente en NotiTec</h2>
+          <p class="section-subtitle">
+            Artículos, análisis y novedades sobre inteligencia artificial, hardware y tecnología publicados en notitec.co.
+          </p>
+        </div>
+
+        <div id="articles-grid" class="articles-grid">
+          <!-- Live/Pre-rendered Cards -->
+          <article class="article-card">
+            <div class="article-card-header">
+              <span class="badge badge-brand">Inteligencia Artificial</span>
+              <time class="article-date">24 Ago 2026</time>
+            </div>
+            <h3 class="article-title">
+              <a href="https://notitec.co/noticias/huawei-pura-x-view-el-movil-que-rompe-con-las-pantallas-alargadas-y-apuesta-por-un-formato-1695/" target="_blank" rel="noopener noreferrer">
+                Huawei Pura X View: el móvil que rompe con las pantallas alargadas y apuesta por un formato 16:9,5
+              </a>
+            </h3>
+            <p class="article-excerpt">
+              Huawei acaba de sorprender con un smartphone completamente diferente a lo habitual que abandona las pantallas alargadas para apostar por un formato ancho.
+            </p>
+            <div class="article-footer">
+              <a href="https://notitec.co/noticias/huawei-pura-x-view-el-movil-que-rompe-con-las-pantallas-alargadas-y-apuesta-por-un-formato-1695/" target="_blank" rel="noopener noreferrer" class="article-link">
+                <span>Leer artículo completo</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+          </article>
+
+          <article class="article-card">
+            <div class="article-card-header">
+              <span class="badge badge-brand">Inteligencia Artificial</span>
+              <time class="article-date">24 Ago 2026</time>
+            </div>
+            <h3 class="article-title">
+              <a href="https://notitec.co/noticias/no-sabia-que-necesitaba-una-camara-de-vigilancia-hasta-que-probe-la-ring-spotlight-luego-descubri-que-es-un-caballo-de-troya/" target="_blank" rel="noopener noreferrer">
+                No sabía que necesitaba una cámara de vigilancia hasta que probé la Ring Spotlight
+              </a>
+            </h3>
+            <p class="article-excerpt">
+              Análisis sobre cómo la tecnología para el hogar inteligente y las cámaras de seguridad conectadas cambian la privacidad y la convivencia diaria.
+            </p>
+            <div class="article-footer">
+              <a href="https://notitec.co/noticias/no-sabia-que-necesitaba-una-camara-de-vigilancia-hasta-que-probe-la-ring-spotlight-luego-descubri-que-es-un-caballo-de-troya/" target="_blank" rel="noopener noreferrer" class="article-link">
+                <span>Leer artículo completo</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+          </article>
+
+          <article class="article-card">
+            <div class="article-card-header">
+              <span class="badge badge-brand">Videojuegos</span>
+              <time class="article-date">23 Ago 2026</time>
+            </div>
+            <h3 class="article-title">
+              <a href="https://notitec.co/noticias/cyberpunk-2077-lleva-casi-seis-anos-encerrando-a-los-jugadores-en-night-city-uno-ha-encontrado-una-forma-de-escapar/" target="_blank" rel="noopener noreferrer">
+                ‘Cyberpunk 2077’ lleva casi seis años encerrando a los jugadores en Night City
+              </a>
+            </h3>
+            <p class="article-excerpt">
+              Los mundos abiertos tienen una curiosa contradicción: cuanto más consiguen convencernos de ir a cualquier parte, más buscamos probar sus límites.
+            </p>
+            <div class="article-footer">
+              <a href="https://notitec.co/noticias/cyberpunk-2077-lleva-casi-seis-anos-encerrando-a-los-jugadores-en-night-city-uno-ha-encontrado-una-forma-de-escapar/" target="_blank" rel="noopener noreferrer" class="article-link">
+                <span>Leer artículo completo</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+          </article>
+        </div>
+
+        <div class="articles-cta-center">
+          <a href="https://www.notitec.co" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+            <span>Ver todos los artículos en notitec.co</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- About Section -->
     <section id="sobre-mi" class="about-section">
       <div class="container">
@@ -406,13 +500,13 @@
                   </a>
                 </li>
                 <li>
-                  <a href="https://github.com/alexistobon" target="_blank" rel="noopener noreferrer" class="contact-link-item">
+                  <a href="https://github.com/alexistobonv16" target="_blank" rel="noopener noreferrer" class="contact-link-item">
                     <div class="contact-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
                     </div>
                     <div>
                       <span class="contact-label">GitHub</span>
-                      <span class="contact-value">github.com/alexistobon</span>
+                      <span class="contact-value">github.com/alexistobonv16</span>
                     </div>
                   </a>
                 </li>
@@ -434,18 +528,57 @@
       </div>
     </section>
 
-    <!-- CTA Section -->
-    <section id="contacto" class="cta-section">
-      <div class="container cta-container">
-        <h2 class="cta-title">¿Tienes un proyecto en mente?</h2>
-        <p class="cta-desc">
-          Siempre estoy abierto a colaborar en iniciativas tecnológicas, desarrollo de productos o nuevas ideas.
-        </p>
-        <div class="cta-buttons">
-          <a href="mailto:alexis@alexistobon.com" class="btn btn-primary btn-large">
-            <span>Escríbeme un mensaje</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          </a>
+    <!-- SECTION 3: Interactive Contact Form Section -->
+    <section id="contacto" class="contact-section">
+      <div class="container contact-container">
+        <div class="contact-header">
+          <span class="section-tag">Contacto & Colaboración</span>
+          <h2 class="section-title">¿Tienes un proyecto en mente?</h2>
+          <p class="section-subtitle">
+            Escríbeme directamente para propuestas de desarrollo, colaboraciones técnicas o nuevas ideas. Te responderé a la brevedad.
+          </p>
+        </div>
+
+        <div class="contact-box-wrapper">
+          <form id="contact-form" class="contact-form" novalidate>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="contact-name" class="form-label">Nombre o Empresa</label>
+                <input type="text" id="contact-name" name="name" class="form-input" placeholder="Tu nombre" required>
+              </div>
+              <div class="form-group">
+                <label for="contact-email" class="form-label">Correo Electrónico</label>
+                <input type="email" id="contact-email" name="email" class="form-input" placeholder="tu@correo.com" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="contact-subject" class="form-label">Asunto / Tipo de Consulta</label>
+              <select id="contact-subject" name="subject" class="form-select">
+                <option value="Desarrollo Web / Producto">Desarrollo Web / Producto Digital</option>
+                <option value="Colaboración en NotiTec">Colaboración en NotiTec</option>
+                <option value="Consulta sobre Mis Gastos">Consulta sobre Mis Gastos</option>
+                <option value="Propuesta Freelance / Laboral">Propuesta Freelance / Laboral</option>
+                <option value="Consulta General">Otro tema</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="contact-message" class="form-label">Mensaje</label>
+              <textarea id="contact-message" name="message" class="form-textarea" rows="4" placeholder="Cuéntame sobre tu proyecto o duda..." required></textarea>
+            </div>
+
+            <div class="form-submit-row">
+              <button type="submit" id="contact-submit-btn" class="btn btn-primary btn-large">
+                <span class="btn-text">Enviar Mensaje</span>
+                <svg class="send-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                <div class="spinner btn-spinner" style="display: none;"></div>
+              </button>
+              <span class="form-direct-note">o escribe a <a href="mailto:alexis@alexistobon.com" class="direct-email-link">alexis@alexistobon.com</a></span>
+            </div>
+
+            <div id="form-feedback" class="form-feedback" style="display: none;"></div>
+          </form>
         </div>
       </div>
     </section>
@@ -461,10 +594,33 @@
       <div class="footer-links">
         <a href="https://www.notitec.co" target="_blank" rel="noopener noreferrer">NotiTec</a>
         <a href="https://gastos.alexistobon.com" target="_blank" rel="noopener noreferrer">Mis Gastos</a>
+        <a href="#articulos">Artículos</a>
         <a href="#inicio">Volver arriba ↑</a>
       </div>
     </div>
   </footer>
+
+  <!-- SECTION 2: Command Palette Modal (Ctrl + K) -->
+  <div id="cmd-palette-modal" class="cmd-palette-modal" aria-hidden="true" role="dialog">
+    <div class="cmd-palette-backdrop"></div>
+    <div class="cmd-palette-dialog">
+      <div class="cmd-palette-input-wrap">
+        <svg class="cmd-search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="cmd-palette-input" placeholder="Buscar proyecto, sección o acción (ej. 'gastos', 'tema')..." autocomplete="off" spellcheck="false">
+        <kbd class="cmd-palette-esc">ESC</kbd>
+      </div>
+
+      <div id="cmd-palette-results" class="cmd-palette-results">
+        <!-- Injected dynamically by script.js -->
+      </div>
+
+      <div class="cmd-palette-footer">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> navegar</span>
+        <span><kbd>↵</kbd> ejecutar</span>
+        <span><kbd>ESC</kbd> cerrar</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Fullscreen Live Modal Viewer -->
   <div id="fullscreen-modal" class="fullscreen-modal" aria-hidden="true" role="dialog">
