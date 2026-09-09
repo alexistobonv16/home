@@ -57,21 +57,16 @@ function initResponsiveDefaults() {
   const browserWindows = document.querySelectorAll('.browser-window');
 
   browserWindows.forEach(bw => {
-    const project = bw.getAttribute('data-project');
-    
-    // On mobile devices, both projects default to mobile view for full-width clarity
-    // On desktop, Mis Gastos defaults to mobile (PWA) and NotiTec to desktop
-    let defaultView = 'desktop';
-    if (isMobileScreen || project === 'gastos') {
-      defaultView = 'mobile';
-    }
+    // Respect the view configured in data-default-view or data-view
+    const configuredView = bw.getAttribute('data-default-view') || bw.getAttribute('data-view') || 'desktop';
+    const targetView = isMobileScreen ? 'mobile' : configuredView;
 
-    bw.setAttribute('data-view', defaultView);
+    bw.setAttribute('data-view', targetView);
 
     // Sync button states
     const btns = bw.querySelectorAll('.device-btn');
     btns.forEach(btn => {
-      if (btn.getAttribute('data-view-target') === defaultView) {
+      if (btn.getAttribute('data-view-target') === targetView) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
@@ -1121,9 +1116,11 @@ function escapeHtml(str) {
 }
 
 function generateProjectCardHtml(proj, index) {
+  const isMobileScreen = window.innerWidth <= 768;
   const isReversed = index % 2 === 1;
   const badgeColorClass = `badge-${proj.badgeColor || 'brand'}`;
   const defaultView = proj.defaultView || 'desktop';
+  const effectiveView = isMobileScreen ? 'mobile' : defaultView;
   const tagsHtml = (proj.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
   const domain = proj.domain || (proj.url ? proj.url.replace(/^https?:\/\//, '').replace(/\/$/, '') : 'sitio web');
 
@@ -1173,7 +1170,7 @@ function generateProjectCardHtml(proj, index) {
 
       <!-- Live Browser Mockup -->
       <div class="browser-mockup-wrapper">
-        <div class="browser-window" data-project="${proj.id}" data-view="${defaultView}">
+        <div class="browser-window" data-project="${proj.id}" data-default-view="${defaultView}" data-view="${effectiveView}">
           <!-- Window Chrome / Header -->
           <div class="browser-header">
             <div class="window-dots">
@@ -1193,10 +1190,10 @@ function generateProjectCardHtml(proj, index) {
             <div class="browser-controls">
               <!-- View toggle: Desktop vs Mobile -->
               <div class="device-toggle-group">
-                <button class="device-btn ${defaultView === 'desktop' ? 'active' : ''}" data-view-target="desktop" title="Vista Escritorio">
+                <button class="device-btn ${effectiveView === 'desktop' ? 'active' : ''}" data-view-target="desktop" title="Vista Escritorio">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                 </button>
-                <button class="device-btn ${defaultView === 'mobile' ? 'active' : ''}" data-view-target="mobile" title="Vista Móvil">
+                <button class="device-btn ${effectiveView === 'mobile' ? 'active' : ''}" data-view-target="mobile" title="Vista Móvil">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                 </button>
               </div>
@@ -1306,23 +1303,10 @@ function applyProjectsUpdates(projects) {
   const currentIds = Array.from(currentShowcases).map(el => el.id.replace(/^project-/, ''));
   const newIds = projects.map(p => p.id);
 
-  let hasChanged = currentIds.length !== newIds.length || currentIds.some((id, i) => id !== newIds[i]);
+  // If project list count or IDs or ordering changed, re-render everything
+  const needsFullRerender = currentIds.length !== newIds.length || currentIds.some((id, i) => id !== newIds[i]);
 
-  if (!hasChanged) {
-    for (let i = 0; i < projects.length; i++) {
-      const proj = projects[i];
-      const el = document.getElementById(`project-${proj.id}`);
-      if (!el) { hasChanged = true; break; }
-
-      const titleLink = el.querySelector('.project-title a');
-      if (titleLink && (titleLink.textContent.trim() !== proj.title.trim() || titleLink.getAttribute('href') !== proj.url)) {
-        hasChanged = true;
-        break;
-      }
-    }
-  }
-
-  if (hasChanged) {
+  if (needsFullRerender) {
     const html = projects.map((p, idx) => generateProjectCardHtml(p, idx)).join('');
     container.innerHTML = html;
 
@@ -1336,6 +1320,98 @@ function applyProjectsUpdates(projects) {
     initIframeLoaders();
     initInteractionHandlers();
     runPingCheck();
+  } else {
+    // Projects exist in DOM: update properties in-place immediately (no iframe reload!)
+    const isMobileScreen = window.innerWidth <= 768;
+
+    projects.forEach(proj => {
+      const el = document.getElementById(`project-${proj.id}`);
+      if (!el) return;
+
+      const bw = el.querySelector('.browser-window');
+      if (bw) {
+        const defaultView = proj.defaultView || 'desktop';
+        bw.setAttribute('data-default-view', defaultView);
+
+        const targetView = isMobileScreen ? 'mobile' : defaultView;
+        bw.setAttribute('data-view', targetView);
+
+        // Update active class on desktop/mobile device toggle buttons
+        const btns = bw.querySelectorAll('.device-btn');
+        btns.forEach(b => {
+          if (b.getAttribute('data-view-target') === targetView) {
+            b.classList.add('active');
+          } else {
+            b.classList.remove('active');
+          }
+        });
+      }
+
+      // Title & URL
+      const titleLink = el.querySelector('.project-title a');
+      if (titleLink) {
+        titleLink.textContent = proj.title;
+        titleLink.href = proj.url;
+      }
+
+      // Domain
+      const domainEl = el.querySelector('.project-domain');
+      if (domainEl) domainEl.textContent = proj.domain || '';
+
+      // Description
+      const descEl = el.querySelector('.project-description');
+      if (descEl) descEl.textContent = proj.description || '';
+
+      // Badge & Color
+      const badgeEl = el.querySelector('.badge');
+      if (badgeEl) {
+        badgeEl.textContent = proj.badge || 'Proyecto';
+        badgeEl.className = `badge badge-${proj.badgeColor || 'brand'}`;
+      }
+
+      // Tech tags
+      const tagsContainer = el.querySelector('.project-tech-tags');
+      if (tagsContainer && Array.isArray(proj.tags)) {
+        tagsContainer.innerHTML = proj.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
+      }
+
+      // Visit button
+      const visitLink = el.querySelector('.project-links .btn-outline');
+      if (visitLink) {
+        visitLink.href = proj.url;
+        const span = visitLink.querySelector('span');
+        if (span) span.textContent = `Visitar ${proj.domain || 'sitio'}`;
+      }
+
+      // Fullscreen button
+      const fsBtn = el.querySelector('.project-links .open-fullscreen-btn');
+      if (fsBtn) {
+        fsBtn.setAttribute('data-url', proj.url);
+        fsBtn.setAttribute('data-title', `${proj.title} - ${proj.domain || proj.url}`);
+      }
+
+      // Address bar
+      const urlText = el.querySelector('.browser-address-bar .url-text');
+      if (urlText) urlText.textContent = proj.url;
+
+      const copyBtn = el.querySelector('.copy-url-btn');
+      if (copyBtn) copyBtn.setAttribute('data-copy', proj.url);
+
+      const fsControlBtn = el.querySelector('.browser-controls .open-fullscreen-btn');
+      if (fsControlBtn) {
+        fsControlBtn.setAttribute('data-url', proj.url);
+        fsControlBtn.setAttribute('data-title', `${proj.title} - ${proj.domain || proj.url}`);
+      }
+
+      // Ping url
+      const pingBadge = el.querySelector('.ping-badge');
+      if (pingBadge) pingBadge.setAttribute('data-ping-url', proj.url);
+    });
+
+    // Recalculate iframe scale factor for the updated views
+    initIframeScaling();
+    window.dispatchEvent(new Event('resize'));
+    runPingCheck();
   }
 
   if (typeof window.updateCommandPaletteProjects === 'function') {
@@ -1345,7 +1421,7 @@ function applyProjectsUpdates(projects) {
 
 async function hydrateProjectsAndContact() {
   try {
-    const res = await fetch('/api/projects');
+    const res = await fetch('/api/projects?_t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return;
 
     const data = await res.json();
