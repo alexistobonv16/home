@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración | Alexis Tobón</title>
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Favicon SVG -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2310b981'/%3E%3Cpath d='M9 22L16 8l7 14h-3.8l-3.2-6.5L12.8 22H9z' fill='%23ffffff'/%3E%3C/svg%3E">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-primary: #070b14;
+      --bg-secondary: #0f172a;
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-hover: rgba(56, 189, 248, 0.4);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-indigo: #818cf8;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #f1f5f9;
+      --bg-card: rgba(255, 255, 255, 0.95);
+      --border-color: rgba(0, 0, 0, 0.1);
+      --border-hover: rgba(14, 165, 233, 0.4);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* Background Ambient Gradients */
+    .bg-glow {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.35;
+    }
+    .bg-glow-1 { top: -10%; left: 10%; width: 500px; height: 500px; background: rgba(56, 189, 248, 0.3); }
+    .bg-glow-2 { bottom: -10%; right: 10%; width: 550px; height: 550px; background: rgba(16, 185, 129, 0.25); }
+
+    /* Top Navigation */
+    .admin-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.85rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .logo-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.8rem;
+      color: #fff;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .admin-pill {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .kv-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--accent-emerald);
+      padding: 0.3rem 0.65rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 9999px;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-icon:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--accent-cyan); }
+
+    .sun-icon { display: none; }
+    .moon-icon { display: block; }
+    [data-theme="light"] .sun-icon { display: block; }
+    [data-theme="light"] .moon-icon { display: none; }
+
+    /* Container & Layout */
+    .admin-main {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* Tabs Navigation */
+    .tabs-bar {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 2rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 0.75rem 1.25rem;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 0.925rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover { color: var(--text-primary); }
+    .tab-btn.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+    }
+
+    /* Tab Panels */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Section Header Row */
+    .section-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .section-title-group h2 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+    .section-title-group p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.15rem;
+      border-radius: 0.65rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0ea5e9);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #0284c7);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      border-color: var(--border-color);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+    .btn-danger:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.78rem;
+    }
+
+    /* Projects Cards List */
+    .projects-admin-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .project-admin-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+      transition: all 0.2s ease;
+      flex-wrap: wrap;
+    }
+
+    .project-admin-card:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .project-admin-card.inactive {
+      opacity: 0.6;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .project-card-info {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .project-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+    }
+    .badge-brand { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-emerald { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-indigo { background: rgba(129, 140, 248, 0.15); color: #a5b4fc; border: 1px solid rgba(129, 140, 248, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    .view-tag {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+
+    .project-card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .project-card-domain {
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+    }
+
+    .project-card-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .project-card-tags {
+      display: flex;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .tag-chip {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.45rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .project-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    /* Switch toggle */
+    .switch-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      transition: 0.3s;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    input:checked + .slider { background-color: var(--accent-emerald); }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    /* Form Styles */
+    .form-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.25rem;
+      padding: 2rem;
+      max-width: 700px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      font-size: 0.825rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-color);
+      border-radius: 0.65rem;
+      padding: 0.65rem 0.9rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    [data-theme="light"] .form-input,
+    [data-theme="light"] .form-select,
+    [data-theme="light"] .form-textarea { background: #fff; }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(3, 7, 18, 0.8);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal-box {
+      width: 100%;
+      max-width: 620px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-overlay.active .modal-box { transform: scale(1); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .modal-title { font-size: 1.25rem; font-weight: 800; }
+
+    /* Login Lock Screen */
+    .login-container {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .login-box {
+      width: 100%;
+      max-width: 420px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.5rem;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    }
+    .login-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      color: #fff;
+    }
+    .login-title { font-size: 1.35rem; font-weight: 800; margin-bottom: 0.35rem; }
+    .login-desc { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.75rem; }
+
+    /* Toast */
+    .toast-pill {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 3000;
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 0.75rem 1.25rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+    .toast-pill.show { opacity: 1; transform: translateY(0); }
+    .toast-pill.success { border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
+    .toast-pill.error { border-color: rgba(239, 68, 68, 0.4); color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- 1. LOGIN SCREEN OVERLAY -->
+  <div id="login-overlay" class="login-container">
+    <div class="login-box">
+      <div class="login-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </div>
+      <h1 class="login-title">Alexis Tobón Admin</h1>
+      <p class="login-desc">Ingresa tu clave de acceso para gestionar proyectos y configuraciones.</p>
+
+      <form id="login-form">
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label" for="login-pin">Clave o PIN de Administrador</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="password" id="login-pin" class="form-input" placeholder="Ingresa tu clave" required autofocus>
+            <button type="button" id="toggle-pin-visibility" class="btn btn-outline" style="padding: 0 0.75rem;" title="Mostrar / Ocultar clave">👁️</button>
+          </div>
+          <span class="form-hint" style="margin-top: 0.4rem;">Clave por defecto inicial: <code>alexis2026</code></span>
+        </div>
+
+        <button type="submit" id="login-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; padding: 0.75rem;">
+          <span>Entrar al Panel</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+        </button>
+
+        <div id="login-error" style="color: #f87171; font-size: 0.8rem; margin-top: 0.75rem; display: none;"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. TOP NAV -->
+  <header class="admin-nav">
+    <div class="nav-left">
+      <a href="/" target="_blank" class="brand-group" title="Ver alexistobon.com en vivo">
+        <span class="logo-badge">AT</span>
+        <span class="brand-title">Alexis Tobón</span>
+      </a>
+      <span class="admin-pill">Admin Panel</span>
+    </div>
+
+    <div class="nav-right">
+      <div class="kv-status" title="Conectado a Cloudflare KV">
+        <span class="pulse-dot"></span>
+        <span>Cloudflare KV</span>
+      </div>
+
+      <a href="/" target="_blank" class="btn btn-outline btn-sm" title="Ver sitio público">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        <span>Ver Web</span>
+      </a>
+
+      <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema">
+        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line></svg>
+        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+
+      <button id="logout-btn" class="btn btn-outline btn-sm" title="Cerrar sesión de administrador">
+        <span>Salir</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 3. MAIN DASHBOARD -->
+  <main class="admin-main">
+    <!-- Tabs Bar -->
+    <nav class="tabs-bar">
+      <button class="tab-btn active" data-tab="projects">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="3" rx="2"></rect><line x1="8" x2="16" y1="21" y2="21"></line><line x1="12" x2="12" y1="17" y2="21"></line></svg>
+        <span>Proyectos en Vivo</span>
+      </button>
+      <button class="tab-btn" data-tab="contact">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        <span>Contacto & Perfil</span>
+      </button>
+      <button class="tab-btn" data-tab="settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Seguridad & Respaldo</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: PROJECTS -->
+    <section id="tab-projects" class="tab-panel active">
+      <div class="section-header-row">
+        <div class="section-title-group">
+          <h2>Tus Proyectos y Sitios</h2>
+          <p>Controla qué sitios web se muestran en directo en alexistobon.com con su marco de navegación.</p>
+        </div>
+        <button id="add-project-btn" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Agregar Nuevo Proyecto</span>
+        </button>
+      </div>
+
+      <div id="projects-list" class="projects-admin-grid">
+        <!-- Injected dynamically by admin script -->
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Cargando proyectos desde Cloudflare KV...</div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CONTACT & PROFILE -->
+    <section id="tab-contact" class="tab-panel">
+      <div class="section-header-row">
+        <div class="section-title-group">
+          <h2>Datos de Contacto y Enlaces</h2>
+          <p>Actualiza la información visible en la tarjeta de contacto, el pie de página y la tarjeta digital QR.</p>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <form id="contact-config-form">
+          <div class="form-group">
+            <label class="form-label" for="cfg-email">Correo Electrónico Principal</label>
+            <input type="email" id="cfg-email" class="form-input" placeholder="admin@alexistobon.com" required>
+            <span class="form-hint">Este correo recibe los mensajes del formulario y se muestra en la tarjeta de contacto.</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="cfg-github">URL de GitHub</label>
+              <input type="url" id="cfg-github" class="form-input" placeholder="https://github.com/alexistobonv16" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cfg-github-label">Texto visible GitHub</label>
+              <input type="text" id="cfg-github-label" class="form-input" placeholder="github.com/alexistobonv16" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="cfg-linkedin">URL de LinkedIn</label>
+              <input type="url" id="cfg-linkedin" class="form-input" placeholder="https://linkedin.com/in/alexistobon" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cfg-linkedin-label">Texto visible LinkedIn</label>
+              <input type="text" id="cfg-linkedin-label" class="form-input" placeholder="linkedin.com/in/alexistobon" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="cfg-status-text">Texto de Estado en Vivo</label>
+              <input type="text" id="cfg-status-text" class="form-input" placeholder="En Vivo">
+              <span class="form-hint">Aparece en la pastilla verde superior (ej. "En Vivo", "Disponible").</span>
+            </div>
+            <div class="form-group" style="justify-content: center;">
+              <label class="switch-label">
+                <div class="switch">
+                  <input type="checkbox" id="cfg-status-active" checked>
+                  <span class="slider"></span>
+                </div>
+                <span>Mostrar pastilla de estado activo</span>
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" id="save-contact-btn" class="btn btn-primary" style="margin-top: 1rem;">
+            <span>Guardar Información de Contacto</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TAB 3: SETTINGS & BACKUP -->
+    <section id="tab-settings" class="tab-panel">
+      <div class="section-header-row">
+        <div class="section-title-group">
+          <h2>Seguridad y Respaldo</h2>
+          <p>Gestiona la clave de acceso al panel y exporta copias de seguridad de tu portafolio.</p>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-bottom: 2rem;">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Cambiar Clave de Acceso</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Actualiza la contraseña requerida para entrar a este panel de administración.</p>
+
+        <form id="change-pin-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="new-pin">Nueva Clave</label>
+              <input type="password" id="new-pin" class="form-input" placeholder="Ingresa nueva clave" required minlength="4">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="confirm-pin">Confirmar Nueva Clave</label>
+              <input type="password" id="confirm-pin" class="form-input" placeholder="Repite la clave" required minlength="4">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-outline" style="margin-top: 0.5rem;">
+            <span>Actualizar Clave</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="form-card">
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Copia de Seguridad & Restauración</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Descarga un archivo JSON con todos tus proyectos configurados o restaura los datos en cualquier momento.</p>
+
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <button id="export-json-btn" class="btn btn-outline">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Exportar Copia (JSON)</span>
+          </button>
+
+          <button id="reset-defaults-btn" class="btn btn-danger">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+            <span>Restaurar Valores por Defecto</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 4. MODAL: AGREGAR / EDITAR PROYECTO -->
+  <div id="project-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-title">Agregar Nuevo Proyecto</h3>
+        <button id="close-modal-btn" class="btn-icon" aria-label="Cerrar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <form id="project-form">
+        <input type="hidden" id="edit-project-id">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="proj-name">Nombre del Proyecto</label>
+            <input type="text" id="proj-name" class="form-input" placeholder="Ej. NotiTec" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="proj-domain">Dominio corto</label>
+            <input type="text" id="proj-domain" class="form-input" placeholder="Ej. notitec.co" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="proj-url">URL en Vivo (con https://)</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="url" id="proj-url" class="form-input" placeholder="https://www.notitec.co" required>
+            <button type="button" id="test-iframe-btn" class="btn btn-outline" style="white-space: nowrap;">Probar Iframe</button>
+          </div>
+          <span class="form-hint">Asegúrate de que el sitio permita embebido en iframe (la mayoría de sitios personales y PWAs lo permiten).</span>
+        </div>
+
+        <div id="iframe-preview-box" style="display: none; margin-bottom: 1.25rem; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; height: 260px; background: #000;">
+          <iframe id="test-iframe-elem" style="width: 100%; height: 100%; border: none;"></iframe>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="proj-desc">Descripción del Proyecto</label>
+          <textarea id="proj-desc" class="form-textarea" rows="3" placeholder="Explica brevemente de qué trata tu aplicación o producto digital..." required></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="proj-badge">Categoría / Etiqueta</label>
+            <input type="text" id="proj-badge" class="form-input" placeholder="Ej. Medio Digital, SaaS, PWA" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="proj-color">Color del Badge</label>
+            <select id="proj-color" class="form-select">
+              <option value="brand">Cian / Azul (Brand)</option>
+              <option value="emerald">Verde Esmeralda</option>
+              <option value="indigo">Púrpura Índigo</option>
+              <option value="amber">Dorado Ámbar</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="proj-tags">Tecnologías (separadas por coma)</label>
+            <input type="text" id="proj-tags" class="form-input" placeholder="Astro, React, Cloudflare, Tailwind">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="proj-view">Vista por Defecto</label>
+            <select id="proj-view" class="form-select">
+              <option value="desktop">Escritorio (1280px)</option>
+              <option value="mobile">Móvil / PWA (375px)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 0.5rem;">
+          <label class="switch-label">
+            <div class="switch">
+              <input type="checkbox" id="proj-active" checked>
+              <span class="slider"></span>
+            </div>
+            <span>Proyecto activo y visible en el portafolio</span>
+          </label>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" id="cancel-project-btn" class="btn btn-outline">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Proyecto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Element -->
+  <div id="toast-pill" class="toast-pill"></div>
+
+  <!-- ADMIN CLIENT SCRIPT -->
+  <script>
+    // State
+    let siteConfig = { projects: [], contact: {} };
+    let sessionToken = sessionStorage.getItem('at_admin_token') || '';
+
+    const loginOverlay = document.getElementById('login-overlay');
+    const loginForm = document.getElementById('login-form');
+    const loginPin = document.getElementById('login-pin');
+    const loginError = document.getElementById('login-error');
+
+    // Tab buttons
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanels.forEach(p => p.classList.remove('active'));
+
+        btn.classList.add('active');
+        const target = btn.getAttribute('data-tab');
+        document.getElementById(`tab-${target}`).classList.add('active');
+      });
+    });
+
+    // Theme Toggle
+    const themeBtn = document.getElementById('theme-toggle');
+    const storedTheme = localStorage.getItem('at_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', storedTheme);
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('at_theme', next);
+    });
+
+    // Toast helper
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast-pill');
+      toast.textContent = msg;
+      toast.className = `toast-pill show ${type}`;
+      setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    }
+
+    // 1. Check Auth / Login
+    if (sessionToken) {
+      loadAdminData();
+    } else {
+      loginOverlay.style.display = 'flex';
+    }
+
+    document.getElementById('toggle-pin-visibility')?.addEventListener('click', () => {
+      loginPin.type = loginPin.type === 'password' ? 'text' : 'password';
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pin = loginPin.value.trim();
+      loginError.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          sessionToken = data.token;
+          sessionStorage.setItem('at_admin_token', sessionToken);
+          loginOverlay.style.display = 'none';
+          showToast('Bienvenido, Alexis');
+          loadAdminData();
+        } else {
+          loginError.textContent = data.error || 'Clave incorrecta.';
+          loginError.style.display = 'block';
+        }
+      } catch (err) {
+        loginError.textContent = 'Error de conexión: ' + err.message;
+        loginError.style.display = 'block';
+      }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      sessionStorage.removeItem('at_admin_token');
+      sessionToken = '';
+      loginOverlay.style.display = 'flex';
+      loginPin.value = '';
+    });
+
+    // 2. Load Admin Data
+    async function loadAdminData() {
+      try {
+        const res = await fetch('/api/admin/data', {
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        });
+
+        if (res.status === 401) {
+          sessionStorage.removeItem('at_admin_token');
+          loginOverlay.style.display = 'flex';
+          return;
+        }
+
+        const json = await res.json();
+        if (json.success && json.data) {
+          siteConfig = json.data;
+          renderProjectsList();
+          fillContactForm();
+          loginOverlay.style.display = 'none';
+        }
+      } catch (err) {
+        showToast('Error cargando datos: ' + err.message, 'error');
+      }
+    }
+
+    // 3. Render Projects List
+    function renderProjectsList() {
+      const container = document.getElementById('projects-list');
+      if (!siteConfig.projects || siteConfig.projects.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);">No tienes proyectos aún. Haz clic en "Agregar Nuevo Proyecto".</div>';
+        return;
+      }
+
+      container.innerHTML = siteConfig.projects.map((proj, idx) => {
+        const badgeColorClass = `badge-${proj.badgeColor || 'brand'}`;
+        const isFirst = idx === 0;
+        const isLast = idx === siteConfig.projects.length - 1;
+
+        return `
+          <div class="project-admin-card ${proj.active === false ? 'inactive' : ''}" data-id="${proj.id}">
+            <div class="project-card-info">
+              <div class="project-card-meta">
+                <span class="badge ${badgeColorClass}">${escapeHtml(proj.badge || 'Proyecto')}</span>
+                <span class="view-tag">${proj.defaultView === 'mobile' ? '📱 Móvil / PWA' : '🖥️ Escritorio'}</span>
+                <span class="ping-badge-admin" data-ping="${escapeHtml(proj.url)}">
+                  <span class="pulse-dot"></span>
+                  <span class="ping-val">Ping...</span>
+                </span>
+              </div>
+
+              <div class="project-card-title">
+                <span>${escapeHtml(proj.title)}</span>
+                <span class="project-card-domain">(${escapeHtml(proj.domain)})</span>
+              </div>
+
+              <p class="project-card-desc">${escapeHtml(proj.description)}</p>
+
+              <div class="project-card-tags">
+                ${(proj.tags || []).map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('')}
+              </div>
+            </div>
+
+            <div class="project-card-actions">
+              <label class="switch-label" title="Activar/Ocultar en alexistobon.com">
+                <div class="switch">
+                  <input type="checkbox" onchange="toggleProjectActive('${proj.id}', this.checked)" ${proj.active !== false ? 'checked' : ''}>
+                  <span class="slider"></span>
+                </div>
+                <span>${proj.active !== false ? 'Activo' : 'Oculto'}</span>
+              </label>
+
+              <div style="display: flex; gap: 0.25rem;">
+                <button class="btn-icon" style="width:30px; height:30px;" title="Subir orden" onclick="moveProject('${proj.id}', -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>↑</button>
+                <button class="btn-icon" style="width:30px; height:30px;" title="Bajar orden" onclick="moveProject('${proj.id}', 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>↓</button>
+              </div>
+
+              <button class="btn btn-outline btn-sm" onclick="editProject('${proj.id}')">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProject('${proj.id}')">Eliminar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      runAdminPings();
+    }
+
+    // Ping check in admin
+    function runAdminPings() {
+      const pingElements = document.querySelectorAll('.ping-badge-admin');
+      pingElements.forEach(async (el) => {
+        const url = el.getAttribute('data-ping');
+        const valSpan = el.querySelector('.ping-val');
+        if (!url || !valSpan) return;
+
+        const start = performance.now();
+        try {
+          await fetch(url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now(), { method: 'HEAD', mode: 'no-cors', cache: 'no-store' });
+          const ms = Math.round(performance.now() - start);
+          valSpan.textContent = `${ms} ms`;
+        } catch {
+          valSpan.textContent = 'Online';
+        }
+      });
+    }
+
+    // 4. Project Modal Management
+    const projectModal = document.getElementById('project-modal');
+    const projectForm = document.getElementById('project-form');
+    const testIframeBtn = document.getElementById('test-iframe-btn');
+    const iframeBox = document.getElementById('iframe-preview-box');
+    const testIframeElem = document.getElementById('test-iframe-elem');
+
+    document.getElementById('add-project-btn').addEventListener('click', () => {
+      document.getElementById('modal-title').textContent = 'Agregar Nuevo Proyecto';
+      document.getElementById('edit-project-id').value = '';
+      projectForm.reset();
+      document.getElementById('proj-active').checked = true;
+      iframeBox.style.display = 'none';
+      testIframeElem.src = '';
+      projectModal.classList.add('active');
+    });
+
+    document.getElementById('close-modal-btn').addEventListener('click', () => projectModal.classList.remove('active'));
+    document.getElementById('cancel-project-btn').addEventListener('click', () => projectModal.classList.remove('active'));
+
+    testIframeBtn.addEventListener('click', () => {
+      const url = document.getElementById('proj-url').value.trim();
+      if (!url) {
+        alert('Por favor ingresa primero la URL.');
+        return;
+      }
+      iframeBox.style.display = 'block';
+      testIframeElem.src = url;
+    });
+
+    window.editProject = function(id) {
+      const proj = siteConfig.projects.find(p => p.id === id);
+      if (!proj) return;
+
+      document.getElementById('modal-title').textContent = `Editar: ${proj.title}`;
+      document.getElementById('edit-project-id').value = proj.id;
+      document.getElementById('proj-name').value = proj.title || '';
+      document.getElementById('proj-domain').value = proj.domain || '';
+      document.getElementById('proj-url').value = proj.url || '';
+      document.getElementById('proj-desc').value = proj.description || '';
+      document.getElementById('proj-badge').value = proj.badge || '';
+      document.getElementById('proj-color').value = proj.badgeColor || 'brand';
+      document.getElementById('proj-tags').value = (proj.tags || []).join(', ');
+      document.getElementById('proj-view').value = proj.defaultView || 'desktop';
+      document.getElementById('proj-active').checked = proj.active !== false;
+
+      iframeBox.style.display = 'none';
+      testIframeElem.src = '';
+      projectModal.classList.add('active');
+    };
+
+    projectForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const editId = document.getElementById('edit-project-id').value;
+      const title = document.getElementById('proj-name').value.trim();
+      const domain = document.getElementById('proj-domain').value.trim();
+      const url = document.getElementById('proj-url').value.trim();
+      const description = document.getElementById('proj-desc').value.trim();
+      const badge = document.getElementById('proj-badge').value.trim();
+      const badgeColor = document.getElementById('proj-color').value;
+      const tags = document.getElementById('proj-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+      const defaultView = document.getElementById('proj-view').value;
+      const active = document.getElementById('proj-active').checked;
+
+      const projectData = {
+        id: editId || ('proj-' + Date.now().toString(36)),
+        title,
+        domain,
+        url,
+        description,
+        badge,
+        badgeColor,
+        tags,
+        defaultView,
+        active
+      };
+
+      if (editId) {
+        const idx = siteConfig.projects.findIndex(p => p.id === editId);
+        if (idx >= 0) siteConfig.projects[idx] = { ...siteConfig.projects[idx], ...projectData };
+      } else {
+        projectData.order = siteConfig.projects.length + 1;
+        siteConfig.projects.push(projectData);
+      }
+
+      await saveConfigToKV('Proyecto guardado exitosamente.');
+      projectModal.classList.remove('active');
+      renderProjectsList();
+    });
+
+    window.toggleProjectActive = async function(id, isActive) {
+      const proj = siteConfig.projects.find(p => p.id === id);
+      if (proj) {
+        proj.active = isActive;
+        await saveConfigToKV(isActive ? `Proyecto activado` : `Proyecto ocultado`);
+        renderProjectsList();
+      }
+    };
+
+    window.moveProject = async function(id, dir) {
+      const idx = siteConfig.projects.findIndex(p => p.id === id);
+      if (idx < 0) return;
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= siteConfig.projects.length) return;
+
+      const temp = siteConfig.projects[idx];
+      siteConfig.projects[idx] = siteConfig.projects[targetIdx];
+      siteConfig.projects[targetIdx] = temp;
+
+      // Re-index order
+      siteConfig.projects.forEach((p, i) => { p.order = i + 1; });
+
+      await saveConfigToKV('Orden actualizado.');
+      renderProjectsList();
+    };
+
+    window.deleteProject = async function(id) {
+      const proj = siteConfig.projects.find(p => p.id === id);
+      if (!proj) return;
+      if (!confirm(`¿Estás seguro de eliminar el proyecto "${proj.title}"?`)) return;
+
+      siteConfig.projects = siteConfig.projects.filter(p => p.id !== id);
+      await saveConfigToKV(`Proyecto "${proj.title}" eliminado.`);
+      renderProjectsList();
+    };
+
+    // 5. Contact Form Fill & Save
+    function fillContactForm() {
+      const c = siteConfig.contact || {};
+      document.getElementById('cfg-email').value = c.email || 'admin@alexistobon.com';
+      document.getElementById('cfg-github').value = c.github || 'https://github.com/alexistobonv16';
+      document.getElementById('cfg-github-label').value = c.githubLabel || 'github.com/alexistobonv16';
+      document.getElementById('cfg-linkedin').value = c.linkedin || 'https://linkedin.com/in/alexistobon';
+      document.getElementById('cfg-linkedin-label').value = c.linkedinLabel || 'linkedin.com/in/alexistobon';
+      document.getElementById('cfg-status-text').value = c.statusText || 'En Vivo';
+      document.getElementById('cfg-status-active').checked = c.statusAvailable !== false;
+    }
+
+    document.getElementById('contact-config-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      siteConfig.contact = {
+        email: document.getElementById('cfg-email').value.trim(),
+        github: document.getElementById('cfg-github').value.trim(),
+        githubLabel: document.getElementById('cfg-github-label').value.trim(),
+        linkedin: document.getElementById('cfg-linkedin').value.trim(),
+        linkedinLabel: document.getElementById('cfg-linkedin-label').value.trim(),
+        statusText: document.getElementById('cfg-status-text').value.trim(),
+        statusAvailable: document.getElementById('cfg-status-active').checked
+      };
+
+      await saveConfigToKV('Datos de contacto actualizados exitosamente.');
+    });
+
+    // 6. Change PIN
+    document.getElementById('change-pin-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const p1 = document.getElementById('new-pin').value;
+      const p2 = document.getElementById('confirm-pin').value;
+
+      if (p1 !== p2) {
+        alert('Las claves no coinciden.');
+        return;
+      }
+
+      await saveConfigToKV('Clave de administrador actualizada.', p1);
+      document.getElementById('change-pin-form').reset();
+    });
+
+    // 7. Backup & Reset
+    document.getElementById('export-json-btn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(siteConfig, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `alexistobon-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Copia de seguridad descargada.');
+    });
+
+    document.getElementById('reset-defaults-btn').addEventListener('click', async () => {
+      if (!confirm('¿Restaurar configuración inicial (NotiTec y Mis Gastos)? Esta acción reemplazará tus cambios actuales.')) return;
+      try {
+        const res = await fetch('/api/projects');
+        // reload default
+        location.reload();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    });
+
+    // Save helper to Cloudflare KV
+    async function saveConfigToKV(successMessage, newPin = null) {
+      try {
+        const payload = {
+          projects: siteConfig.projects,
+          contact: siteConfig.contact
+        };
+        if (newPin) payload.newPin = newPin;
+
+        const res = await fetch('/api/admin/data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast(successMessage);
+        } else {
+          showToast(data.error || 'Error al guardar.', 'error');
+        }
+      } catch (err) {
+        showToast('Error de red al guardar: ' + err.message, 'error');
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+  </script>
+</body>
+</html>

@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initContactForm();
   initQrModal();
   initPingMonitor();
+  hydrateProjectsAndContact();
 });
 
 /* ==========================================================================
@@ -84,9 +85,8 @@ function initResponsiveDefaults() {
    Computes exact scale factor for desktop views without distortion
    ========================================================================== */
 function initIframeScaling() {
-  const browserWindows = document.querySelectorAll('.browser-window');
-
   function updateScales() {
+    const browserWindows = document.querySelectorAll('.browser-window');
     browserWindows.forEach(bw => {
       const viewport = bw.querySelector('.browser-viewport');
       if (!viewport) return;
@@ -102,12 +102,14 @@ function initIframeScaling() {
   // Initial calculation
   updateScales();
 
-  // Recalculate on resize (debounced)
-  let resizeTimeout;
-  window.addEventListener('resize', () => {
-    cancelAnimationFrame(resizeTimeout);
-    resizeTimeout = requestAnimationFrame(updateScales);
-  });
+  if (!window._iframeScalingResizeBound) {
+    window._iframeScalingResizeBound = true;
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      cancelAnimationFrame(resizeTimeout);
+      resizeTimeout = requestAnimationFrame(updateScales);
+    });
+  }
 }
 
 /* ==========================================================================
@@ -117,8 +119,11 @@ function initIframeLoaders() {
   const previewIframes = document.querySelectorAll('.browser-window .preview-iframe');
 
   previewIframes.forEach(iframe => {
+    if (iframe._loaderBound) return;
+    iframe._loaderBound = true;
+
     const windowEl = iframe.closest('.browser-window');
-    const loader = windowEl.querySelector('.iframe-loader');
+    const loader = windowEl?.querySelector('.iframe-loader');
 
     iframe.addEventListener('load', () => {
       if (loader) {
@@ -138,59 +143,65 @@ function initIframeLoaders() {
 /* ==========================================================================
    5. DEVICE VIEW TOGGLE (DESKTOP VS MOBILE)
    ========================================================================== */
+let deviceTogglesInit = false;
 function initDeviceToggles() {
-  const toggleButtons = document.querySelectorAll('.device-btn');
+  if (deviceTogglesInit) return;
+  deviceTogglesInit = true;
 
-  toggleButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetView = btn.getAttribute('data-view-target');
-      const browserWindow = btn.closest('.browser-window');
-      if (!browserWindow) return;
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.device-btn');
+    if (!btn) return;
 
-      // Update active state on buttons within this window
-      const siblingBtns = browserWindow.querySelectorAll('.device-btn');
-      siblingBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+    const targetView = btn.getAttribute('data-view-target');
+    const browserWindow = btn.closest('.browser-window');
+    if (!browserWindow) return;
 
-      // Update view mode on the browser window
-      browserWindow.setAttribute('data-view', targetView);
+    // Update active state on buttons within this window
+    const siblingBtns = browserWindow.querySelectorAll('.device-btn');
+    siblingBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
 
-      // Trigger resize update for smooth scaling
-      window.dispatchEvent(new Event('resize'));
-    });
+    // Update view mode on the browser window
+    browserWindow.setAttribute('data-view', targetView);
+
+    // Trigger resize update for smooth scaling
+    window.dispatchEvent(new Event('resize'));
   });
 }
 
 /* ==========================================================================
    6. RELOAD BUTTON
    ========================================================================== */
+let reloadButtonsInit = false;
 function initReloadButtons() {
-  const reloadButtons = document.querySelectorAll('.reload-btn');
+  if (reloadButtonsInit) return;
+  reloadButtonsInit = true;
 
-  reloadButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const browserWindow = btn.closest('.browser-window');
-      if (!browserWindow) return;
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.reload-btn');
+    if (!btn) return;
 
-      const iframe = browserWindow.querySelector('.preview-iframe');
-      const loader = browserWindow.querySelector('.iframe-loader');
+    const browserWindow = btn.closest('.browser-window');
+    if (!browserWindow) return;
 
-      if (iframe) {
-        if (loader) loader.classList.remove('hidden');
+    const iframe = browserWindow.querySelector('.preview-iframe');
+    const loader = browserWindow.querySelector('.iframe-loader');
 
-        // Add visual spin to the reload icon
-        const svg = btn.querySelector('svg');
-        if (svg) svg.style.transform = 'rotate(360deg)';
-        setTimeout(() => { if (svg) svg.style.transform = ''; }, 600);
+    if (iframe) {
+      if (loader) loader.classList.remove('hidden');
 
-        // Reload iframe source
-        const currentSrc = iframe.src;
-        iframe.src = '';
-        setTimeout(() => {
-          iframe.src = currentSrc;
-        }, 50);
-      }
-    });
+      // Add visual spin to the reload icon
+      const svg = btn.querySelector('svg');
+      if (svg) svg.style.transform = 'rotate(360deg)';
+      setTimeout(() => { if (svg) svg.style.transform = ''; }, 600);
+
+      // Reload iframe source
+      const currentSrc = iframe.src;
+      iframe.src = '';
+      setTimeout(() => {
+        iframe.src = currentSrc;
+      }, 50);
+    }
   });
 }
 
@@ -217,16 +228,18 @@ function fallbackCopy(text, message) {
   showToast(message || `Copiado: ${text}`);
 }
 
+let copyButtonsInit = false;
 function initCopyButtons() {
-  const copyBtns = document.querySelectorAll('.copy-url-btn');
+  if (copyButtonsInit) return;
+  copyButtonsInit = true;
 
-  copyBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const urlToCopy = btn.getAttribute('data-copy');
-      if (urlToCopy) {
-        copyToClipboard(urlToCopy, `Enlace copiado: ${urlToCopy}`);
-      }
-    });
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.copy-url-btn');
+    if (!btn) return;
+    const urlToCopy = btn.getAttribute('data-copy');
+    if (urlToCopy) {
+      copyToClipboard(urlToCopy, `Enlace copiado: ${urlToCopy}`);
+    }
   });
 }
 
@@ -252,39 +265,48 @@ function showToast(message) {
 /* ==========================================================================
    8. INTERACTION HANDLERS & NAVIGATION BARRIER
    ========================================================================== */
+let interactionDelegationInit = false;
 function initInteractionHandlers() {
-  const browserWindows = document.querySelectorAll('.browser-window');
+  if (!interactionDelegationInit) {
+    interactionDelegationInit = true;
 
-  browserWindows.forEach(bw => {
-    const barrier = bw.querySelector('.interaction-barrier');
-    const exitBtn = bw.querySelector('.interactive-exit-btn');
-    const header = bw.querySelector('.browser-header');
-
-    if (barrier) {
-      barrier.addEventListener('click', () => {
-        bw.classList.add('interactive');
-        showToast('Navegación interactiva activada');
-      });
-    }
-
-    if (exitBtn) {
-      exitBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        bw.classList.remove('interactive');
-        showToast('Scroll de página restaurado');
-      });
-    }
-
-    if (header) {
-      header.addEventListener('click', (e) => {
-        if (!e.target.closest('button') && !e.target.closest('a')) {
-          if (bw.classList.contains('interactive')) {
-            bw.classList.remove('interactive');
-            showToast('Scroll de página restaurado');
-          }
+    document.addEventListener('click', (e) => {
+      const barrier = e.target.closest('.interaction-barrier');
+      if (barrier) {
+        const bw = barrier.closest('.browser-window');
+        if (bw) {
+          bw.classList.add('interactive');
+          showToast('Navegación interactiva activada');
         }
-      });
-    }
+        return;
+      }
+
+      const exitBtn = e.target.closest('.interactive-exit-btn');
+      if (exitBtn) {
+        e.stopPropagation();
+        const bw = exitBtn.closest('.browser-window');
+        if (bw) {
+          bw.classList.remove('interactive');
+          showToast('Scroll de página restaurado');
+        }
+        return;
+      }
+
+      const header = e.target.closest('.browser-header');
+      if (header && !e.target.closest('button') && !e.target.closest('a')) {
+        const bw = header.closest('.browser-window');
+        if (bw && bw.classList.contains('interactive')) {
+          bw.classList.remove('interactive');
+          showToast('Scroll de página restaurado');
+        }
+      }
+    });
+  }
+
+  const browserWindows = document.querySelectorAll('.browser-window');
+  browserWindows.forEach(bw => {
+    if (bw._interactionLeaveBound) return;
+    bw._interactionLeaveBound = true;
 
     let leaveTimer;
     bw.addEventListener('mouseleave', () => {
@@ -335,6 +357,7 @@ function closeModal() {
   if (modalIframe) modalIframe.src = '';
 }
 
+let fullscreenInit = false;
 function initFullscreenModal() {
   const modal = document.getElementById('fullscreen-modal');
   const modalIframe = document.getElementById('modal-iframe');
@@ -346,38 +369,41 @@ function initFullscreenModal() {
 
   if (!modal || !modalIframe) return;
 
-  const openButtons = document.querySelectorAll('.open-fullscreen-btn');
-  openButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  if (!fullscreenInit) {
+    fullscreenInit = true;
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.open-fullscreen-btn');
+      if (!btn) return;
       e.preventDefault();
       const url = btn.getAttribute('data-url');
       const title = btn.getAttribute('data-title') || 'Vista en Vivo';
       if (url) openModal(url, title);
     });
-  });
 
-  modalIframe.addEventListener('load', () => {
-    if (modalLoader) modalLoader.classList.add('hidden');
-  });
+    modalIframe.addEventListener('load', () => {
+      if (modalLoader) modalLoader.classList.add('hidden');
+    });
 
-  if (modalReloadBtn) {
-    modalReloadBtn.addEventListener('click', () => {
-      if (modalLoader) modalLoader.classList.remove('hidden');
-      const current = modalIframe.src;
-      modalIframe.src = '';
-      setTimeout(() => { modalIframe.src = current; }, 50);
+    if (modalReloadBtn) {
+      modalReloadBtn.addEventListener('click', () => {
+        if (modalLoader) modalLoader.classList.remove('hidden');
+        const current = modalIframe.src;
+        modalIframe.src = '';
+        setTimeout(() => { modalIframe.src = current; }, 50);
+      });
+    }
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    triggerCloseDots?.forEach(dot => dot.addEventListener('click', closeModal));
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('active')) {
+        closeModal();
+      }
     });
   }
-
-  if (closeBtn) closeBtn.addEventListener('click', closeModal);
-  if (backdrop) backdrop.addEventListener('click', closeModal);
-  triggerCloseDots?.forEach(dot => dot.addEventListener('click', closeModal));
-
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modal.classList.contains('active')) {
-      closeModal();
-    }
-  });
 }
 
 function scrollToSection(selector) {
@@ -407,7 +433,7 @@ function initCommandPalette() {
   }
 
   // Command Definitions
-  const COMMANDS = [
+  let dynamicProjectCommands = [
     {
       id: 'proj-notitec',
       group: 'Proyectos en Directo',
@@ -439,6 +465,17 @@ function initCommandPalette() {
       desc: 'Abrir visor expandido inmersivo',
       icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>',
       action: () => openModal('https://gastos.alexistobon.com', 'Mis Gastos - gastos.alexistobon.com')
+    }
+  ];
+
+  const staticCommands = [
+    {
+      id: 'nav-admin',
+      group: 'Administración',
+      title: 'Panel de Administración',
+      desc: 'Gestionar proyectos y sitios en vivo (/admin)',
+      icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
+      action: () => window.location.href = '/admin'
     },
     {
       id: 'nav-articulos',
@@ -514,8 +551,35 @@ function initCommandPalette() {
     }
   ];
 
+  let COMMANDS = [...dynamicProjectCommands, ...staticCommands];
   let selectedIndex = 0;
   let filteredCommands = [...COMMANDS];
+
+  window.updateCommandPaletteProjects = function(projects) {
+    if (!Array.isArray(projects) || !projects.length) return;
+    dynamicProjectCommands = [];
+    projects.forEach(p => {
+      const dom = p.domain || (p.url ? p.url.replace(/^https?:\/\//, '') : '');
+      dynamicProjectCommands.push({
+        id: `proj-${p.id}`,
+        group: 'Proyectos en Directo',
+        title: `Ver ${p.title} en vivo`,
+        desc: `${p.badge || 'Proyecto'} (${dom})`,
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>',
+        action: () => scrollToSection(`#project-${p.id}`)
+      });
+      dynamicProjectCommands.push({
+        id: `fs-${p.id}`,
+        group: 'Proyectos en Directo',
+        title: `${p.title} en Pantalla Completa`,
+        desc: `Abrir visor expandido inmersivo (${dom})`,
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>',
+        action: () => openModal(p.url, `${p.title} - ${dom}`)
+      });
+    });
+    COMMANDS = [...dynamicProjectCommands, ...staticCommands];
+    filterCommands(input.value.trim());
+  };
 
   function renderCommands() {
     resultsContainer.innerHTML = '';
@@ -991,44 +1055,44 @@ async function measurePing(url) {
   }
 }
 
-function initPingMonitor() {
+let pingIntervalId = null;
+function runPingCheck() {
   const badges = document.querySelectorAll('.ping-badge[data-ping-url]');
   if (!badges.length) return;
 
-  async function runPings() {
-    badges.forEach(async (badge) => {
-      const url = badge.getAttribute('data-ping-url');
-      const valEl = badge.querySelector('.ping-val');
-      if (!url || !valEl) return;
+  badges.forEach(async (badge) => {
+    const url = badge.getAttribute('data-ping-url');
+    const valEl = badge.querySelector('.ping-val');
+    if (!url || !valEl) return;
 
-      const ms = await measurePing(url);
-      badge.classList.remove('fast', 'medium', 'slow', 'offline');
+    const ms = await measurePing(url);
+    badge.classList.remove('fast', 'medium', 'slow', 'offline');
 
-      if (ms !== null && !isNaN(ms)) {
-        valEl.textContent = `${ms} ms`;
-        if (ms < 150) {
-          badge.classList.add('fast');
-          badge.setAttribute('title', `Latencia excelente: ${ms} ms`);
-        } else if (ms < 400) {
-          badge.classList.add('medium');
-          badge.setAttribute('title', `Latencia normal: ${ms} ms`);
-        } else {
-          badge.classList.add('slow');
-          badge.setAttribute('title', `Latencia moderada: ${ms} ms`);
-        }
-      } else {
-        valEl.textContent = 'En línea';
+    if (ms !== null && !isNaN(ms)) {
+      valEl.textContent = `${ms} ms`;
+      if (ms < 150) {
         badge.classList.add('fast');
-        badge.setAttribute('title', 'Servicio en línea y respondiendo');
+        badge.setAttribute('title', `Latencia excelente: ${ms} ms`);
+      } else if (ms < 400) {
+        badge.classList.add('medium');
+        badge.setAttribute('title', `Latencia normal: ${ms} ms`);
+      } else {
+        badge.classList.add('slow');
+        badge.setAttribute('title', `Latencia moderada: ${ms} ms`);
       }
-    });
+    } else {
+      valEl.textContent = 'En línea';
+      badge.classList.add('fast');
+      badge.setAttribute('title', 'Servicio en línea y respondiendo');
+    }
+  });
+}
+
+function initPingMonitor() {
+  setTimeout(runPingCheck, 800);
+  if (!pingIntervalId) {
+    pingIntervalId = setInterval(runPingCheck, 45000);
   }
-
-  // Initial check after page stabilizes
-  setTimeout(runPings, 800);
-
-  // Periodic refresh every 45 seconds
-  setInterval(runPings, 45000);
 }
 
 /* ==========================================================================
@@ -1038,5 +1102,263 @@ function initFooterYear() {
   const yearEl = document.getElementById('current-year');
   if (yearEl) {
     yearEl.textContent = new Date().getFullYear();
+  }
+}
+
+/* ==========================================================================
+   FEATURE 6: DYNAMIC HYDRATION & SYNC FROM CLOUDFLARE KV (/api/projects)
+   Enables Alexis Tobón to add, edit, reorder or toggle projects via /admin
+   without requiring manual code changes or builds.
+   ========================================================================== */
+function escapeHtml(str) {
+  return (str || '').replace(/[&<>'"]/g, tag => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+  }[tag] || tag));
+}
+
+function generateProjectCardHtml(proj, index) {
+  const isReversed = index % 2 === 1;
+  const badgeColorClass = `badge-${proj.badgeColor || 'brand'}`;
+  const defaultView = proj.defaultView || 'desktop';
+  const tagsHtml = (proj.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
+  const domain = proj.domain || (proj.url ? proj.url.replace(/^https?:\/\//, '').replace(/\/$/, '') : 'sitio web');
+
+  return `
+    <article class="project-showcase ${isReversed ? 'reversed' : ''}" id="project-${proj.id}">
+      <div class="project-info">
+        <div class="project-meta-top">
+          <div class="meta-left-group">
+            <span class="badge ${badgeColorClass}">${escapeHtml(proj.badge || 'Proyecto')}</span>
+            <span class="status-live-pill">
+              <span class="pulse-dot"></span> Online
+            </span>
+          </div>
+          <div class="ping-badge" data-ping-url="${escapeHtml(proj.url)}" title="Latencia medida en tiempo real">
+            <span class="ping-dot"></span>
+            <span class="ping-val">Ping...</span>
+          </div>
+        </div>
+        <h3 class="project-title">
+          <a href="${escapeHtml(proj.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(proj.title)}</a>
+        </h3>
+        <p class="project-domain">${escapeHtml(domain)}</p>
+        <p class="project-description">
+          ${escapeHtml(proj.description || '')}
+        </p>
+        
+        <div class="project-tech-tags">
+          ${tagsHtml}
+        </div>
+
+        <div class="project-links">
+          <a href="${escapeHtml(proj.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
+            <span>Visitar ${escapeHtml(domain)}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+          <button class="btn btn-ghost open-fullscreen-btn" data-url="${escapeHtml(proj.url)}" data-title="${escapeHtml(proj.title)} - ${escapeHtml(domain)}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+            <span>Pantalla Completa</span>
+          </button>
+        </div>
+
+        <div class="preview-tips">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          <span>Usa los controles del navegador para alternar entre vista móvil y escritorio.</span>
+        </div>
+      </div>
+
+      <!-- Live Browser Mockup -->
+      <div class="browser-mockup-wrapper">
+        <div class="browser-window" data-project="${proj.id}" data-view="${defaultView}">
+          <!-- Window Chrome / Header -->
+          <div class="browser-header">
+            <div class="window-dots">
+              <span class="dot dot-close"></span>
+              <span class="dot dot-minimize"></span>
+              <span class="dot dot-maximize"></span>
+            </div>
+
+            <div class="browser-address-bar">
+              <svg class="ssl-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              <span class="url-text">${escapeHtml(proj.url)}</span>
+              <button class="copy-url-btn" data-copy="${escapeHtml(proj.url)}" title="Copiar enlace">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+
+            <div class="browser-controls">
+              <!-- View toggle: Desktop vs Mobile -->
+              <div class="device-toggle-group">
+                <button class="device-btn ${defaultView === 'desktop' ? 'active' : ''}" data-view-target="desktop" title="Vista Escritorio">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                </button>
+                <button class="device-btn ${defaultView === 'mobile' ? 'active' : ''}" data-view-target="mobile" title="Vista Móvil">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                </button>
+              </div>
+
+              <!-- Reload iframe -->
+              <button class="control-btn reload-btn" title="Recargar vista en vivo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              </button>
+
+              <!-- Expand fullscreen modal -->
+              <button class="control-btn open-fullscreen-btn" data-url="${escapeHtml(proj.url)}" data-title="${escapeHtml(proj.title)} - ${escapeHtml(domain)}" title="Abrir en pantalla completa">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Browser Screen / Iframe Container -->
+          <div class="browser-viewport">
+            <!-- Loading overlay -->
+            <div class="iframe-loader">
+              <div class="spinner"></div>
+              <span>Cargando ${escapeHtml(domain)} en vivo...</span>
+            </div>
+
+            <!-- Interactive scroll barrier/overlay -->
+            <div class="interaction-barrier" title="Toca o haz clic para interactuar con la página">
+              <div class="barrier-pill">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m10 15 5-3-5-3v6Z"/></svg>
+                <span>Toca para navegar aquí</span>
+              </div>
+            </div>
+
+            <!-- Floating exit interaction button -->
+            <button class="interactive-exit-btn" title="Pausar navegación interactiva y volver al scroll de la página">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <span>Pausar interacción</span>
+            </button>
+
+            <!-- Scaled Iframe -->
+            <div class="iframe-scaler">
+              <iframe 
+                src="${escapeHtml(proj.url)}" 
+                class="preview-iframe" 
+                loading="lazy" 
+                title="Vista en directo de ${escapeHtml(proj.title)}"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms">
+              </iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function applyContactUpdates(c) {
+  if (!c) return;
+
+  if (c.email) {
+    document.querySelectorAll('a[href^="mailto:"]').forEach(link => {
+      link.href = `mailto:${c.email}`;
+      const val = link.querySelector('.contact-value');
+      if (val) val.textContent = c.email;
+    });
+
+    const directNoteLink = document.querySelector('.form-direct-note a');
+    if (directNoteLink) {
+      directNoteLink.href = `mailto:${c.email}`;
+      directNoteLink.textContent = c.email;
+    }
+  }
+
+  if (c.github) {
+    document.querySelectorAll('a[href*="github.com"]').forEach(link => {
+      link.href = c.github;
+      const val = link.querySelector('.contact-value');
+      if (val && c.githubLabel) val.textContent = c.githubLabel;
+    });
+  }
+
+  if (c.linkedin) {
+    document.querySelectorAll('a[href*="linkedin.com"]').forEach(link => {
+      link.href = c.linkedin;
+      const val = link.querySelector('.contact-value');
+      if (val && c.linkedinLabel) val.textContent = c.linkedinLabel;
+    });
+  }
+
+  if (c.statusText) {
+    const statusTextEl = document.querySelector('.status-badge .status-text');
+    if (statusTextEl) statusTextEl.textContent = c.statusText;
+  }
+
+  if (c.statusAvailable !== undefined) {
+    const statusBadge = document.querySelector('.status-badge');
+    if (statusBadge) {
+      statusBadge.style.display = c.statusAvailable === false ? 'none' : 'inline-flex';
+    }
+  }
+}
+
+function applyProjectsUpdates(projects) {
+  const container = document.querySelector('.projects-list');
+  if (!container) return;
+
+  const currentShowcases = container.querySelectorAll('.project-showcase');
+  const currentIds = Array.from(currentShowcases).map(el => el.id.replace(/^project-/, ''));
+  const newIds = projects.map(p => p.id);
+
+  let hasChanged = currentIds.length !== newIds.length || currentIds.some((id, i) => id !== newIds[i]);
+
+  if (!hasChanged) {
+    for (let i = 0; i < projects.length; i++) {
+      const proj = projects[i];
+      const el = document.getElementById(`project-${proj.id}`);
+      if (!el) { hasChanged = true; break; }
+
+      const titleLink = el.querySelector('.project-title a');
+      if (titleLink && (titleLink.textContent.trim() !== proj.title.trim() || titleLink.getAttribute('href') !== proj.url)) {
+        hasChanged = true;
+        break;
+      }
+    }
+  }
+
+  if (hasChanged) {
+    const html = projects.map((p, idx) => generateProjectCardHtml(p, idx)).join('');
+    container.innerHTML = html;
+
+    const statNum = document.querySelector('.stat-card .stat-number');
+    if (statNum) {
+      statNum.textContent = `${projects.length}+`;
+    }
+
+    initResponsiveDefaults();
+    initIframeScaling();
+    initIframeLoaders();
+    initInteractionHandlers();
+    runPingCheck();
+  }
+
+  if (typeof window.updateCommandPaletteProjects === 'function') {
+    window.updateCommandPaletteProjects(projects);
+  }
+}
+
+async function hydrateProjectsAndContact() {
+  try {
+    const res = await fetch('/api/projects');
+    if (!res.ok) return;
+
+    const data = await res.json();
+    if (!data) return;
+
+    if (data.contact) {
+      applyContactUpdates(data.contact);
+    }
+
+    if (Array.isArray(data.projects) && data.projects.length > 0) {
+      applyProjectsUpdates(data.projects);
+    }
+  } catch (err) {
+    console.debug('Dynamic projects fallback:', err);
   }
 }

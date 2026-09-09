@@ -1,0 +1,40 @@
+{
+  "adminPin": "alexis2026",
+  "contact": {
+    "email": "admin@alexistobon.com",
+    "github": "https://github.com/alexistobonv16",
+    "githubLabel": "github.com/alexistobonv16",
+    "linkedin": "https://linkedin.com/in/alexistobon",
+    "linkedinLabel": "linkedin.com/in/alexistobon",
+    "statusText": "En Vivo",
+    "statusAvailable": true
+  },
+  "projects": [
+    {
+      "id": "notitec",
+      "title": "NotiTec",
+      "domain": "notitec.co",
+      "url": "https://www.notitec.co",
+      "description": "Portal digital enfocado en noticias, análisis y divulgación sobre ciencia, tecnología, inteligencia artificial e innovación, redactadas de manera clara y accesible para toda la comunidad hispanohablante.",
+      "badge": "Medio Digital",
+      "badgeColor": "brand",
+      "tags": ["Astro", "SEO Optimizado", "Responsive Web", "Vercel", "Fast Delivery"],
+      "defaultView": "desktop",
+      "active": true,
+      "order": 1
+    },
+    {
+      "id": "gastos",
+      "title": "Mis Gastos",
+      "domain": "gastos.alexistobon.com",
+      "url": "https://gastos.alexistobon.com",
+      "description": "Aplicación web progresiva (PWA) privada para finanzas personales y control de presupuestos. Diseñada para un registro rápido de transacciones, métricas de ahorro y funcionamiento offline con máxima privacidad.",
+      "badge": "Finanzas & PWA",
+      "badgeColor": "emerald",
+      "tags": ["React", "Vite & PWA", "Tailwind CSS", "Cloudflare", "Bóveda Privada"],
+      "defaultView": "mobile",
+      "active": true,
+      "order": 2
+    }
+  ]
+}
