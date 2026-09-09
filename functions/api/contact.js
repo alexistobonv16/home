@@ -21,7 +21,7 @@ export async function onRequestPost(context) {
         success: false, 
         error: 'Todos los campos obligatorios deben ser completados.' 
       }), {
-        status: 400,
+        status: 200,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
@@ -36,7 +36,7 @@ export async function onRequestPost(context) {
         success: false, 
         error: 'Por favor ingresa un correo electrónico válido.' 
       }), {
-        status: 400,
+        status: 200,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
@@ -44,14 +44,15 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Forward silently to FormSubmit API in the background
+    // Forward silently to FormSubmit API
     const formSubmitUrl = 'https://formsubmit.co/ajax/admin@alexistobon.com';
     const formResponse = await fetch(formSubmitUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Referer': 'https://alexistobon.com'
+        'Origin': 'https://alexistobon.com',
+        'Referer': 'https://alexistobon.com/'
       },
       body: JSON.stringify({
         _subject: `[${subject || 'Consulta'}] Mensaje de ${name} vía alexistobon.com`,
@@ -64,14 +65,22 @@ export async function onRequestPost(context) {
       })
     });
 
-    if (!formResponse.ok) {
-      const errorText = await formResponse.text();
+    const resText = await formResponse.text();
+    let data = {};
+    try {
+      data = JSON.parse(resText);
+    } catch {
+      data = { message: resText };
+    }
+
+    // Check if initial FormSubmit activation is needed
+    if (data.message && typeof data.message === 'string' && data.message.toLowerCase().includes('activation')) {
       return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'No se pudo enviar el correo en este momento.', 
-        details: errorText 
+        success: false,
+        needsActivation: true,
+        message: 'FormSubmit requiere activación inicial: se ha enviado un correo a admin@alexistobon.com con el enlace "Activate Form". Solo debes hacer clic una vez para activar la recepción.'
       }), {
-        status: 502,
+        status: 200,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
@@ -79,12 +88,24 @@ export async function onRequestPost(context) {
       });
     }
 
-    const data = await formResponse.json();
+    if (data.success === 'true' || data.success === true) {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Mensaje enviado exitosamente a admin@alexistobon.com',
+        data 
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
 
     return new Response(JSON.stringify({ 
-      success: true, 
-      message: 'Mensaje enviado exitosamente a admin@alexistobon.com',
-      data 
+      success: false, 
+      error: data.message || 'No se pudo enviar el correo en este momento.',
+      data
     }), {
       status: 200,
       headers: {
@@ -98,7 +119,7 @@ export async function onRequestPost(context) {
       success: false, 
       error: err.message || 'Error interno al procesar el mensaje.' 
     }), {
-      status: 500,
+      status: 200,
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'

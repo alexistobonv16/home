@@ -785,29 +785,89 @@ function initContactForm() {
     if (spinner) spinner.style.display = 'inline-block';
 
     try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ name, email, subject, message })
-      });
+      // 1. Try via Cloudflare Function
+      let data = {};
+      let isSuccess = false;
 
-      const data = await response.json().catch(() => ({}));
+      try {
+        const response = await fetch('/api/contact', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ name, email, subject, message })
+        });
+        data = await response.json().catch(() => ({}));
+        if (response.ok && (data.success === true || data.success === 'true')) {
+          isSuccess = true;
+        }
+      } catch (proxyErr) {
+        data = {};
+      }
 
-      if (response.ok && data.success !== false) {
+      // Check if FormSubmit activation is required
+      if (data.needsActivation || (data.message && data.message.toLowerCase().includes('activation'))) {
+        showFeedback(
+          `📬 <strong>¡Acción requerida (única vez)!</strong> FormSubmit ha enviado un correo a <strong>admin@alexistobon.com</strong> con el botón <em>"Activate Form"</em>. Por favor abre tu bandeja y haz clic en ese enlace para activar el formulario permanentemente.`,
+          'info'
+        );
+        showToast('Revisa admin@alexistobon.com para activar');
+        return;
+      }
+
+      // 2. If function succeeded
+      if (isSuccess) {
         showFeedback(
           `¡Gracias ${escapeHtml(name)}! Tu mensaje ha sido enviado directamente a <strong>admin@alexistobon.com</strong>. Te responderé lo más pronto posible a <em>${escapeHtml(email)}</em>.`,
           'success'
         );
         form.reset();
         showToast('Mensaje enviado con éxito a admin@alexistobon.com');
-      } else {
-        throw new Error(data.error || 'Ocurrió un error al procesar el envío.');
+        return;
       }
+
+      // 3. Fallback: try direct client-side to FormSubmit AJAX
+      const directResponse = await fetch('https://formsubmit.co/ajax/admin@alexistobon.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: `[${subject}] Mensaje de ${name} vía alexistobon.com`,
+          Nombre: name,
+          Email: email,
+          Asunto: subject,
+          Mensaje: message
+        })
+      });
+
+      const directData = await directResponse.json().catch(() => ({}));
+
+      if (directData.message && directData.message.toLowerCase().includes('activation')) {
+        showFeedback(
+          `📬 <strong>¡Paso de activación única!</strong> FormSubmit ha enviado un correo a <strong>admin@alexistobon.com</strong>. Solo debes abrirlo y hacer clic en <em>"Activate Form"</em>. A partir de ese momento todos los mensajes llegarán automáticamente.`,
+          'info'
+        );
+        showToast('Revisa admin@alexistobon.com para activar');
+        return;
+      }
+
+      if (directData.success === 'true' || directData.success === true) {
+        showFeedback(
+          `¡Gracias ${escapeHtml(name)}! Tu mensaje ha sido enviado directamente a <strong>admin@alexistobon.com</strong>. Te responderé a la brevedad.`,
+          'success'
+        );
+        form.reset();
+        showToast('Mensaje enviado con éxito a admin@alexistobon.com');
+        return;
+      }
+
+      throw new Error(data.error || directData.message || 'No se pudo enviar el mensaje en este momento.');
+
     } catch (err) {
-      // Graceful fallback to mailto if offline or serverless API is unreachable
+      // 4. Ultimate graceful fallback to mailto
       const fullSubject = encodeURIComponent(`[${subject}] Mensaje de ${name}`);
       const body = encodeURIComponent(
         `Nombre: ${name}\n` +
@@ -819,7 +879,7 @@ function initContactForm() {
       const mailtoUrl = `mailto:admin@alexistobon.com?subject=${fullSubject}&body=${body}`;
 
       showFeedback(
-        `Nota: El servicio de envío directo reportó un detalle temporal (${escapeHtml(err.message)}). Puedes hacer clic para <a href="${mailtoUrl}" class="direct-email-link" style="text-decoration:underline;">enviar directamente a admin@alexistobon.com</a>. Además, guardamos tu mensaje en el portapapeles.`,
+        `Nota: El servicio de envío reportó un detalle temporal (${escapeHtml(err.message)}). Puedes hacer clic para <a href="${mailtoUrl}" class="direct-email-link" style="text-decoration:underline;">enviar directamente a admin@alexistobon.com</a>. Además, guardamos tu mensaje en el portapapeles.`,
         'error'
       );
       copyToClipboard(`De: ${name} (${email})\nAsunto: ${subject}\n\n${message}`);
