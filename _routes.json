@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "include": ["/*"],
-  "exclude": [
-    "/styles.css",
-    "/script.js",
-    "/og-image.png"
-  ]
-}
