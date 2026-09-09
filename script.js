@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initCommandPalette();
   initNotiTecFeed();
   initContactForm();
+  initQrModal();
+  initPingMonitor();
 });
 
 /* ==========================================================================
@@ -229,7 +231,7 @@ function initCopyButtons() {
 }
 
 function copyEmail() {
-  copyToClipboard('alexis@alexistobon.com', 'Correo copiado: alexis@alexistobon.com');
+  copyToClipboard('admin@alexistobon.com', 'Correo copiado: admin@alexistobon.com');
 }
 
 let toastTimer = null;
@@ -474,9 +476,25 @@ function initCommandPalette() {
       id: 'act-copy-email',
       group: 'Acciones Rápidas',
       title: 'Copiar correo electrónico',
-      desc: 'alexis@alexistobon.com',
+      desc: 'admin@alexistobon.com',
       icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
       action: () => copyEmail()
+    },
+    {
+      id: 'act-open-qr',
+      group: 'Acciones Rápidas',
+      title: 'Abrir Tarjeta QR y Compartir',
+      desc: 'Código QR y compartir perfil',
+      icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>',
+      action: () => openQrModal()
+    },
+    {
+      id: 'act-download-vcard',
+      group: 'Acciones Rápidas',
+      title: 'Descargar Contacto (.vcf)',
+      desc: 'Guardar Alexis Tobón en tu agenda',
+      icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>',
+      action: () => downloadVCard()
     },
     {
       id: 'ext-github',
@@ -728,7 +746,7 @@ function escapeHtml(str) {
 }
 
 /* ==========================================================================
-   FEATURE 3: INTERACTIVE CONTACT FORM
+   FEATURE 3: SILENT BACKGROUND CONTACT FORM (to admin@alexistobon.com)
    ========================================================================== */
 function initContactForm() {
   const form = document.getElementById('contact-form');
@@ -741,7 +759,7 @@ function initContactForm() {
   const sendIcon = submitBtn.querySelector('.send-icon');
   const spinner = submitBtn.querySelector('.btn-spinner');
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const name = form.querySelector('#contact-name')?.value.trim();
@@ -754,56 +772,207 @@ function initContactForm() {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showFeedback('Por favor ingresa un correo electrónico válido.', 'error');
+      return;
+    }
+
     // Set loading state
     submitBtn.disabled = true;
     if (btnText) btnText.textContent = 'Enviando...';
     if (sendIcon) sendIcon.style.display = 'none';
     if (spinner) spinner.style.display = 'inline-block';
 
-    setTimeout(() => {
-      // Build mailto URI as immediate guarantee
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ name, email, subject, message })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok && data.success !== false) {
+        showFeedback(
+          `¡Gracias ${escapeHtml(name)}! Tu mensaje ha sido enviado directamente a <strong>admin@alexistobon.com</strong>. Te responderé lo más pronto posible a <em>${escapeHtml(email)}</em>.`,
+          'success'
+        );
+        form.reset();
+        showToast('Mensaje enviado con éxito a admin@alexistobon.com');
+      } else {
+        throw new Error(data.error || 'Ocurrió un error al procesar el envío.');
+      }
+    } catch (err) {
+      // Graceful fallback to mailto if offline or serverless API is unreachable
       const fullSubject = encodeURIComponent(`[${subject}] Mensaje de ${name}`);
       const body = encodeURIComponent(
         `Nombre: ${name}\n` +
         `Correo: ${email}\n` +
         `Asunto: ${subject}\n\n` +
         `Mensaje:\n${message}\n\n` +
-        `---\nEnviado desde el formulario de alexistobon.com`
+        `---\nEnviado desde alexistobon.com`
       );
-
-      const mailtoUrl = `mailto:alexis@alexistobon.com?subject=${fullSubject}&body=${body}`;
-
-      // Open mail client
-      window.location.href = mailtoUrl;
-
-      // Copy message to clipboard for convenience
-      const rawText = `De: ${name} (${email})\nAsunto: ${subject}\n\n${message}`;
-      copyToClipboard(rawText, 'Copia del mensaje guardada en portapapeles');
-
-      // Reset button state
-      submitBtn.disabled = false;
-      if (btnText) btnText.textContent = 'Mensaje Preparado';
-      if (sendIcon) sendIcon.style.display = 'inline-block';
-      if (spinner) spinner.style.display = 'none';
+      const mailtoUrl = `mailto:admin@alexistobon.com?subject=${fullSubject}&body=${body}`;
 
       showFeedback(
-        `¡Gracias ${name}! Se ha abierto tu gestor de correo para enviar el mensaje a alexis@alexistobon.com. Además, copiamos el texto a tu portapapeles por seguridad.`,
-        'success'
+        `Nota: El servicio de envío directo reportó un detalle temporal (${escapeHtml(err.message)}). Puedes hacer clic para <a href="${mailtoUrl}" class="direct-email-link" style="text-decoration:underline;">enviar directamente a admin@alexistobon.com</a>. Además, guardamos tu mensaje en el portapapeles.`,
+        'error'
       );
-
-      form.reset();
-    }, 600);
+      copyToClipboard(`De: ${name} (${email})\nAsunto: ${subject}\n\n${message}`);
+    } finally {
+      submitBtn.disabled = false;
+      if (btnText) btnText.textContent = 'Enviar Mensaje';
+      if (sendIcon) sendIcon.style.display = 'inline-block';
+      if (spinner) spinner.style.display = 'none';
+    }
   });
 
-  function showFeedback(text, type) {
-    feedback.textContent = text;
+  function showFeedback(htmlContent, type) {
+    feedback.innerHTML = htmlContent;
     feedback.className = `form-feedback ${type}`;
     feedback.style.display = 'block';
   }
 }
 
 /* ==========================================================================
-   10. FOOTER YEAR
+   FEATURE 4: QR CODE & DIGITAL BUSINESS CARD MODAL (.vcf)
+   ========================================================================== */
+function downloadVCard() {
+  const vcard = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    'FN:Alexis Tobón',
+    'N:Tobón;Alexis;;;',
+    'TITLE:Full Stack Developer & Tech Lead',
+    'EMAIL;TYPE=INTERNET,WORK:admin@alexistobon.com',
+    'URL:https://alexistobon.com',
+    'X-SOCIALPROFILE;type=github:https://github.com/alexistobonv16',
+    'X-SOCIALPROFILE;type=linkedin:https://linkedin.com/in/alexistobon',
+    'NOTE:Portafolio y proyectos en vivo: NotiTec y Mis Gastos',
+    'END:VCARD'
+  ].join('\r\n');
+
+  const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Alexis_Tobon.vcf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Tarjeta de contacto (.vcf) descargada');
+}
+
+function openQrModal() {
+  const modal = document.getElementById('qr-modal');
+  if (modal) {
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeQrModal() {
+  const modal = document.getElementById('qr-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function initQrModal() {
+  const trigger = document.getElementById('qr-modal-trigger');
+  const modal = document.getElementById('qr-modal');
+  const closeBtn = document.getElementById('qr-close-btn');
+  const backdrop = document.getElementById('qr-backdrop');
+  const vcardBtn = document.getElementById('download-vcard-btn');
+  const copyBtn = document.getElementById('copy-portfolio-btn');
+
+  if (trigger) trigger.addEventListener('click', openQrModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeQrModal);
+  if (backdrop) backdrop.addEventListener('click', closeQrModal);
+
+  if (vcardBtn) {
+    vcardBtn.addEventListener('click', downloadVCard);
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      copyToClipboard('https://alexistobon.com', 'Enlace copiado: https://alexistobon.com');
+    });
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal?.classList.contains('active')) {
+      closeQrModal();
+    }
+  });
+}
+
+/* ==========================================================================
+   FEATURE 5: REAL-TIME PING / LATENCY HEALTH CHECK
+   ========================================================================== */
+async function measurePing(url) {
+  const start = performance.now();
+  try {
+    const pingUrl = url + (url.includes('?') ? '&' : '?') + '_ping=' + Date.now();
+    await fetch(pingUrl, {
+      method: 'HEAD',
+      mode: 'no-cors',
+      cache: 'no-store'
+    });
+    return Math.round(performance.now() - start);
+  } catch (e) {
+    return null;
+  }
+}
+
+function initPingMonitor() {
+  const badges = document.querySelectorAll('.ping-badge[data-ping-url]');
+  if (!badges.length) return;
+
+  async function runPings() {
+    badges.forEach(async (badge) => {
+      const url = badge.getAttribute('data-ping-url');
+      const valEl = badge.querySelector('.ping-val');
+      if (!url || !valEl) return;
+
+      const ms = await measurePing(url);
+      badge.classList.remove('fast', 'medium', 'slow', 'offline');
+
+      if (ms !== null && !isNaN(ms)) {
+        valEl.textContent = `${ms} ms`;
+        if (ms < 150) {
+          badge.classList.add('fast');
+          badge.setAttribute('title', `Latencia excelente: ${ms} ms`);
+        } else if (ms < 400) {
+          badge.classList.add('medium');
+          badge.setAttribute('title', `Latencia normal: ${ms} ms`);
+        } else {
+          badge.classList.add('slow');
+          badge.setAttribute('title', `Latencia moderada: ${ms} ms`);
+        }
+      } else {
+        valEl.textContent = 'En línea';
+        badge.classList.add('fast');
+        badge.setAttribute('title', 'Servicio en línea y respondiendo');
+      }
+    });
+  }
+
+  // Initial check after page stabilizes
+  setTimeout(runPings, 800);
+
+  // Periodic refresh every 45 seconds
+  setInterval(runPings, 45000);
+}
+
+/* ==========================================================================
+   FOOTER YEAR
    ========================================================================== */
 function initFooterYear() {
   const yearEl = document.getElementById('current-year');

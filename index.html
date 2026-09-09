@@ -8,9 +8,36 @@
   
   <!-- Open Graph / Meta Social -->
   <meta property="og:title" content="Alexis Tobón | Proyectos & Portafolio">
-  <meta property="og:description" content="Explora en directo NotiTec y Mis Gastos creados por Alexis Tobón.">
+  <meta property="og:description" content="Explora en directo NotiTec (notitec.co) y Mis Gastos (gastos.alexistobon.com) creados por Alexis Tobón.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://alexistobon.com">
+  <meta property="og:image" content="https://alexistobon.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Alexis Tobón - Proyectos y Portafolio en Vivo">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Alexis Tobón | Proyectos & Portafolio">
+  <meta name="twitter:description" content="Explora en directo NotiTec y Mis Gastos creados por Alexis Tobón.">
+  <meta name="twitter:image" content="https://alexistobon.com/og-image.png">
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Alexis Tobón",
+    "url": "https://alexistobon.com",
+    "jobTitle": "Full Stack Developer",
+    "image": "https://alexistobon.com/og-image.png",
+    "sameAs": [
+      "https://github.com/alexistobonv16",
+      "https://linkedin.com/in/alexistobon"
+    ],
+    "knowsAbout": ["Web Development", "Astro", "React", "Cloudflare", "Tailwind CSS"]
+  }
+  </script>
   
   <!-- Favicon SVG -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2310b981'/%3E%3Cpath d='M9 22L16 8l7 14h-3.8l-3.2-6.5L12.8 22H9z' fill='%23ffffff'/%3E%3C/svg%3E">
@@ -59,6 +86,11 @@
           <span class="status-dot"></span>
           <span class="status-text">En Vivo</span>
         </div>
+
+        <!-- QR & Business Card Trigger -->
+        <button id="qr-modal-trigger" class="btn-icon" aria-label="Tarjeta digital y QR" title="Compartir perfil y código QR">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
 
         <!-- Theme Toggle -->
         <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
@@ -131,10 +163,16 @@
           <article class="project-showcase" id="project-notitec">
             <div class="project-info">
               <div class="project-meta-top">
-                <span class="badge badge-brand">Medio Digital</span>
-                <span class="status-live-pill">
-                  <span class="pulse-dot"></span> Online
-                </span>
+                <div class="meta-left-group">
+                  <span class="badge badge-brand">Medio Digital</span>
+                  <span class="status-live-pill">
+                    <span class="pulse-dot"></span> Online
+                  </span>
+                </div>
+                <div class="ping-badge" data-ping-url="https://www.notitec.co" title="Latencia medida en tiempo real">
+                  <span class="ping-dot"></span>
+                  <span class="ping-val">Ping...</span>
+                </div>
               </div>
               <h3 class="project-title">
                 <a href="https://www.notitec.co" target="_blank" rel="noopener noreferrer">NotiTec</a>
@@ -253,10 +291,16 @@
           <article class="project-showcase reversed" id="project-gastos">
             <div class="project-info">
               <div class="project-meta-top">
-                <span class="badge badge-emerald">Finanzas & PWA</span>
-                <span class="status-live-pill">
-                  <span class="pulse-dot"></span> Online
-                </span>
+                <div class="meta-left-group">
+                  <span class="badge badge-emerald">Finanzas & PWA</span>
+                  <span class="status-live-pill">
+                    <span class="pulse-dot"></span> Online
+                  </span>
+                </div>
+                <div class="ping-badge" data-ping-url="https://gastos.alexistobon.com" title="Latencia medida en tiempo real">
+                  <span class="ping-dot"></span>
+                  <span class="ping-val">Ping...</span>
+                </div>
               </div>
               <h3 class="project-title">
                 <a href="https://gastos.alexistobon.com" target="_blank" rel="noopener noreferrer">Mis Gastos</a>
@@ -489,13 +533,13 @@
               <p>¿Tienes una idea, propuesta o consulta técnica? Conectemos:</p>
               <ul class="contact-links-list">
                 <li>
-                  <a href="mailto:alexis@alexistobon.com" class="contact-link-item">
+                  <a href="mailto:admin@alexistobon.com" class="contact-link-item">
                     <div class="contact-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                     </div>
                     <div>
                       <span class="contact-label">Correo Electrónico</span>
-                      <span class="contact-value">alexis@alexistobon.com</span>
+                      <span class="contact-value">admin@alexistobon.com</span>
                     </div>
                   </a>
                 </li>
@@ -574,7 +618,7 @@
                 <svg class="send-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 <div class="spinner btn-spinner" style="display: none;"></div>
               </button>
-              <span class="form-direct-note">o escribe a <a href="mailto:alexis@alexistobon.com" class="direct-email-link">alexis@alexistobon.com</a></span>
+              <span class="form-direct-note">o escribe a <a href="mailto:admin@alexistobon.com" class="direct-email-link">admin@alexistobon.com</a></span>
             </div>
 
             <div id="form-feedback" class="form-feedback" style="display: none;"></div>
@@ -661,6 +705,45 @@
           <span>Cargando en vivo...</span>
         </div>
         <iframe id="modal-iframe" src="" title="Visor modal en directo" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR & Digital Business Card Modal -->
+  <div id="qr-modal" class="qr-modal" aria-hidden="true" role="dialog">
+    <div class="qr-modal-backdrop" id="qr-backdrop"></div>
+    <div class="qr-modal-dialog">
+      <div class="qr-modal-header">
+        <div class="qr-modal-title-group">
+          <span class="qr-badge">Tarjeta Digital</span>
+          <h3 class="qr-modal-title">Alexis Tobón</h3>
+          <p class="qr-subtitle">Desarrollador Full Stack & Emprendedor</p>
+        </div>
+        <button id="qr-close-btn" class="control-btn modal-close-btn" aria-label="Cerrar modal (Esc)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="qr-modal-body">
+        <div class="qr-code-container">
+          <img id="qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=https%3A%2F%2Falexistobon.com&color=0f172a&bgcolor=ffffff" alt="Código QR alexistobon.com" width="200" height="200" loading="lazy">
+        </div>
+        <p class="qr-caption">Escanea para abrir <strong>alexistobon.com</strong> en tu móvil o comparte este perfil profesional.</p>
+        
+        <div class="qr-actions-grid">
+          <button id="download-vcard-btn" class="btn btn-outline qr-action-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>Guardar Contacto (.vcf)</span>
+          </button>
+          <a id="share-whatsapp-btn" href="https://api.whatsapp.com/send?text=Te%20comparto%20el%20portafolio%20y%20proyectos%20en%20vivo%20de%20Alexis%20Tob%C3%B3n%3A%20https%3A%2F%2Falexistobon.com" target="_blank" rel="noopener noreferrer" class="btn btn-emerald qr-action-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.311.045-.698.059-1.146-.086-.301-.097-.689-.253-1.222-.486-2.272-.991-3.755-3.324-3.869-3.475-.114-.153-.925-1.23-.925-2.347 0-1.118.585-1.668.793-1.897.208-.229.456-.287.608-.287.152 0 .304.002.436.009.141.008.33-.053.516.395.191.462.651 1.59.708 1.705.057.115.096.25.019.403-.077.153-.115.249-.228.383-.114.135-.24.3-.343.403-.115.114-.234.238-.101.467.133.229.591.974 1.268 1.577.873.777 1.609 1.018 1.838 1.132.229.114.363.095.497-.058.134-.153.573-.669.725-.898.152-.229.305-.191.514-.114.21.076 1.332.629 1.56.743.229.115.381.172.438.267.056.096.056.554-.088.959z"/></svg>
+            <span>Compartir en WhatsApp</span>
+          </a>
+          <button id="copy-portfolio-btn" class="btn btn-ghost qr-action-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copiar Enlace</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
