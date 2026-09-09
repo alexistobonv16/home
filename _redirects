@@ -1,0 +1,3 @@
+# Cloudflare Pages Redirects
+# Fallback redirect any unmatched path to home root with 302
+/*  /  302
