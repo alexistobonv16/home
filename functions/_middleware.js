@@ -16,6 +16,11 @@ export async function onRequest(context) {
     return context.next();
   }
 
-  // 3. For any other route (like /mijo, /abc, /foo), return an explicit 302 redirect to home
+  // 3. Allow static files with extensions (e.g. .css, .js, .png, .ico, .txt, etc.)
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) {
+    return context.next();
+  }
+
+  // 4. Any nonexistent route (like /mijo, /abc, /proyectos, etc.) -> 302 redirect to home
   return Response.redirect(new URL('/', context.request.url), 302);
 }
