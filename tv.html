@@ -25,6 +25,8 @@
 
   <!-- Hls.js library for cross-browser HLS playback -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+  <!-- WebAssembly MP2/MPEG audio decoder for in-browser TV audio decoding -->
+  <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
 
   <style>
     :root {
@@ -1038,35 +1040,6 @@
           <svg id="center-play-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         </button>
 
-        <!-- Codec / Incompatible Audio Notice Overlay -->
-        <div class="codec-alert-overlay" id="codec-alert-overlay" style="display: none;">
-          <div class="codec-card">
-            <div class="codec-badge">⚠️ Audio MP2 Detectado</div>
-            <h3 id="codec-channel-name">Canal Seleccionado</h3>
-            <p class="codec-desc">
-              Este canal emite audio en formato <strong>MPEG-1/2 (MP2)</strong>, no soportado por los navegadores de escritorio (Chrome, Edge). Funciona de manera nativa en celulares Android, iOS, Smart TV o en reproductores como VLC.
-            </p>
-            <div class="codec-features">
-              <span class="feat-pill feat-ok">📱 Móvil Android / iOS</span>
-              <span class="feat-pill feat-ok">📺 Smart TV</span>
-              <span class="feat-pill feat-vlc">💻 VLC / Reproductor PC</span>
-            </div>
-            <div class="codec-actions">
-              <button class="btn btn-primary" id="btn-open-vlc">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="m6 17 2-8h8l2 8"/><path d="m9 9 1.5-6h3L15 9"/></svg>
-                <span>Abrir en VLC / Descargar archivo (.m3u)</span>
-              </button>
-              <button class="btn btn-secondary" id="btn-copy-stream">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
-                <span>Copiar Enlace Directo</span>
-              </button>
-              <button class="btn btn-outline" id="btn-next-aac">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-                <span>Ver Canal Compatible en Navegador (AAC)</span>
-              </button>
-            </div>
-          </div>
-        </div>
 
         <!-- Player Controls Overlay -->
         <div class="player-overlay" id="player-overlay">
@@ -1331,7 +1304,7 @@
       bufferMode: localStorage.getItem('at_tv_buffer_mode') || 'stable', // stable, max, fast
       hls: null,
       deferredPrompt: null,
-      unsupportedCodecs: {},
+      useWebAudio: false,
       isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
     };
 
@@ -1340,11 +1313,6 @@
     const playerStage = document.getElementById('player-stage');
     const loader = document.getElementById('player-loader');
     const loaderText = document.getElementById('loader-text');
-    const codecAlertOverlay = document.getElementById('codec-alert-overlay');
-    const codecChannelName = document.getElementById('codec-channel-name');
-    const btnOpenVlc = document.getElementById('btn-open-vlc');
-    const btnCopyStream = document.getElementById('btn-copy-stream');
-    const btnNextAac = document.getElementById('btn-next-aac');
     const openVlcBtn = document.getElementById('open-vlc-btn');
     const pinOverlay = document.getElementById('pin-overlay');
     const pinInput = document.getElementById('pin-input');
@@ -1918,8 +1886,6 @@
         const item = document.createElement('div');
         const isActive = state.activeChannel && state.activeChannel.url === channel.url;
         const isFav = state.favorites.has(channel.url || channel.id);
-        const isCodecUnsupported = state.unsupportedCodecs[channel.url];
-
         item.className = 'channel-item' + (isActive ? ' active' : '');
         item.setAttribute('data-id', channel.id);
 
@@ -1935,7 +1901,6 @@
             <span class="channel-name">${escapeHtml(channel.name)}</span>
             <div class="channel-meta-row">
               <span class="channel-category-tag">${escapeHtml(channel.group || 'General')}</span>
-              ${isCodecUnsupported ? `<span class="badge-codec-vlc" title="Audio MP2: Recomendado abrir en VLC o móvil">VLC / Móvil</span>` : ''}
             </div>
           </div>
           <button class="channel-fav-btn ${isFav ? 'is-fav' : ''}" title="Guardar favorito">
@@ -2010,13 +1975,136 @@
       }
     };
 
-    let streamLoadTimeout = null;
+    // WebAudio & WebAssembly MP2 Decoder Pipeline (Enables in-browser playback of all TV channels)
+    let audioCtx = null;
+    let audioGain = null;
+    let audioDecoder = null;
+    let nextAudioTime = 0;
+    let activeAudioSources = [];
+
+    async function initWebAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        audioGain = audioCtx.createGain();
+        audioGain.gain.value = video.muted ? 0 : video.volume;
+        audioGain.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+      if (!audioDecoder && window['mpg123-decoder'] && window['mpg123-decoder'].MPEGDecoder) {
+        try {
+          audioDecoder = new window['mpg123-decoder'].MPEGDecoder();
+          await audioDecoder.ready;
+        } catch (e) {
+          console.warn('No se pudo inicializar decodificador mpg123:', e);
+        }
+      }
+    }
+
+    function stopWebAudio() {
+      activeAudioSources.forEach(s => {
+        try { s.stop(); } catch (e) {}
+      });
+      activeAudioSources = [];
+      nextAudioTime = 0;
+      if (audioDecoder) {
+        try { audioDecoder.reset(); } catch (e) {}
+      }
+    }
+
+    function extractMp2FromTs(arrayBuffer) {
+      const buf = new Uint8Array(arrayBuffer);
+      let pmtPid = null;
+      let audioPid = null;
+
+      for (let i = 0; i < buf.length - 188; i += 188) {
+        if (buf[i] !== 0x47) continue;
+        const pid = ((buf[i + 1] & 0x1f) << 8) | buf[i + 2];
+        const payloadStart = (buf[i + 1] & 0x40) !== 0;
+
+        if (pid === 0 && payloadStart) {
+          const adapt = (buf[i + 3] >> 4) & 3;
+          let off = i + 4;
+          if (adapt === 2 || adapt === 3) off += 1 + buf[off];
+          off += 1 + buf[off];
+          const sectionLen = ((buf[off + 1] & 0x0f) << 8) | buf[off + 2];
+          for (let p = off + 8; p < off + 3 + sectionLen - 4; p += 4) {
+            const progNum = (buf[p] << 8) | buf[p + 1];
+            const progPid = ((buf[p + 2] & 0x1f) << 8) | buf[p + 3];
+            if (progNum !== 0) { pmtPid = progPid; break; }
+          }
+        }
+
+        if (pmtPid !== null && pid === pmtPid && payloadStart) {
+          const adapt = (buf[i + 3] >> 4) & 3;
+          let off = i + 4;
+          if (adapt === 2 || adapt === 3) off += 1 + buf[off];
+          off += 1 + buf[off];
+          const sectionLen = ((buf[off + 1] & 0x0f) << 8) | buf[off + 2];
+          const progInfoLen = ((buf[off + 10] & 0x0f) << 8) | buf[off + 11];
+          let p = off + 12 + progInfoLen;
+          const end = off + 3 + sectionLen - 4;
+          while (p < end) {
+            const streamType = buf[p];
+            const elemPid = ((buf[p + 1] & 0x1f) << 8) | buf[p + 2];
+            const esInfoLen = ((buf[p + 3] & 0x0f) << 8) | buf[p + 4];
+            if (streamType === 0x03 || streamType === 0x04) {
+              audioPid = elemPid;
+              break;
+            }
+            p += 5 + esInfoLen;
+          }
+          break;
+        }
+      }
+
+      if (audioPid === null) return null;
+
+      const chunks = [];
+      for (let i = 0; i < buf.length - 188; i += 188) {
+        if (buf[i] !== 0x47) continue;
+        const pid = ((buf[i + 1] & 0x1f) << 8) | buf[i + 2];
+        if (pid !== audioPid) continue;
+
+        const adapt = (buf[i + 3] >> 4) & 3;
+        let off = i + 4;
+        if (adapt === 2) continue;
+        if (adapt === 3) off += 1 + buf[off];
+        if (off >= i + 188) continue;
+
+        const payload = buf.subarray(off, i + 188);
+        const payloadStart = (buf[i + 1] & 0x40) !== 0;
+
+        if (payloadStart && payload.length >= 9 && payload[0] === 0 && payload[1] === 0 && payload[2] === 1) {
+          const pesHeaderDataLen = payload[8] || 0;
+          const dataOffset = 9 + pesHeaderDataLen;
+          if (dataOffset < payload.length) {
+            chunks.push(payload.subarray(dataOffset));
+          }
+        } else {
+          chunks.push(payload);
+        }
+      }
+
+      if (!chunks.length) return null;
+      let totalLen = 0;
+      for (const c of chunks) totalLen += c.length;
+      const merged = new Uint8Array(totalLen);
+      let pos = 0;
+      for (const c of chunks) {
+        merged.set(c, pos);
+        pos += c.length;
+      }
+      return merged;
+    }
 
     function playChannel(channel) {
       if (!channel || !channel.url) return;
       state.activeChannel = channel;
-      hideCodecAlert();
-      clearTimeout(streamLoadTimeout);
+      stopWebAudio();
+      state.useWebAudio = false;
 
       // Update UI title & badge
       playerChannelName.textContent = channel.name;
@@ -2048,14 +2136,6 @@
         state.hls.destroy();
         state.hls = null;
       }
-
-      // Watchdog timeout: if channel takes > 8s without starting on desktop, check for codec issue
-      streamLoadTimeout = setTimeout(() => {
-        if (!video.currentTime && !video.paused && state.isDesktop) {
-          console.warn('Playback start timeout, checking potential codec stall...');
-          showCodecAlert(channel);
-        }
-      }, 8000);
 
       // Engine 1: Hls.js (Chrome, Firefox, Edge, Android)
       if (window.Hls && Hls.isSupported()) {
@@ -2092,46 +2172,76 @@
           hideLoader();
         });
 
+        // In-browser WebAssembly audio decoder fallback:
+        // If browser MediaSource rejects MP2 audio (Chrome/Edge), keep playing video smoothly and route audio through WebAudio
         hls.on(Hls.Events.ERROR, (event, data) => {
-          // Detect unsupported audio codec in browser MSE (e.g. MP2 audio in desktop Chrome/Edge)
-          const isCodecUnsupported = 
-            data.details === Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR ||
-            data.details === 'bufferAddCodecError' ||
-            data.details === Hls.ErrorDetails.BUFFER_INCOMPATIBLE_CODECS_ERROR ||
-            (data.error && data.error.name === 'NotSupportedError') ||
-            (data.mimeType && data.mimeType.includes('mp4a.40.33'));
-
-          if (isCodecUnsupported) {
-            console.warn('Unsupported codec in browser MSE (e.g. MP2 audio on desktop):', data);
-            clearTimeout(streamLoadTimeout);
-            state.unsupportedCodecs[channel.url] = true;
-            renderChannels();
-            showCodecAlert(channel);
-            if (state.hls) {
-              state.hls.destroy();
-              state.hls = null;
-            }
+          if (data.details === Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR && data.sourceBufferName === 'audio') {
+            console.log('Códec MP2 detectado. Activando decodificación directa en navegador vía WebAssembly...');
+            state.useWebAudio = true;
+            initWebAudio();
             return;
           }
 
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                loaderText.textContent = 'Error de red. Reconectando buffer...';
+                loaderText.textContent = 'Reconectando señal...';
                 hls.startLoad();
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
-                loaderText.textContent = 'Recuperando sincronía...';
                 hls.recoverMediaError();
                 break;
               default:
                 hideLoader();
-                showToast('Reiniciando señal...');
                 setTimeout(() => {
                   if (state.activeChannel) playChannel(state.activeChannel);
-                }, 1500);
+                }, 2000);
                 break;
             }
+          }
+        });
+
+        // Real-time MP2 audio demuxing and WebAudio playback
+        hls.on(Hls.Events.FRAG_LOADED, async (event, data) => {
+          if (!state.useWebAudio || !data.payload) return;
+          try {
+            const rawAudio = extractMp2FromTs(data.payload);
+            if (!rawAudio || !rawAudio.length) return;
+
+            await initWebAudio();
+            if (!audioDecoder || !audioCtx) return;
+
+            const decoded = audioDecoder.decode(rawAudio);
+            if (!decoded || !decoded.channelData || !decoded.channelData.length || !decoded.channelData[0].length) return;
+
+            const numChannels = decoded.channelData.length;
+            const numSamples = decoded.channelData[0].length;
+            const sampleRate = decoded.sampleRate || 48000;
+            const duration = numSamples / sampleRate;
+
+            const buffer = audioCtx.createBuffer(numChannels, numSamples, sampleRate);
+            for (let c = 0; c < numChannels; c++) {
+              buffer.copyToChannel(decoded.channelData[c], c);
+            }
+
+            const now = audioCtx.currentTime;
+            if (nextAudioTime < now) {
+              nextAudioTime = now + 0.05;
+            }
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioGain);
+            source.start(nextAudioTime);
+            activeAudioSources.push(source);
+            source.onended = () => {
+              const idx = activeAudioSources.indexOf(source);
+              if (idx !== -1) activeAudioSources.splice(idx, 1);
+            };
+
+            nextAudioTime += duration;
+          } catch (err) {
+            console.warn('Error decodificando audio en WebAudio:', err);
           }
         });
 
@@ -2159,19 +2269,8 @@
       hideLoader();
     }
 
-    function showCodecAlert(channel) {
-      if (!codecAlertOverlay) return;
-      hideLoader();
-      codecChannelName.textContent = (channel && channel.name) || 'Canal Seleccionado';
-      codecAlertOverlay.style.display = 'flex';
-      playerStage.classList.add('paused');
-    }
-
-    function hideCodecAlert() {
-      if (codecAlertOverlay) {
-        codecAlertOverlay.style.display = 'none';
-      }
-    }
+    function showCodecAlert() {}
+    function hideCodecAlert() {}
 
     function openInVlc(channel) {
       const target = channel || state.activeChannel;
@@ -2232,10 +2331,16 @@
       function togglePlay() {
         if (video.paused) {
           video.play();
+          if (state.useWebAudio && audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
           playerStage.classList.remove('paused');
           bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
         } else {
           video.pause();
+          if (state.useWebAudio && audioCtx && audioCtx.state === 'running') {
+            audioCtx.suspend();
+          }
           playerStage.classList.add('paused');
           bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
         }
@@ -2318,52 +2423,49 @@
         });
       }
 
-      // ANTI-FREEZE WATCHDOG: if video stalls on packet drop, auto-nudge past stuck frame
+      // ANTI-FREEZE WATCHDOG: if video stalls on packet drop, auto-nudge past stuck frame only if buffer exists
       let stallWatchdog = null;
       video.addEventListener('waiting', () => {
         clearTimeout(stallWatchdog);
         stallWatchdog = setTimeout(() => {
           if (video.paused) return;
-          console.warn('Playback stalled, nudging buffer past micro-gap...');
-          if (state.hls) {
-            try {
-              const b = video.buffered;
-              const cur = video.currentTime;
-              for (let i = 0; i < b.length; i++) {
-                if (b.start(i) > cur && b.start(i) - cur < 2.5) {
-                  video.currentTime = b.start(i) + 0.05;
-                  return;
-                }
+          try {
+            const b = video.buffered;
+            const cur = video.currentTime;
+            for (let i = 0; i < b.length; i++) {
+              if (b.start(i) > cur && b.start(i) - cur < 2.5) {
+                video.currentTime = b.start(i) + 0.05;
+                return;
               }
-              state.hls.startLoad();
-            } catch (e) {}
-          }
-        }, 2800);
+            }
+          } catch (e) {}
+        }, 4000);
       });
 
       video.addEventListener('playing', () => {
         clearTimeout(stallWatchdog);
-        clearTimeout(streamLoadTimeout);
         hideLoader();
-        hideCodecAlert();
       });
 
-      // VLC / EXTERNAL PLAYER ACTIONS
-      if (btnOpenVlc) btnOpenVlc.addEventListener('click', () => openInVlc(state.activeChannel));
-      if (btnCopyStream) btnCopyStream.addEventListener('click', () => copyStreamUrl(state.activeChannel));
-      if (btnNextAac) btnNextAac.addEventListener('click', playNextCompatibleChannel);
+      // VLC / EXTERNAL PLAYER ACTIONS (Optional utility icon in controls)
       if (openVlcBtn) openVlcBtn.addEventListener('click', () => openInVlc(state.activeChannel));
 
-      // VOLUME & MUTE
+      // VOLUME & MUTE (Synchronized with both HTML5 video and WebAudio)
       volumeSlider.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
         video.volume = val;
         video.muted = val === 0;
+        if (audioGain) {
+          audioGain.gain.value = video.muted ? 0 : val;
+        }
         updateVolumeIcon();
       });
 
       muteBtn.addEventListener('click', () => {
         video.muted = !video.muted;
+        if (audioGain) {
+          audioGain.gain.value = video.muted ? 0 : video.volume;
+        }
         updateVolumeIcon();
         showToast(video.muted ? 'Silenciado' : 'Sonido activado');
       });
