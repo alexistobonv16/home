@@ -1717,7 +1717,12 @@
 
       showLoader(`Sintonizando ${channel.name}...`);
 
-      const streamUrl = channel.url.trim();
+      let streamUrl = channel.url.trim();
+
+      // If page is loaded over HTTPS and stream is on HTTP, route through proxy for secure playback
+      if (location.protocol === 'https:' && streamUrl.startsWith('http://')) {
+        streamUrl = `/api/tv/proxy?url=${encodeURIComponent(streamUrl)}`;
+      }
 
       // Clean up previous HLS instance
       if (state.hls) {
