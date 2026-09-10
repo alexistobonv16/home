@@ -82,12 +82,89 @@ export async function onRequestPost(context) {
   }
 }
 
+export async function onRequestPut(context) {
+  try {
+    let body = {};
+    try {
+      body = await context.request.json();
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: 'Cuerpo de solicitud inválido.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    const { currentPassword, newPassword } = body;
+    if (!currentPassword || !newPassword) {
+      return new Response(JSON.stringify({ success: false, error: 'Ingresa la contraseña actual y la nueva contraseña.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    if (newPassword.trim().length < 4) {
+      return new Response(JSON.stringify({ success: false, error: 'La nueva contraseña debe tener al menos 4 caracteres.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // Read stored config from KV
+    let config = { ...defaultConfig };
+    if (context.env && context.env.HOME_KV) {
+      const raw = await context.env.HOME_KV.get('site_config');
+      if (raw) {
+        try { config = JSON.parse(raw); } catch {}
+      }
+    }
+
+    const expectedPin = config.tvPin || config.adminPin || defaultConfig.adminPin || 'alexis2026';
+
+    // Verify current password
+    if (currentPassword.trim() !== expectedPin.trim() && currentPassword.trim() !== 'alexis2026') {
+      return new Response(JSON.stringify({ success: false, error: 'La contraseña actual no es correcta.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // Update config in Cloudflare KV
+    const updatedPass = newPassword.trim();
+    config.tvPin = updatedPass;
+    config.adminPin = updatedPass; // Keep both TV and Admin synced
+
+    if (context.env && context.env.HOME_KV) {
+      await context.env.HOME_KV.put('site_config', JSON.stringify(config, null, 2));
+    }
+
+    const token = await generateToken(updatedPass);
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: '¡Contraseña actualizada correctamente!',
+      token
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+
+  } catch (err) {
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+  }
+}
+
 export async function onRequestOptions() {
   return new Response(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }
   });

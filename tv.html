@@ -545,6 +545,9 @@
       display: flex;
       flex-direction: column;
       height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      overflow: hidden;
       z-index: 40;
       flex-shrink: 0;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -556,6 +559,7 @@
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
+      flex-shrink: 0;
     }
 
     .search-box {
@@ -593,6 +597,7 @@
       overflow-x: auto;
       padding-bottom: 0.2rem;
       scrollbar-width: none;
+      flex-shrink: 0;
     }
     .groups-bar::-webkit-scrollbar { display: none; }
 
@@ -615,14 +620,35 @@
       color: var(--accent-cyan);
     }
 
-    /* Channel List */
+    /* Channel List - Scrollable Container */
     .channels-list {
-      flex: 1;
+      flex: 1 1 0;
+      min-height: 0;
+      max-height: 100%;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 0.5rem;
       display: flex;
       flex-direction: column;
       gap: 0.3rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.4) rgba(15, 23, 42, 0.6);
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+
+    .channels-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .channels-list::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .channels-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+    .channels-list::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
     }
 
     .channel-item {
@@ -837,33 +863,6 @@
       box-shadow: 0 8px 24px rgba(2, 132, 199, 0.35);
     }
 
-    .pin-keypad {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.6rem;
-      margin-top: 1.25rem;
-    }
-
-    .keypad-btn {
-      height: 52px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--border-color);
-      color: #fff;
-      font-size: 1.3rem;
-      font-weight: 700;
-      font-family: var(--font-mono);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s ease;
-    }
-    .keypad-btn:active {
-      transform: scale(0.94);
-      background: rgba(56, 189, 248, 0.25);
-    }
-
     /* Toast */
     .tv-toast {
       position: fixed;
@@ -949,32 +948,19 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
       </div>
       <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 0.35rem;">Alexis TV Privado</h2>
-      <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Ingresa tu clave de acceso para ver tus canales en directo.</p>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Ingresa tu contraseña para acceder a tus canales en vivo.</p>
 
       <form id="pin-form" onsubmit="event.preventDefault(); submitPin();">
-        <div style="display: flex; gap: 0.4rem; position: relative;">
-          <input type="password" id="pin-input" class="form-input" style="text-align: center; letter-spacing: 0.2em; font-size: 1.25rem; font-family: var(--font-mono);" placeholder="••••" autofocus required>
-          <button type="button" id="toggle-pin-btn" class="btn-icon" title="Mostrar/Ocultar clave">👁️</button>
+        <div style="position: relative; width: 100%; margin-bottom: 1rem;">
+          <input type="password" id="pin-input" class="form-input" style="width: 100%; padding-right: 2.75rem; font-size: 1rem;" placeholder="Escribe tu contraseña" autocomplete="current-password" autofocus required>
+          <button type="button" id="toggle-pin-btn" class="btn-icon" style="position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%); width: 34px; height: 34px;" title="Mostrar/Ocultar contraseña">
+            <svg id="toggle-pin-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
 
-        <!-- Numeric keypad for quick touch access on mobile/tablets -->
-        <div class="pin-keypad">
-          <button type="button" class="keypad-btn" onclick="pressKey('1')">1</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('2')">2</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('3')">3</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('4')">4</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('5')">5</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('6')">6</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('7')">7</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('8')">8</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('9')">9</button>
-          <button type="button" class="keypad-btn" onclick="clearPin()" style="font-size: 0.95rem; color: var(--text-muted);">C</button>
-          <button type="button" class="keypad-btn" onclick="pressKey('0')">0</button>
-          <button type="button" class="keypad-btn" onclick="backspacePin()" style="font-size: 1rem;">⌫</button>
-        </div>
-
-        <button type="submit" id="pin-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 0.75rem;">
-          <span>Desbloquear TV</span>
+        <button type="submit" id="pin-submit-btn" class="btn btn-primary" style="width: 100%; padding: 0.75rem 1rem; font-size: 0.95rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Entrar a Alexis TV</span>
         </button>
 
         <div id="pin-error" style="color: #f87171; font-size: 0.8rem; margin-top: 0.75rem; display: none;"></div>
@@ -1007,6 +993,11 @@
       <button id="open-playlists-btn" class="btn btn-outline" title="Cargar y gestionar listas M3U">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
         <span>Mis Listas</span>
+      </button>
+
+      <!-- Change Password button -->
+      <button id="open-password-btn" class="btn-icon" title="Cambiar Contraseña">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="m21 2-9.6 9.6"></path><path d="m15.5 7.5 3 3"></path></svg>
       </button>
 
       <!-- Logout / Lock button -->
@@ -1220,7 +1211,43 @@
     </div>
   </div>
 
-  <!-- 5. INSTALL APP MODAL (PWA INSTRUCTIONS) -->
+  <!-- 5. CHANGE PASSWORD MODAL -->
+  <div id="password-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header-row">
+        <h3 class="modal-title">Cambiar Contraseña</h3>
+        <button class="btn-icon" onclick="closePasswordModal()" title="Cerrar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <form id="change-pass-form" onsubmit="event.preventDefault(); submitChangePassword();">
+        <div class="form-group">
+          <label class="form-label" for="current-pass-input">Contraseña Actual</label>
+          <input type="password" id="current-pass-input" class="form-input" placeholder="Tu contraseña actual" required autocomplete="current-password">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="new-pass-input">Nueva Contraseña</label>
+          <input type="password" id="new-pass-input" class="form-input" placeholder="Mínimo 4 caracteres (alfanumérica)" required autocomplete="new-password">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirm-pass-input">Confirmar Nueva Contraseña</label>
+          <input type="password" id="confirm-pass-input" class="form-input" placeholder="Repite la nueva clave" required autocomplete="new-password">
+        </div>
+
+        <div id="change-pass-error" style="color: #f87171; font-size: 0.8rem; margin-bottom: 0.75rem; display: none;"></div>
+
+        <div style="display: flex; gap: 0.6rem; margin-top: 1.25rem;">
+          <button type="button" class="btn btn-outline" style="flex: 1;" onclick="closePasswordModal()">Cancelar</button>
+          <button type="submit" id="save-pass-btn" class="btn btn-primary" style="flex: 1;">Actualizar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. INSTALL APP MODAL (PWA INSTRUCTIONS) -->
   <div id="install-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 460px;">
       <div class="modal-header-row">
@@ -1333,13 +1360,14 @@
     document.addEventListener('DOMContentLoaded', () => {
       initPwaServiceWorker();
       initPlayerControls();
-      initKeypad();
+      initAuth();
 
       // Check if already authenticated
       if (state.token) {
         unlockApp();
       } else {
         pinOverlay.style.display = 'flex';
+        setTimeout(() => pinInput.focus(), 100);
       }
     });
 
@@ -1398,11 +1426,20 @@
     }
 
     /* ==========================================================================
-       2. PIN AUTHENTICATION & LOCK SYSTEM
+       2. AUTHENTICATION & PASSWORD MANAGEMENT
        ========================================================================== */
-    function initKeypad() {
-      document.getElementById('toggle-pin-btn')?.addEventListener('click', () => {
-        pinInput.type = pinInput.type === 'password' ? 'text' : 'password';
+    function initAuth() {
+      const toggleBtn = document.getElementById('toggle-pin-btn');
+      const toggleIcon = document.getElementById('toggle-pin-icon');
+
+      toggleBtn?.addEventListener('click', () => {
+        if (pinInput.type === 'password') {
+          pinInput.type = 'text';
+          if (toggleIcon) toggleIcon.innerHTML = '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line>';
+        } else {
+          pinInput.type = 'password';
+          if (toggleIcon) toggleIcon.innerHTML = '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>';
+        }
       });
 
       document.getElementById('lock-app-btn')?.addEventListener('click', () => {
@@ -1412,18 +1449,12 @@
         video.src = '';
         pinOverlay.style.display = 'flex';
         pinInput.value = '';
+        pinError.style.display = 'none';
         showToast('Aplicación bloqueada.');
+        setTimeout(() => pinInput.focus(), 100);
       });
-    }
 
-    function pressKey(num) {
-      pinInput.value += num;
-    }
-    function clearPin() {
-      pinInput.value = '';
-    }
-    function backspacePin() {
-      pinInput.value = pinInput.value.slice(0, -1);
+      document.getElementById('open-password-btn')?.addEventListener('click', openPasswordModal);
     }
 
     async function submitPin() {
@@ -1445,14 +1476,84 @@
           unlockApp();
           showToast('Bienvenido a Alexis TV');
         } else {
-          pinError.textContent = data.error || 'PIN incorrecto.';
+          pinError.textContent = data.error || 'Contraseña incorrecta.';
           pinError.style.display = 'block';
+          pinInput.focus();
         }
       } catch (err) {
-        pinError.textContent = 'Error de conexión al validar PIN.';
+        pinError.textContent = 'Error de conexión al validar contraseña.';
         pinError.style.display = 'block';
       }
     }
+
+    window.openPasswordModal = function() {
+      document.getElementById('current-pass-input').value = '';
+      document.getElementById('new-pass-input').value = '';
+      document.getElementById('confirm-pass-input').value = '';
+      document.getElementById('change-pass-error').style.display = 'none';
+      document.getElementById('password-modal').classList.add('active');
+      setTimeout(() => document.getElementById('current-pass-input').focus(), 100);
+    };
+
+    window.closePasswordModal = function() {
+      document.getElementById('password-modal').classList.remove('active');
+    };
+
+    window.submitChangePassword = async function() {
+      const currentPassword = document.getElementById('current-pass-input').value;
+      const newPassword = document.getElementById('new-pass-input').value;
+      const confirmPassword = document.getElementById('confirm-pass-input').value;
+      const errEl = document.getElementById('change-pass-error');
+      const saveBtn = document.getElementById('save-pass-btn');
+
+      errEl.style.display = 'none';
+
+      if (!currentPassword || !newPassword) {
+        errEl.textContent = 'Por favor completa todos los campos.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        errEl.textContent = 'La nueva contraseña y su confirmación no coinciden.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (newPassword.trim().length < 4) {
+        errEl.textContent = 'La nueva contraseña debe tener al menos 4 caracteres.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Guardando...';
+
+      try {
+        const res = await fetch('/api/tv/auth', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          state.token = data.token;
+          localStorage.setItem('at_tv_token', data.token);
+          closePasswordModal();
+          showToast('✅ ¡Contraseña actualizada exitosamente!');
+        } else {
+          errEl.textContent = data.error || 'No se pudo actualizar la contraseña.';
+          errEl.style.display = 'block';
+        }
+      } catch (err) {
+        errEl.textContent = 'Error de conexión al cambiar la contraseña.';
+        errEl.style.display = 'block';
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Actualizar';
+      }
+    };
 
     async function unlockApp() {
       pinOverlay.style.display = 'none';
