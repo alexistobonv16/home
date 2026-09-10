@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Alexis TV | Streaming Privado</title>
+  <meta name="description" content="Entorno privado de streaming de TV en vivo con listas M3U/M3U8, Picture-in-Picture y sincronización en la nube.">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="/tv.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/tv-icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="/tv-icon.svg">
+  <link rel="apple-touch-icon" href="/tv-icon-192.png">
+  <meta name="theme-color" content="#070b14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Alexis TV">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Hls.js library for cross-browser HLS playback -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+
+  <style>
+    :root {
+      --bg-primary: #070b14;
+      --bg-secondary: #0f172a;
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --bg-hover: rgba(30, 41, 59, 0.7);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-hover: rgba(56, 189, 248, 0.4);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-indigo: #818cf8;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --player-height-mobile: 42vw;
+      --sidebar-width: 360px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Top Navigation Bar */
+    .tv-header {
+      height: 58px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      gap: 1rem;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .brand-area {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+    }
+
+    .brand-title {
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-family: var(--font-mono);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--accent-cyan);
+      color: #070b14;
+      font-weight: 700;
+    }
+    .btn-primary:hover { background: #7dd3fc; }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-color);
+      color: var(--text-primary);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-cyan);
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-icon:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-cyan);
+    }
+
+    .btn-pwa-install {
+      display: inline-flex;
+      background: linear-gradient(135deg, #10b981, #0284c7);
+      color: #fff;
+      border: none;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+      transition: all 0.2s ease;
+    }
+    .btn-pwa-install:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+      filter: brightness(1.1);
+    }
+
+    /* Main TV Layout (Split: Player & Channels Sidebar) */
+    .tv-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 58px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Video Player Stage */
+    .player-stage {
+      flex: 1;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .video-wrapper {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    video.fit-cover { object-fit: cover; }
+    video.fit-fill { object-fit: fill; }
+    video.fit-contain { object-fit: contain; }
+
+    /* Custom Player Overlay Controls */
+    .player-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 40%, rgba(0,0,0,0.6) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.25rem;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .player-stage:hover .player-overlay,
+    .player-stage.controls-visible .player-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .player-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .current-channel-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 0.4rem 0.85rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border-color);
+    }
+
+    .channel-logo-img {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .current-channel-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #fff;
+    }
+
+    .current-channel-group {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .live-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-emerald);
+      padding: 0.3rem 0.65rem;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .player-center-play {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      opacity: 0;
+      pointer-events: auto;
+    }
+
+    .player-center-play:hover {
+      transform: translate(-50%, -50%) scale(1.08);
+      border-color: var(--accent-cyan);
+      background: rgba(2, 132, 199, 0.85);
+    }
+
+    .player-stage.paused .player-center-play {
+      opacity: 1;
+    }
+
+    .player-bottom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      padding: 0.6rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      pointer-events: auto;
+    }
+
+    .controls-left, .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .volume-group {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .volume-slider {
+      width: 80px;
+      height: 4px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    /* Loading Spinner */
+    .player-loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Channels Sidebar */
+    .channels-sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      z-index: 40;
+      flex-shrink: 0;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sidebar-header {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .search-box {
+      position: relative;
+      width: 100%;
+    }
+
+    .search-input {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.55rem 0.85rem 0.55rem 2.2rem;
+      color: #fff;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent-cyan); }
+
+    .search-icon {
+      position: absolute;
+      left: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    /* Categories / Groups Chips */
+    .groups-bar {
+      display: flex;
+      gap: 0.4rem;
+      overflow-x: auto;
+      padding-bottom: 0.2rem;
+      scrollbar-width: none;
+    }
+    .groups-bar::-webkit-scrollbar { display: none; }
+
+    .group-chip {
+      padding: 0.3rem 0.65rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .group-chip:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+    .group-chip.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* Channel List */
+    .channels-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .channel-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      color: var(--text-primary);
+    }
+
+    .channel-item:hover {
+      background: var(--bg-hover);
+      border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .channel-item.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .channel-item.active .channel-name {
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    .channel-thumb {
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .channel-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .channel-thumb-fallback {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .channel-info-meta {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .channel-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .channel-category-tag {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .channel-fav-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.35rem;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .channel-fav-btn:hover, .channel-fav-btn.is-fav {
+      color: var(--accent-amber);
+    }
+
+    /* Empty state */
+    .empty-channels {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      gap: 0.75rem;
+    }
+
+    /* Modal dialogs (Playlist Manager & PIN Lock) */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.25s ease;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal-card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.25rem;
+      padding: 1.75rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-overlay.active .modal-card { transform: scale(1); }
+
+    .modal-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .form-input {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+    }
+    .form-input:focus { border-color: var(--accent-cyan); }
+
+    /* Keypad for PIN lock screen */
+    .pin-lock-container {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .pin-box {
+      width: 100%;
+      max-width: 360px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.5rem;
+      padding: 2.25rem 1.75rem;
+      text-align: center;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .pin-icon-wrap {
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(2, 132, 199, 0.35);
+    }
+
+    .pin-keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      margin-top: 1.25rem;
+    }
+
+    .keypad-btn {
+      height: 52px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .keypad-btn:active {
+      transform: scale(0.94);
+      background: rgba(56, 189, 248, 0.25);
+    }
+
+    /* Toast */
+    .tv-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(30px);
+      z-index: 3000;
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 0.65rem 1.25rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+    .tv-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Responsive Mobile Adjustments */
+    @media (max-width: 900px) {
+      body {
+        overflow-y: auto;
+      }
+
+      .tv-container {
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - 58px);
+      }
+
+      .player-stage {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        width: 100%;
+        height: min(56.25vw, 42vh);
+        min-height: 220px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+      }
+
+      .channels-sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        flex: 1;
+        height: auto;
+      }
+
+      .channels-list {
+        max-height: 60vh;
+      }
+
+      .player-overlay {
+        opacity: 1;
+        background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
+      }
+
+      .volume-slider { display: none; }
+    }
+
+    @media (max-width: 540px) {
+      .brand-tag { display: none; }
+      .btn-pwa-install span, #open-playlists-btn span { display: none; }
+      .btn-pwa-install, #open-playlists-btn { padding: 0.5rem; width: 36px; height: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. PIN LOCK SCREEN OVERLAY -->
+  <div id="pin-overlay" class="pin-lock-container">
+    <div class="pin-box">
+      <div class="pin-icon-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </div>
+      <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 0.35rem;">Alexis TV Privado</h2>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Ingresa tu clave de acceso para ver tus canales en directo.</p>
+
+      <form id="pin-form" onsubmit="event.preventDefault(); submitPin();">
+        <div style="display: flex; gap: 0.4rem; position: relative;">
+          <input type="password" id="pin-input" class="form-input" style="text-align: center; letter-spacing: 0.2em; font-size: 1.25rem; font-family: var(--font-mono);" placeholder="••••" autofocus required>
+          <button type="button" id="toggle-pin-btn" class="btn-icon" title="Mostrar/Ocultar clave">👁️</button>
+        </div>
+
+        <!-- Numeric keypad for quick touch access on mobile/tablets -->
+        <div class="pin-keypad">
+          <button type="button" class="keypad-btn" onclick="pressKey('1')">1</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('2')">2</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('3')">3</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('4')">4</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('5')">5</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('6')">6</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('7')">7</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('8')">8</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('9')">9</button>
+          <button type="button" class="keypad-btn" onclick="clearPin()" style="font-size: 0.95rem; color: var(--text-muted);">C</button>
+          <button type="button" class="keypad-btn" onclick="pressKey('0')">0</button>
+          <button type="button" class="keypad-btn" onclick="backspacePin()" style="font-size: 1rem;">⌫</button>
+        </div>
+
+        <button type="submit" id="pin-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 0.75rem;">
+          <span>Desbloquear TV</span>
+        </button>
+
+        <div id="pin-error" style="color: #f87171; font-size: 0.8rem; margin-top: 0.75rem; display: none;"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. TOP HEADER -->
+  <header class="tv-header">
+    <a href="/tv" class="brand-area">
+      <div class="brand-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="brand-title">Alexis TV</span>
+          <span class="brand-tag">HLS / M3U</span>
+        </div>
+      </div>
+    </a>
+
+    <div class="header-actions">
+      <!-- PWA Install Button -->
+      <button id="pwa-install-btn" class="btn btn-pwa-install btn-sm" title="Instalar Alexis TV en tu dispositivo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Instalar App</span>
+      </button>
+
+      <!-- Manage Playlists button -->
+      <button id="open-playlists-btn" class="btn btn-outline" title="Cargar y gestionar listas M3U">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        <span>Mis Listas</span>
+      </button>
+
+      <!-- Logout / Lock button -->
+      <button id="lock-app-btn" class="btn-icon" title="Bloquear / Salir">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 3. MAIN APP AREA -->
+  <main class="tv-container">
+    <!-- Player Stage -->
+    <section class="player-stage" id="player-stage">
+      <div class="video-wrapper" id="video-wrapper">
+        <video id="video-player" playsinline preload="auto"></video>
+
+        <!-- Loading spinner -->
+        <div class="player-loader" id="player-loader" style="display: none;">
+          <div class="spinner"></div>
+          <span id="loader-text">Conectando señal...</span>
+        </div>
+
+        <!-- Center Big Play/Pause overlay button -->
+        <button class="player-center-play" id="center-play-btn" aria-label="Reproducir / Pausar">
+          <svg id="center-play-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+
+        <!-- Player Controls Overlay -->
+        <div class="player-overlay" id="player-overlay">
+          <!-- Top Overlay: Current Channel & Live Status -->
+          <div class="player-top-bar">
+            <div class="current-channel-badge" id="player-channel-info">
+              <img id="player-channel-logo" class="channel-logo-img" src="" alt="Logo" style="display: none;">
+              <span id="player-channel-name" class="current-channel-name">Selecciona un canal</span>
+              <span id="player-channel-group" class="current-channel-group">General</span>
+            </div>
+
+            <div class="live-status-pill">
+              <span class="pulse-dot"></span>
+              <span id="player-live-text">En Vivo</span>
+            </div>
+          </div>
+
+          <!-- Bottom Controls Bar -->
+          <div class="player-bottom-bar">
+            <div class="controls-left">
+              <!-- Play / Pause -->
+              <button class="btn-icon" id="bottom-play-btn" title="Reproducir / Pausar (Espacio)">
+                <svg id="bottom-play-svg" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </button>
+
+              <!-- Reconnect / Reload stream -->
+              <button class="btn-icon" id="reload-stream-btn" title="Reconectar señal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              </button>
+
+              <!-- Volume Control -->
+              <div class="volume-group">
+                <button class="btn-icon" id="mute-btn" title="Silenciar / Activar sonido (M)">
+                  <svg id="volume-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                </button>
+                <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.05" value="1">
+              </div>
+            </div>
+
+            <div class="controls-right">
+              <!-- Aspect Ratio Toggle -->
+              <button class="btn-icon" id="aspect-ratio-btn" title="Cambiar relación de aspecto">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"></rect><path d="M8 10h8M8 14h8"></path></svg>
+              </button>
+
+              <!-- PICTURE-IN-PICTURE (PiP) -->
+              <button class="btn-icon" id="pip-btn" title="Modo Picture-in-Picture (Ventana Flotante)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><rect x="12" y="10" width="8" height="5" rx="1" fill="currentColor"></rect></svg>
+              </button>
+
+              <!-- Fullscreen -->
+              <button class="btn-icon" id="fullscreen-btn" title="Pantalla Completa (F)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Channels Sidebar -->
+    <aside class="channels-sidebar" id="channels-sidebar">
+      <div class="sidebar-header">
+        <!-- Search -->
+        <div class="search-box">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="channel-search" class="search-input" placeholder="Buscar canal...">
+        </div>
+
+        <!-- Groups / Categories Chips -->
+        <div class="groups-bar" id="groups-bar">
+          <!-- Dynamically populated chips -->
+        </div>
+      </div>
+
+      <!-- Channels List Container -->
+      <div class="channels-list" id="channels-list">
+        <div class="empty-channels">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+          <span>No tienes canales cargados.</span>
+          <button class="btn btn-primary btn-sm" onclick="openPlaylistsModal()">Cargar Lista M3U</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- 4. PLAYLIST MANAGER MODAL -->
+  <div id="playlists-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header-row">
+        <h3 class="modal-title">Gestionar Listas M3U</h3>
+        <button class="btn-icon" onclick="closePlaylistsModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Tab selector: Por URL o Por Archivo -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;">
+        <button id="tab-url-btn" class="btn btn-outline active" style="flex: 1;" onclick="switchPlaylistTab('url')">Por Enlace (URL)</button>
+        <button id="tab-file-btn" class="btn btn-outline" style="flex: 1;" onclick="switchPlaylistTab('file')">Subir Archivo (.m3u)</button>
+      </div>
+
+      <!-- Form 1: Por URL -->
+      <form id="playlist-url-form" onsubmit="event.preventDefault(); loadPlaylistFromUrl();">
+        <div class="form-group">
+          <label class="form-label" for="pl-name">Nombre de la Lista</label>
+          <input type="text" id="pl-name" class="form-input" placeholder="Ej. Mis Canales IPTV" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="pl-url">URL de la Lista M3U o M3U8</label>
+          <input type="url" id="pl-url" class="form-input" placeholder="https://ejemplo.com/lista.m3u" required>
+          <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Soporta listas remotas con bypass automático de CORS.</span>
+        </div>
+
+        <button type="submit" id="submit-url-btn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          <span>Cargar y Sincronizar</span>
+        </button>
+      </form>
+
+      <!-- Form 2: Por Archivo -->
+      <div id="playlist-file-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="pl-file-name">Nombre de la Lista</label>
+          <input type="text" id="pl-file-name" class="form-input" placeholder="Ej. Canales Deportes">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Seleccionar archivo (.m3u, .m3u8, .txt)</label>
+          <input type="file" id="pl-file-input" class="form-input" accept=".m3u,.m3u8,.txt">
+        </div>
+
+        <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="loadPlaylistFromFile()">
+          <span>Procesar Archivo</span>
+        </button>
+      </div>
+
+      <!-- Saved playlists in Cloudflare KV -->
+      <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <h4 style="font-size: 0.88rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-secondary);">Listas Guardadas en la Nube</h4>
+        <div id="saved-playlists-list" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 180px; overflow-y: auto;">
+          <!-- Injected via script -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. INSTALL APP MODAL (PWA INSTRUCTIONS) -->
+  <div id="install-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header-row">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+          Instalar Alexis TV
+        </h3>
+        <button class="btn-icon" onclick="closeInstallModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 0.9rem;">
+        <p>Instala Alexis TV como una aplicación nativa en tu dispositivo para disfrutar de pantalla completa, acceso rápido y modo Picture-in-Picture continuo.</p>
+
+        <div style="background: rgba(255, 255, 255, 0.04); padding: 0.9rem; border-radius: 10px; border: 1px solid var(--border-color);">
+          <strong style="color: var(--accent-cyan); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+            📱 iPhone / iPad (Safari)
+          </strong>
+          <ol style="padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.83rem;">
+            <li>Presiona el botón <strong>Compartir</strong> (icono <span style="font-size:1rem;">⎋</span> con flecha) en la barra de Safari.</li>
+            <li>Desliza y selecciona <strong>"Agregar al inicio"</strong> ➕.</li>
+            <li>Toca <strong>"Agregar"</strong> y ábrela desde tu pantalla de inicio.</li>
+          </ol>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.04); padding: 0.9rem; border-radius: 10px; border: 1px solid var(--border-color);">
+          <strong style="color: var(--accent-emerald); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+            🤖 Android (Chrome / Edge)
+          </strong>
+          <p style="font-size: 0.83rem;">Toca el menú de opciones (<strong>⋮</strong>) en tu navegador y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Agregar a pantalla principal"</strong>.</p>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.04); padding: 0.9rem; border-radius: 10px; border: 1px solid var(--border-color);">
+          <strong style="color: var(--accent-indigo); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+            💻 Computador PC / Mac
+          </strong>
+          <p style="font-size: 0.83rem;">Haz clic en el icono de instalación 🖥️ en el lado derecho de la barra de direcciones de Chrome o Edge.</p>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width: 100%; margin-top: 1.25rem;" onclick="closeInstallModal()">Entendido</button>
+    </div>
+  </div>
+
+  <!-- 6. TOAST NOTIFICATION -->
+  <div id="tv-toast" class="tv-toast">Mensaje</div>
+
+  <!-- CLIENT-SIDE APPLICATION JAVASCRIPT -->
+  <script>
+    /* ==========================================================================
+       ALEXIS TV - CORE CLIENT SCRIPT
+       HLS Player, M3U Parser, Multi-Device Cloudflare KV Sync, PiP & PWA
+       ========================================================================== */
+
+    // Application State
+    const state = {
+      token: localStorage.getItem('at_tv_token') || '',
+      playlists: [],
+      activePlaylistId: null,
+      channels: [],
+      filteredChannels: [],
+      activeChannel: null,
+      favorites: new Set(),
+      activeGroup: 'all',
+      searchQuery: '',
+      aspectMode: 'contain', // contain, cover, fill
+      hls: null,
+      deferredPrompt: null
+    };
+
+    // DOM Elements
+    const video = document.getElementById('video-player');
+    const playerStage = document.getElementById('player-stage');
+    const loader = document.getElementById('player-loader');
+    const loaderText = document.getElementById('loader-text');
+    const pinOverlay = document.getElementById('pin-overlay');
+    const pinInput = document.getElementById('pin-input');
+    const pinError = document.getElementById('pin-error');
+    const channelsListEl = document.getElementById('channels-list');
+    const groupsBarEl = document.getElementById('groups-bar');
+    const searchInput = document.getElementById('channel-search');
+    const playerChannelName = document.getElementById('player-channel-name');
+    const playerChannelGroup = document.getElementById('player-channel-group');
+    const playerChannelLogo = document.getElementById('player-channel-logo');
+    const bottomPlayBtn = document.getElementById('bottom-play-btn');
+    const centerPlayBtn = document.getElementById('center-play-btn');
+    const bottomPlaySvg = document.getElementById('bottom-play-svg');
+    const muteBtn = document.getElementById('mute-btn');
+    const volumeSlider = document.getElementById('volume-slider');
+    const pipBtn = document.getElementById('pip-btn');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const aspectRatioBtn = document.getElementById('aspect-ratio-btn');
+    const reloadStreamBtn = document.getElementById('reload-stream-btn');
+    const pwaInstallBtn = document.getElementById('pwa-install-btn');
+
+    /* ==========================================================================
+       1. INITIALIZATION & PWA SERVICE WORKER
+       ========================================================================== */
+    document.addEventListener('DOMContentLoaded', () => {
+      initPwaServiceWorker();
+      initPlayerControls();
+      initKeypad();
+
+      // Check if already authenticated
+      if (state.token) {
+        unlockApp();
+      } else {
+        pinOverlay.style.display = 'flex';
+      }
+    });
+
+    window.openInstallModal = function() {
+      document.getElementById('install-modal').classList.add('active');
+    };
+    window.closeInstallModal = function() {
+      document.getElementById('install-modal').classList.remove('active');
+    };
+
+    function initPwaServiceWorker() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+      if (isStandalone && pwaInstallBtn) {
+        pwaInstallBtn.style.display = 'none';
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/tv-sw.js').then((reg) => {
+          console.debug('Alexis TV Service Worker activo:', reg.scope);
+        }).catch(err => {
+          console.warn('Error registrando SW:', err);
+        });
+      }
+
+      // Handle beforeinstallprompt for PWA installation
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        state.deferredPrompt = e;
+        if (pwaInstallBtn && !isStandalone) {
+          pwaInstallBtn.style.display = 'inline-flex';
+        }
+      });
+
+      if (pwaInstallBtn) {
+        pwaInstallBtn.addEventListener('click', async () => {
+          if (state.deferredPrompt) {
+            state.deferredPrompt.prompt();
+            const choice = await state.deferredPrompt.userChoice;
+            if (choice.outcome === 'accepted') {
+              showToast('¡Instalando Alexis TV!');
+              pwaInstallBtn.style.display = 'none';
+            }
+            state.deferredPrompt = null;
+          } else {
+            openInstallModal();
+          }
+        });
+      }
+
+      window.addEventListener('appinstalled', () => {
+        if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+        showToast('¡Alexis TV instalada correctamente!');
+        closeInstallModal();
+      });
+    }
+
+    /* ==========================================================================
+       2. PIN AUTHENTICATION & LOCK SYSTEM
+       ========================================================================== */
+    function initKeypad() {
+      document.getElementById('toggle-pin-btn')?.addEventListener('click', () => {
+        pinInput.type = pinInput.type === 'password' ? 'text' : 'password';
+      });
+
+      document.getElementById('lock-app-btn')?.addEventListener('click', () => {
+        localStorage.removeItem('at_tv_token');
+        state.token = '';
+        if (state.hls) state.hls.destroy();
+        video.src = '';
+        pinOverlay.style.display = 'flex';
+        pinInput.value = '';
+        showToast('Aplicación bloqueada.');
+      });
+    }
+
+    function pressKey(num) {
+      pinInput.value += num;
+    }
+    function clearPin() {
+      pinInput.value = '';
+    }
+    function backspacePin() {
+      pinInput.value = pinInput.value.slice(0, -1);
+    }
+
+    async function submitPin() {
+      const pin = pinInput.value.trim();
+      if (!pin) return;
+      pinError.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/tv/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          state.token = data.token;
+          localStorage.setItem('at_tv_token', data.token);
+          unlockApp();
+          showToast('Bienvenido a Alexis TV');
+        } else {
+          pinError.textContent = data.error || 'PIN incorrecto.';
+          pinError.style.display = 'block';
+        }
+      } catch (err) {
+        pinError.textContent = 'Error de conexión al validar PIN.';
+        pinError.style.display = 'block';
+      }
+    }
+
+    async function unlockApp() {
+      pinOverlay.style.display = 'none';
+      await loadSyncData();
+    }
+
+    /* ==========================================================================
+       3. CLOUDFLARE KV MULTI-DEVICE SYNC (/api/tv/sync)
+       ========================================================================== */
+    async function loadSyncData() {
+      try {
+        showLoader('Sincronizando listas...');
+        const res = await fetch('/api/tv/sync', {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem('at_tv_token');
+          state.token = '';
+          pinOverlay.style.display = 'flex';
+          hideLoader();
+          return;
+        }
+
+        const json = await res.json();
+        if (json.success && json.data) {
+          state.playlists = json.data.playlists || [];
+          state.activePlaylistId = json.data.activePlaylistId || (state.playlists[0]?.id || null);
+          state.favorites = new Set(json.data.favorites || []);
+
+          renderSavedPlaylistsModal();
+
+          // Load active playlist channels
+          const activePl = state.playlists.find(p => p.id === state.activePlaylistId);
+          if (activePl && activePl.channels && activePl.channels.length > 0) {
+            state.channels = activePl.channels;
+            buildGroups();
+            filterAndRenderChannels();
+
+            // Resume last watched channel or play first
+            const toPlay = json.data.lastChannel ? 
+              (state.channels.find(c => c.url === json.data.lastChannel.url) || state.channels[0]) : 
+              state.channels[0];
+
+            if (toPlay) playChannel(toPlay);
+          } else {
+            renderEmptyChannels();
+          }
+        }
+        hideLoader();
+      } catch (err) {
+        console.warn('Error de sincronización:', err);
+        hideLoader();
+      }
+    }
+
+    async function syncToCloud() {
+      if (!state.token) return;
+      try {
+        const payload = {
+          playlists: state.playlists,
+          activePlaylistId: state.activePlaylistId,
+          favorites: Array.from(state.favorites),
+          lastChannel: state.activeChannel ? {
+            name: state.activeChannel.name,
+            url: state.activeChannel.url
+          } : null
+        };
+
+        await fetch('/api/tv/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.warn('Error al guardar en la nube:', err);
+      }
+    }
+
+    /* ==========================================================================
+       4. M3U / M3U8 PLAYLIST PARSER
+       ========================================================================== */
+    function parseM3U(content) {
+      const lines = content.split(/\r?\n/);
+      const channels = [];
+      let currentChannel = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        if (line.startsWith('#EXTINF:')) {
+          currentChannel = {
+            id: 'ch-' + channels.length + '-' + Math.random().toString(36).substring(2, 6),
+            name: 'Canal ' + (channels.length + 1),
+            logo: '',
+            group: 'General',
+            url: ''
+          };
+
+          // Extract attributes: tvg-logo, group-title, tvg-name
+          const logoMatch = line.match(/tvg-logo="([^"]+)"/i);
+          if (logoMatch) currentChannel.logo = logoMatch[1];
+
+          const groupMatch = line.match(/group-title="([^"]+)"/i);
+          if (groupMatch) currentChannel.group = groupMatch[1].trim();
+
+          // Extract channel name (after the comma)
+          const commaIndex = line.lastIndexOf(',');
+          if (commaIndex !== -1) {
+            const name = line.substring(commaIndex + 1).trim();
+            if (name) currentChannel.name = name;
+          }
+        } else if (line.startsWith('#EXTGRP:')) {
+          if (currentChannel) {
+            currentChannel.group = line.replace('#EXTGRP:', '').trim();
+          }
+        } else if (!line.startsWith('#') && (line.startsWith('http://') || line.startsWith('https://') || line.includes('.m3u8'))) {
+          if (currentChannel) {
+            currentChannel.url = line;
+            channels.push(currentChannel);
+            currentChannel = null;
+          } else {
+            // Standalone URL
+            channels.push({
+              id: 'ch-' + channels.length,
+              name: 'Canal ' + (channels.length + 1),
+              logo: '',
+              group: 'General',
+              url: line
+            });
+          }
+        }
+      }
+
+      return channels;
+    }
+
+    // Load M3U from URL (via CORS proxy)
+    async function loadPlaylistFromUrl() {
+      const name = document.getElementById('pl-name').value.trim() || 'Lista IPTV';
+      const url = document.getElementById('pl-url').value.trim();
+      if (!url) return;
+
+      showToast('Descargando lista M3U...');
+      showLoader('Descargando lista...');
+
+      try {
+        // Try fetch via proxy to guarantee bypass of CORS restrictions
+        const proxyUrl = `/api/tv/proxy?url=${encodeURIComponent(url)}`;
+        let response = await fetch(proxyUrl);
+        if (!response.ok) {
+          // Fallback direct
+          response = await fetch(url);
+        }
+
+        const text = await response.text();
+        const parsedChannels = parseM3U(text);
+
+        if (!parsedChannels.length) {
+          throw new Error('No se encontraron canales válidos en el archivo M3U.');
+        }
+
+        const newPlaylist = {
+          id: 'pl-' + Date.now(),
+          name,
+          sourceUrl: url,
+          channelsCount: parsedChannels.length,
+          channels: parsedChannels,
+          createdAt: new Date().toISOString()
+        };
+
+        state.playlists.push(newPlaylist);
+        state.activePlaylistId = newPlaylist.id;
+        state.channels = parsedChannels;
+
+        buildGroups();
+        filterAndRenderChannels();
+        renderSavedPlaylistsModal();
+        closePlaylistsModal();
+
+        showToast(`¡Lista "${name}" cargada con ${parsedChannels.length} canales!`);
+        if (parsedChannels[0]) playChannel(parsedChannels[0]);
+
+        await syncToCloud();
+      } catch (err) {
+        alert('Error al cargar la lista: ' + err.message);
+      } finally {
+        hideLoader();
+      }
+    }
+
+    // Load M3U from Local File
+    function loadPlaylistFromFile() {
+      const fileInput = document.getElementById('pl-file-input');
+      const name = document.getElementById('pl-file-name').value.trim() || 'Lista Local';
+      if (!fileInput.files.length) {
+        alert('Por favor selecciona un archivo .m3u o .m3u8');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      showLoader('Leyendo archivo M3U...');
+      reader.onload = async (e) => {
+        try {
+          const text = e.target.result;
+          const parsedChannels = parseM3U(text);
+
+          if (!parsedChannels.length) {
+            throw new Error('No se encontraron canales válidos en el archivo.');
+          }
+
+          const newPlaylist = {
+            id: 'pl-' + Date.now(),
+            name: name || file.name,
+            channelsCount: parsedChannels.length,
+            channels: parsedChannels,
+            createdAt: new Date().toISOString()
+          };
+
+          state.playlists.push(newPlaylist);
+          state.activePlaylistId = newPlaylist.id;
+          state.channels = parsedChannels;
+
+          buildGroups();
+          filterAndRenderChannels();
+          renderSavedPlaylistsModal();
+          closePlaylistsModal();
+
+          showToast(`¡${parsedChannels.length} canales cargados desde archivo!`);
+          if (parsedChannels[0]) playChannel(parsedChannels[0]);
+
+          await syncToCloud();
+        } catch (err) {
+          alert('Error: ' + err.message);
+        } finally {
+          hideLoader();
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    /* ==========================================================================
+       5. CHANNELS DIRECTORY & CATEGORIES
+       ========================================================================== */
+    function buildGroups() {
+      groupsBarEl.innerHTML = '';
+
+      // Count per group
+      const counts = {};
+      state.channels.forEach(ch => {
+        const g = ch.group || 'General';
+        counts[g] = (counts[g] || 0) + 1;
+      });
+
+      // Special pill: Favoritos
+      const favCount = state.channels.filter(ch => state.favorites.has(ch.url || ch.id)).length;
+      const favBtn = document.createElement('button');
+      favBtn.className = 'group-chip' + (state.activeGroup === 'fav' ? ' active' : '');
+      favBtn.textContent = `⭐ Favoritos (${favCount})`;
+      favBtn.onclick = () => selectGroup('fav');
+      groupsBarEl.appendChild(favBtn);
+
+      // Special pill: Todos
+      const allBtn = document.createElement('button');
+      allBtn.className = 'group-chip' + (state.activeGroup === 'all' ? ' active' : '');
+      allBtn.textContent = `Todos (${state.channels.length})`;
+      allBtn.onclick = () => selectGroup('all');
+      groupsBarEl.appendChild(allBtn);
+
+      // Distinct groups
+      Object.keys(counts).sort().forEach(groupName => {
+        const chip = document.createElement('button');
+        chip.className = 'group-chip' + (state.activeGroup === groupName ? ' active' : '');
+        chip.textContent = `${groupName} (${counts[groupName]})`;
+        chip.onclick = () => selectGroup(groupName);
+        groupsBarEl.appendChild(chip);
+      });
+    }
+
+    function selectGroup(group) {
+      state.activeGroup = group;
+      buildGroups();
+      filterAndRenderChannels();
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      state.searchQuery = e.target.value.toLowerCase().trim();
+      filterAndRenderChannels();
+    });
+
+    function filterAndRenderChannels() {
+      let list = state.channels;
+
+      if (state.activeGroup === 'fav') {
+        list = list.filter(ch => state.favorites.has(ch.url || ch.id));
+      } else if (state.activeGroup !== 'all') {
+        list = list.filter(ch => (ch.group || 'General') === state.activeGroup);
+      }
+
+      if (state.searchQuery) {
+        list = list.filter(ch => 
+          ch.name.toLowerCase().includes(state.searchQuery) ||
+          (ch.group && ch.group.toLowerCase().includes(state.searchQuery))
+        );
+      }
+
+      state.filteredChannels = list;
+      renderChannels();
+    }
+
+    function renderChannels() {
+      channelsListEl.innerHTML = '';
+
+      if (!state.filteredChannels.length) {
+        channelsListEl.innerHTML = `
+          <div class="empty-channels">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span style="font-size: 0.85rem;">No hay canales en este grupo o búsqueda.</span>
+          </div>
+        `;
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      state.filteredChannels.forEach(channel => {
+        const item = document.createElement('div');
+        const isActive = state.activeChannel && state.activeChannel.url === channel.url;
+        const isFav = state.favorites.has(channel.url || channel.id);
+
+        item.className = 'channel-item' + (isActive ? ' active' : '');
+        item.setAttribute('data-id', channel.id);
+
+        const initials = channel.name.substring(0, 2).toUpperCase();
+
+        item.innerHTML = `
+          <div class="channel-thumb">
+            ${channel.logo ? 
+              `<img src="${channel.logo}" alt="${channel.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span class="channel-thumb-fallback" style="display:none;">${initials}</span>` : 
+              `<span class="channel-thumb-fallback">${initials}</span>`}
+          </div>
+          <div class="channel-info-meta">
+            <span class="channel-name">${escapeHtml(channel.name)}</span>
+            <span class="channel-category-tag">${escapeHtml(channel.group || 'General')}</span>
+          </div>
+          <button class="channel-fav-btn ${isFav ? 'is-fav' : ''}" title="Guardar favorito">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </button>
+        `;
+
+        // Click to play channel
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.channel-fav-btn')) return;
+          playChannel(channel);
+        });
+
+        // Toggle Favorite
+        const favBtn = item.querySelector('.channel-fav-btn');
+        favBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleFavorite(channel);
+        });
+
+        fragment.appendChild(item);
+      });
+
+      channelsListEl.appendChild(fragment);
+    }
+
+    function toggleFavorite(channel) {
+      const key = channel.url || channel.id;
+      if (state.favorites.has(key)) {
+        state.favorites.delete(key);
+        showToast(`Removido de favoritos: ${channel.name}`);
+      } else {
+        state.favorites.add(key);
+        showToast(`⭐ Añadido a favoritos: ${channel.name}`);
+      }
+
+      buildGroups();
+      filterAndRenderChannels();
+      syncToCloud();
+    }
+
+    /* ==========================================================================
+       6. VIDEO PLAYER ENGINE (Hls.js + Native + PiP)
+       ========================================================================== */
+    function playChannel(channel) {
+      if (!channel || !channel.url) return;
+      state.activeChannel = channel;
+
+      // Update UI title & badge
+      playerChannelName.textContent = channel.name;
+      playerChannelGroup.textContent = channel.group || 'General';
+
+      if (channel.logo) {
+        playerChannelLogo.src = channel.logo;
+        playerChannelLogo.style.display = 'block';
+      } else {
+        playerChannelLogo.style.display = 'none';
+      }
+
+      // Update active state in channel list
+      document.querySelectorAll('.channel-item').forEach(el => {
+        el.classList.toggle('active', el.getAttribute('data-id') === channel.id);
+      });
+
+      showLoader(`Sintonizando ${channel.name}...`);
+
+      const streamUrl = channel.url.trim();
+
+      // Clean up previous HLS instance
+      if (state.hls) {
+        state.hls.destroy();
+        state.hls = null;
+      }
+
+      // Engine 1: Hls.js (Chrome, Firefox, Edge, Android)
+      if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90,
+          manifestLoadingTimeOut: 15000
+        });
+
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => showControlsPrompt());
+          hideLoader();
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                loaderText.textContent = 'Error de conexión. Reintentando...';
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                loaderText.textContent = 'Recuperando señal...';
+                hls.recoverMediaError();
+                break;
+              default:
+                hideLoader();
+                showToast('Error de transmisión. Intenta otro canal.');
+                hls.destroy();
+                break;
+            }
+          }
+        });
+
+        state.hls = hls;
+
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Engine 2: Native Safari HLS (iPhone, iPad, Mac)
+        video.src = streamUrl;
+        video.addEventListener('loadedmetadata', () => {
+          video.play().catch(() => showControlsPrompt());
+          hideLoader();
+        }, { once: true });
+      } else {
+        // Direct MP4 / WebM fallback
+        video.src = streamUrl;
+        video.play().catch(() => showControlsPrompt());
+        hideLoader();
+      }
+
+      syncToCloud();
+    }
+
+    function showControlsPrompt() {
+      playerStage.classList.add('paused');
+      hideLoader();
+    }
+
+    function initPlayerControls() {
+      // Play / Pause toggle
+      function togglePlay() {
+        if (video.paused) {
+          video.play();
+          playerStage.classList.remove('paused');
+          bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+        } else {
+          video.pause();
+          playerStage.classList.add('paused');
+          bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+        }
+      }
+
+      bottomPlayBtn.addEventListener('click', togglePlay);
+      centerPlayBtn.addEventListener('click', togglePlay);
+      video.addEventListener('play', () => {
+        playerStage.classList.remove('paused');
+        bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      });
+      video.addEventListener('pause', () => {
+        playerStage.classList.add('paused');
+        bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+      });
+
+      // PICTURE-IN-PICTURE (PiP)
+      if ('pictureInPictureEnabled' in document) {
+        pipBtn.addEventListener('click', async () => {
+          try {
+            if (document.pictureInPictureElement) {
+              await document.exitPictureInPicture();
+              showToast('PiP cerrado');
+            } else if (video.readyState >= 1) {
+              await video.requestPictureInPicture();
+              showToast('Modo Picture-in-Picture activado');
+            } else {
+              showToast('Inicia un canal primero');
+            }
+          } catch (err) {
+            showToast('PiP no disponible: ' + err.message);
+          }
+        });
+      } else {
+        pipBtn.style.display = 'none';
+      }
+
+      // FULLSCREEN
+      fullscreenBtn.addEventListener('click', () => {
+        const target = document.getElementById('player-stage') || video;
+        if (!document.fullscreenElement) {
+          if (target.requestFullscreen) target.requestFullscreen();
+          else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iOS Safari
+        } else {
+          document.exitFullscreen();
+        }
+      });
+
+      // ASPECT RATIO TOGGLE (Contain / Cover / Fill)
+      aspectRatioBtn.addEventListener('click', () => {
+        const modes = ['fit-contain', 'fit-cover', 'fit-fill'];
+        const currentIdx = modes.indexOf(state.aspectMode);
+        const nextMode = modes[(currentIdx + 1) % modes.length];
+        state.aspectMode = nextMode;
+
+        video.className = nextMode;
+        const labels = { 'fit-contain': 'Ajustar (16:9)', 'fit-cover': 'Rellenar Pantalla', 'fit-fill': 'Estirar' };
+        showToast(`Formato: ${labels[nextMode]}`);
+      });
+
+      // VOLUME & MUTE
+      volumeSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        video.volume = val;
+        video.muted = val === 0;
+        updateVolumeIcon();
+      });
+
+      muteBtn.addEventListener('click', () => {
+        video.muted = !video.muted;
+        updateVolumeIcon();
+        showToast(video.muted ? 'Silenciado' : 'Sonido activado');
+      });
+
+      function updateVolumeIcon() {
+        const icon = document.getElementById('volume-icon');
+        if (video.muted || video.volume === 0) {
+          icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
+        } else {
+          icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
+        }
+      }
+
+      // RELOAD STREAM
+      reloadStreamBtn.addEventListener('click', () => {
+        if (state.activeChannel) {
+          playChannel(state.activeChannel);
+          showToast('Reconectando canal...');
+        }
+      });
+
+      // Keyboard Shortcuts
+      window.addEventListener('keydown', (e) => {
+        if (document.activeElement.tagName === 'INPUT') return;
+
+        if (e.key === ' ' || e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          togglePlay();
+        } else if (e.key.toLowerCase() === 'f') {
+          fullscreenBtn.click();
+        } else if (e.key.toLowerCase() === 'p') {
+          pipBtn.click();
+        } else if (e.key.toLowerCase() === 'm') {
+          muteBtn.click();
+        }
+      });
+    }
+
+    /* ==========================================================================
+       7. PLAYLIST MANAGER MODAL & SAVED LISTS
+       ========================================================================== */
+    window.openPlaylistsModal = function() {
+      document.getElementById('playlists-modal').classList.add('active');
+    };
+    window.closePlaylistsModal = function() {
+      document.getElementById('playlists-modal').classList.remove('active');
+    };
+
+    document.getElementById('open-playlists-btn').addEventListener('click', openPlaylistsModal);
+
+    window.switchPlaylistTab = function(tab) {
+      const urlBtn = document.getElementById('tab-url-btn');
+      const fileBtn = document.getElementById('tab-file-btn');
+      const urlForm = document.getElementById('playlist-url-form');
+      const fileForm = document.getElementById('playlist-file-form');
+
+      if (tab === 'url') {
+        urlBtn.classList.add('active');
+        fileBtn.classList.remove('active');
+        urlForm.style.display = 'block';
+        fileForm.style.display = 'none';
+      } else {
+        urlBtn.classList.remove('active');
+        fileBtn.classList.add('active');
+        urlForm.style.display = 'none';
+        fileForm.style.display = 'block';
+      }
+    };
+
+    function renderSavedPlaylistsModal() {
+      const listEl = document.getElementById('saved-playlists-list');
+      if (!listEl) return;
+
+      if (!state.playlists.length) {
+        listEl.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">No hay listas guardadas aún.</span>';
+        return;
+      }
+
+      listEl.innerHTML = state.playlists.map(pl => `
+        <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.04); padding:0.5rem 0.75rem; border-radius:8px; border:1px solid var(--border-color);">
+          <div style="cursor:pointer; flex:1;" onclick="activatePlaylist('${pl.id}')">
+            <strong style="font-size:0.88rem; color:${pl.id === state.activePlaylistId ? 'var(--accent-cyan)' : 'inherit'};">${escapeHtml(pl.name)}</strong>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${pl.channelsCount || pl.channels?.length || 0} canales</div>
+          </div>
+          <div style="display:flex; gap:0.4rem;">
+            <button class="btn btn-outline btn-sm" onclick="activatePlaylist('${pl.id}')">Cargar</button>
+            <button class="btn-icon" style="width:30px; height:30px; color:var(--accent-red);" onclick="deletePlaylist('${pl.id}')" title="Eliminar lista">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.activatePlaylist = function(id) {
+      const pl = state.playlists.find(p => p.id === id);
+      if (!pl) return;
+
+      state.activePlaylistId = id;
+      state.channels = pl.channels || [];
+      buildGroups();
+      filterAndRenderChannels();
+      renderSavedPlaylistsModal();
+      closePlaylistsModal();
+
+      if (state.channels[0]) playChannel(state.channels[0]);
+      showToast(`Lista activa: ${pl.name}`);
+      syncToCloud();
+    };
+
+    window.deletePlaylist = async function(id) {
+      if (!confirm('¿Seguro que deseas eliminar esta lista?')) return;
+      state.playlists = state.playlists.filter(p => p.id !== id);
+
+      if (state.activePlaylistId === id) {
+        state.activePlaylistId = state.playlists[0]?.id || null;
+        state.channels = state.playlists[0]?.channels || [];
+        buildGroups();
+        filterAndRenderChannels();
+      }
+
+      renderSavedPlaylistsModal();
+      await syncToCloud();
+      showToast('Lista eliminada.');
+    };
+
+    function renderEmptyChannels() {
+      channelsListEl.innerHTML = `
+        <div class="empty-channels">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+          <span style="font-weight:600;">No hay canales en tu lista</span>
+          <button class="btn btn-primary btn-sm" onclick="openPlaylistsModal()">Cargar Lista M3U</button>
+        </div>
+      `;
+    }
+
+    /* ==========================================================================
+       8. UTILITY HELPERS (Toast, Loader, Escape)
+       ========================================================================== */
+    let toastTimer;
+    function showToast(msg) {
+      const toast = document.getElementById('tv-toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function showLoader(text) {
+      loaderText.textContent = text || 'Cargando...';
+      loader.style.display = 'flex';
+    }
+    function hideLoader() {
+      loader.style.display = 'none';
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+  </script>
+</body>
+</html>
