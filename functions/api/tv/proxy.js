@@ -118,7 +118,7 @@ export async function onRequestGet(context) {
       } else if (status >= 500) {
         friendlyMessage = `El servidor de tu proveedor IPTV tiene problemas internos (Error ${status}). Intenta más tarde.`;
       }
-      return jsonError(friendlyMessage, 502);
+      return jsonError(friendlyMessage, 400);
     }
 
     // If a network/timeout error occurred
@@ -127,13 +127,13 @@ export async function onRequestGet(context) {
       const msg = isTimeout
         ? 'El servidor de la lista IPTV tardó más de 20 segundos en responder (Tiempo de espera agotado).'
         : `No se pudo conectar con el servidor de la lista: ${lastError.message}`;
-      return jsonError(msg, 504);
+      return jsonError(msg, 400);
     }
 
-    return jsonError('No se pudo obtener la lista M3U.', 500);
+    return jsonError('No se pudo obtener la lista M3U.', 400);
 
   } catch (err) {
-    return jsonError('Error interno en el proxy: ' + err.message, 500);
+    return jsonError('Error interno en el proxy: ' + err.message, 400);
   }
 }
 
