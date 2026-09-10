@@ -55,11 +55,15 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    html, body {
+      height: 100%;
+      min-height: 100%;
+    }
+
     body {
       font-family: var(--font-main);
       background-color: var(--bg-primary);
       color: var(--text-primary);
-      min-height: 100vh;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -195,8 +199,9 @@
     /* Main TV Layout (Split: Player & Channels Sidebar) */
     .tv-container {
       display: flex;
-      flex: 1;
+      flex: 1 1 auto;
       height: calc(100vh - 58px);
+      max-height: calc(100vh - 58px);
       overflow: hidden;
       position: relative;
     }
@@ -544,8 +549,8 @@
       border-left: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
-      height: 100%;
-      max-height: 100%;
+      height: calc(100vh - 58px);
+      max-height: calc(100vh - 58px);
       min-height: 0;
       overflow: hidden;
       z-index: 40;
@@ -624,7 +629,6 @@
     .channels-list {
       flex: 1 1 0;
       min-height: 0;
-      max-height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 0.5rem;
@@ -892,6 +896,11 @@
 
     /* Responsive Mobile Adjustments */
     @media (max-width: 900px) {
+      html, body {
+        height: auto;
+        min-height: 100%;
+      }
+
       body {
         overflow-y: auto;
       }
@@ -900,6 +909,7 @@
         flex-direction: column;
         height: auto;
         min-height: calc(100vh - 58px);
+        max-height: none;
       }
 
       .player-stage {
@@ -918,10 +928,13 @@
         border-top: 1px solid var(--border-color);
         flex: 1;
         height: auto;
+        max-height: none;
       }
 
       .channels-list {
+        flex: 1 1 auto;
         max-height: 60vh;
+        min-height: 200px;
       }
 
       .player-overlay {
