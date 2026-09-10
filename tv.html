@@ -1118,6 +1118,308 @@
       .volume-slider { display: none; }
     }
 
+    /* ==========================================================================
+       EPG, ZAPPING, MULTI-VIEW, RECENT & QUALITY STYLES
+       ========================================================================== */
+    /* Zapping OSD Overlay */
+    .zapping-osd {
+      position: absolute;
+      top: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.3);
+      border-radius: 9999px;
+      padding: 0.4rem 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      z-index: 45;
+      pointer-events: none;
+      animation: zappingPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes zappingPop {
+      from { opacity: 0; transform: translate(-50%, -10px) scale(0.95); }
+      to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    }
+
+    .zapping-num {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.15);
+      padding: 0.12rem 0.45rem;
+      border-radius: 6px;
+    }
+
+    .zapping-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    /* EPG Program Info Bar */
+    .player-epg-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.35rem 0.75rem;
+      max-width: 380px;
+      min-width: 220px;
+      pointer-events: auto;
+      transition: all 0.2s ease;
+    }
+
+    .player-epg-bar:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .epg-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .epg-live-tag {
+      font-size: 0.62rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.15);
+      padding: 0.08rem 0.35rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .epg-prog-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .epg-prog-time {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .epg-progress-track {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .epg-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-emerald));
+      transition: width 1s linear;
+    }
+
+    .epg-next-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.68rem;
+      color: var(--text-secondary);
+    }
+
+    .epg-next-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .epg-next-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Top Bar Right Group */
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Sleep Timer Countdown Badge */
+    .sleep-timer-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #c084fc;
+      background: rgba(192, 132, 252, 0.15);
+      border: 1px solid rgba(192, 132, 252, 0.35);
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      animation: pulseTimer 2.5s infinite ease-in-out;
+      cursor: pointer;
+    }
+
+    @keyframes pulseTimer {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(0.98); }
+    }
+
+    /* Multi-View Grid & Slots */
+    .video-wrapper.multiview-active {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 6px;
+      background: #050811;
+    }
+
+    .multiview-slot {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+
+    .multiview-slot.focus-active {
+      border-color: var(--accent-cyan) !important;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+    }
+
+    .multiview-slot video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .multiview-slot-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 0.45rem 0.65rem;
+      background: linear-gradient(to bottom, rgba(7, 11, 20, 0.85) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 15;
+      opacity: 0.85;
+      transition: opacity 0.2s ease;
+    }
+
+    .multiview-slot:hover .multiview-slot-overlay {
+      opacity: 1;
+    }
+
+    .multiview-info {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .multiview-label {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.15);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .multiview-channel-name {
+      color: #fff;
+      font-size: 0.82rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    .multiview-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .multiview-audio-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+
+    .multiview-audio-pill.active {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: var(--accent-emerald);
+    }
+
+    .btn-icon.active {
+      color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+
+    @media (max-width: 768px) {
+      .video-wrapper.multiview-active {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 1fr 1fr;
+      }
+      .player-epg-bar {
+        max-width: 200px;
+        min-width: 150px;
+      }
+      .epg-prog-title {
+        max-width: 90px;
+      }
+      .epg-next-row {
+        display: none;
+      }
+    }
+
     @media (max-width: 540px) {
       .brand-tag { display: none; }
       .btn-pwa-install span, #open-playlists-btn span { display: none; }
@@ -1198,7 +1500,48 @@
     <!-- Player Stage -->
     <section class="player-stage" id="player-stage">
       <div class="video-wrapper" id="video-wrapper">
-        <video id="video-player" playsinline preload="auto"></video>
+        <!-- Main Slot (Pantalla 1) -->
+        <div class="multiview-slot focus-active" id="multiview-slot-1">
+          <video id="video-player" playsinline preload="auto"></video>
+          <div class="multiview-slot-overlay" id="multiview-overlay-1" style="display: none;">
+            <div class="multiview-info">
+              <span class="multiview-label">Pantalla 1</span>
+              <span id="multiview-title-1" class="multiview-channel-name">Canal Principal</span>
+            </div>
+            <div class="multiview-actions">
+              <button class="multiview-audio-pill active" id="slot-1-audio-btn" title="Alternar audio a esta pantalla">
+                <span id="slot-1-audio-icon">🔊</span>
+                <span id="slot-1-audio-text">Audio Activo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Secondary Slot (Pantalla 2 for Multi-View) -->
+        <div class="multiview-slot" id="multiview-slot-2" style="display: none;">
+          <video id="video-player-2" playsinline preload="auto" muted></video>
+          <div class="multiview-slot-overlay" id="multiview-overlay-2">
+            <div class="multiview-info">
+              <span class="multiview-label">Pantalla 2</span>
+              <span id="multiview-title-2" class="multiview-channel-name">Elige un canal</span>
+            </div>
+            <div class="multiview-actions">
+              <button class="multiview-audio-pill" id="slot-2-audio-btn" title="Alternar audio a esta pantalla">
+                <span id="slot-2-audio-icon">🔈</span>
+                <span id="slot-2-audio-text">Silenciado</span>
+              </button>
+              <button class="btn-icon btn-sm" id="multiview-close-btn" title="Cerrar Multi-View" style="width:28px; height:28px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zapping OSD Overlay Badge -->
+        <div id="zapping-osd" class="zapping-osd" style="display: none;">
+          <span class="zapping-num" id="zapping-osd-num">📺 #1</span>
+          <span class="zapping-name" id="zapping-osd-name">ESPN</span>
+        </div>
 
         <!-- Loading spinner -->
         <div class="player-loader" id="player-loader" style="display: none;">
@@ -1211,10 +1554,9 @@
           <svg id="center-play-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         </button>
 
-
         <!-- Player Controls Overlay -->
         <div class="player-overlay" id="player-overlay">
-          <!-- Top Overlay: Current Channel & Live Status -->
+          <!-- Top Overlay: Current Channel & EPG & Live Status -->
           <div class="player-top-bar">
             <div class="current-channel-badge" id="player-channel-info">
               <img id="player-channel-logo" class="channel-logo-img" src="" alt="Logo" style="display: none;">
@@ -1222,9 +1564,33 @@
               <span id="player-channel-group" class="current-channel-group">General</span>
             </div>
 
-            <div class="live-status-pill">
-              <span class="pulse-dot"></span>
-              <span id="player-live-text">En Vivo</span>
+            <!-- EPG Program Info Bar -->
+            <div class="player-epg-bar" id="player-epg-bar" style="display: none;">
+              <div class="epg-title-row">
+                <span class="epg-live-tag">AHORA</span>
+                <span class="epg-prog-title" id="epg-prog-title">Cargando guía...</span>
+                <span class="epg-prog-time" id="epg-prog-time">--:--</span>
+              </div>
+              <div class="epg-progress-track">
+                <div class="epg-progress-fill" id="epg-progress-fill"></div>
+              </div>
+              <div class="epg-next-row" id="epg-next-row" style="display: none;">
+                <span class="epg-next-tag">LUEGO:</span>
+                <span class="epg-next-title" id="epg-next-title"></span>
+              </div>
+            </div>
+
+            <div class="top-bar-right">
+              <!-- Sleep timer badge -->
+              <div id="sleep-timer-badge" class="sleep-timer-badge" style="display: none;" title="Temporizador de apagado activo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                <span id="sleep-timer-countdown">30:00</span>
+              </div>
+
+              <div class="live-status-pill">
+                <span class="pulse-dot"></span>
+                <span id="player-live-text">En Vivo</span>
+              </div>
             </div>
           </div>
 
@@ -1234,6 +1600,11 @@
               <!-- Play / Pause -->
               <button class="btn-icon" id="bottom-play-btn" title="Reproducir / Pausar (Espacio)">
                 <svg id="bottom-play-svg" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </button>
+
+              <!-- Recall / Canal Anterior -->
+              <button class="btn-icon" id="recall-btn" title="Canal Anterior / Recall (Q)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
               </button>
 
               <!-- Reconnect / Reload stream -->
@@ -1256,6 +1627,30 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"></rect><path d="M8 10h8M8 14h8"></path></svg>
               </button>
 
+              <!-- Calidad de Video y Pistas de Audio (YouTube-style Popover Menu) -->
+              <div class="buffer-menu-wrapper">
+                <button class="btn-icon" id="quality-audio-btn" title="Calidad de Video y Pista de Audio">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+
+                <div id="quality-popover-menu" class="buffer-popover-menu" style="display: none; width: 260px;">
+                  <div class="buffer-menu-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    <span>Resolución / Calidad</span>
+                  </div>
+                  <div class="buffer-menu-options" id="quality-menu-options">
+                    <!-- Dynamic Quality Options -->
+                  </div>
+                  <div class="buffer-menu-header" style="margin-top: 0.35rem;" id="audio-tracks-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    <span>Pistas de Audio</span>
+                  </div>
+                  <div class="buffer-menu-options" id="audio-tracks-options">
+                    <!-- Dynamic Audio Tracks -->
+                  </div>
+                </div>
+              </div>
+
               <!-- Buffer Stability Mode (YouTube-style Popover Menu) -->
               <div class="buffer-menu-wrapper">
                 <button class="btn-icon" id="buffer-mode-btn" title="Estabilidad de Búfer">
@@ -1272,6 +1667,33 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Multi-View (50/50 Split Screen) -->
+              <button class="btn-icon" id="multiview-btn" title="Modo Multi-View (Dividir pantalla 2 canales)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+              </button>
+
+              <!-- Sleep Timer Popover -->
+              <div class="buffer-menu-wrapper">
+                <button class="btn-icon" id="sleep-timer-btn" title="Temporizador de Apagado (Sleep)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+
+                <div id="sleep-popover-menu" class="buffer-popover-menu" style="display: none; width: 220px;">
+                  <div class="buffer-menu-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Temporizador de Apagado</span>
+                  </div>
+                  <div class="buffer-menu-options" id="sleep-menu-options">
+                    <!-- Dynamic Sleep Options -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Screenshot 📸 -->
+              <button class="btn-icon" id="screenshot-btn" title="Captura de Pantalla Instantánea (📸 / S)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              </button>
 
               <!-- Abrir en VLC (.m3u) -->
               <button class="btn-icon" id="open-vlc-btn" title="Abrir canal en VLC / Reproductor Externo (.m3u)">
@@ -1339,10 +1761,11 @@
         </button>
       </div>
 
-      <!-- Tab selector: Por URL o Por Archivo -->
+      <!-- Tab selector: Por URL, Por Archivo o Guía EPG -->
       <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;">
-        <button id="tab-url-btn" class="btn btn-outline active" style="flex: 1;" onclick="switchPlaylistTab('url')">Por Enlace (URL)</button>
-        <button id="tab-file-btn" class="btn btn-outline" style="flex: 1;" onclick="switchPlaylistTab('file')">Subir Archivo (.m3u)</button>
+        <button id="tab-url-btn" class="btn btn-outline active" style="flex: 1;" onclick="switchPlaylistTab('url')">Por Enlace</button>
+        <button id="tab-file-btn" class="btn btn-outline" style="flex: 1;" onclick="switchPlaylistTab('file')">Subir Archivo</button>
+        <button id="tab-epg-btn" class="btn btn-outline" style="flex: 1;" onclick="switchPlaylistTab('epg')">Guía EPG 📺</button>
       </div>
 
       <!-- Form 1: Por URL -->
@@ -1378,6 +1801,30 @@
         <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" onclick="loadPlaylistFromFile()">
           <span>Procesar Archivo</span>
         </button>
+      </div>
+
+      <!-- Form 3: Guía EPG (XMLTV) -->
+      <div id="playlist-epg-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="epg-custom-url">URL de la Guía EPG (XMLTV .xml)</label>
+          <input type="text" inputmode="url" id="epg-custom-url" class="form-input" placeholder="https://... /guia.xml" autocomplete="off" spellcheck="false">
+          <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Soporta archivos XMLTV públicos o enlaces provistos por tu servicio IPTV.</span>
+        </div>
+
+        <div style="margin-top: 0.75rem;">
+          <label class="form-label" style="margin-bottom: 0.4rem;">Presets Recomendados (1 Clic)</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="setEpgPreset('https://iptv-org.github.io/epg/guides/co.xml')">🇨🇴 Colombia</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="setEpgPreset('https://iptv-org.github.io/epg/guides/mx.xml')">🇲🇽 México</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="setEpgPreset('https://iptv-org.github.io/epg/guides/es.xml')">🇪🇸 España</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="setEpgPreset('https://iptv-org.github.io/epg/guides/us.xml')">🇺🇸 USA / Latam</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+          <button type="button" class="btn btn-outline" style="flex: 1;" onclick="clearEpg()">Desactivar</button>
+          <button type="button" class="btn btn-primary" style="flex: 2;" onclick="saveEpgSettings()">Guardar y Actualizar</button>
+        </div>
       </div>
 
       <!-- Saved playlists in Cloudflare KV -->
@@ -1490,6 +1937,8 @@
       channels: [],
       filteredChannels: [],
       activeChannel: null,
+      previousChannel: null,
+      recentChannels: JSON.parse(localStorage.getItem('at_tv_recents') || '[]'),
       favorites: new Set(),
       activeGroup: 'all',
       searchQuery: '',
@@ -1498,7 +1947,22 @@
       hls: null,
       deferredPrompt: null,
       useWebAudio: false,
-      isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+      isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent),
+      epgUrl: localStorage.getItem('at_tv_epg_url') || '',
+      epgData: null,
+      isMultiView: false,
+      multiviewFocus: 1,
+      channel2: null,
+      hls2: null,
+      activeAudioSlot: 1,
+      currentQuality: -1,
+      availableLevels: [],
+      currentAudioTrack: 0,
+      availableAudioTracks: [],
+      sleepTimerMinutes: 0,
+      sleepTimerEndTime: null,
+      sleepTimerInterval: null,
+      zappingTimeout: null
     };
 
     // Channel & Playlist Aggregation Helpers
@@ -1807,10 +2271,26 @@
           state.activePlaylistId = json.data.activePlaylistId || localStorage.getItem('at_tv_active_pl') || 'all';
           state.favorites = new Set(json.data.favorites || []);
 
+          if (Array.isArray(json.data.recentChannels)) {
+            state.recentChannels = json.data.recentChannels;
+            localStorage.setItem('at_tv_recents', JSON.stringify(state.recentChannels));
+          }
+
+          if (typeof json.data.epgUrl === 'string' && json.data.epgUrl) {
+            state.epgUrl = json.data.epgUrl;
+            localStorage.setItem('at_tv_epg_url', state.epgUrl);
+            const epgInput = document.getElementById('epg-custom-url');
+            if (epgInput) epgInput.value = state.epgUrl;
+          }
+
           updatePlaylistSelector();
           renderSavedPlaylistsModal();
-
           updateChannelsState();
+
+          // Load EPG if configured
+          if (state.epgUrl) {
+            loadEpgData(state.epgUrl);
+          }
 
           if (state.channels.length > 0) {
             buildGroups();
@@ -1842,10 +2322,12 @@
           playlists: state.playlists,
           activePlaylistId: state.activePlaylistId,
           favorites: Array.from(state.favorites),
+          recentChannels: (state.recentChannels || []).slice(0, 15),
           lastChannel: state.activeChannel ? {
             name: state.activeChannel.name,
             url: state.activeChannel.url
-          } : null
+          } : null,
+          epgUrl: state.epgUrl || null
         };
 
         await fetch('/api/tv/sync', {
@@ -2066,6 +2548,16 @@
       favBtn.onclick = () => selectGroup('fav');
       groupsBarEl.appendChild(favBtn);
 
+      // Special pill: 🕒 Recientes
+      const recents = getRecentChannels();
+      if (recents.length > 0) {
+        const recBtn = document.createElement('button');
+        recBtn.className = 'group-chip' + (state.activeGroup === 'recents' ? ' active' : '');
+        recBtn.textContent = `🕒 Recientes (${recents.length})`;
+        recBtn.onclick = () => selectGroup('recents');
+        groupsBarEl.appendChild(recBtn);
+      }
+
       // Special pill: Todos
       const allBtn = document.createElement('button');
       allBtn.className = 'group-chip' + (state.activeGroup === 'all' ? ' active' : '');
@@ -2101,6 +2593,8 @@
       if (state.activeGroup === 'fav') {
         // GLOBAL favorites from ALL playlists!
         list = getAllChannels().filter(ch => state.favorites.has(ch.url || ch.id));
+      } else if (state.activeGroup === 'recents') {
+        list = getRecentChannels();
       } else {
         list = state.channels;
         if (state.activeGroup !== 'all') {
@@ -2134,7 +2628,7 @@
       }
 
       const fragment = document.createDocumentFragment();
-      const showPlaylistBadge = (state.activePlaylistId === 'all' || state.activeGroup === 'fav');
+      const showPlaylistBadge = (state.activePlaylistId === 'all' || state.activeGroup === 'fav' || state.activeGroup === 'recents');
 
       state.filteredChannels.forEach(channel => {
         const item = document.createElement('div');
@@ -2166,7 +2660,11 @@
         // Click to play channel
         item.addEventListener('click', (e) => {
           if (e.target.closest('.channel-fav-btn')) return;
-          playChannel(channel);
+          if (state.isMultiView && state.multiviewFocus === 2) {
+            playMultiViewChannel(channel);
+          } else {
+            playChannel(channel);
+          }
         });
 
         // Toggle Favorite
@@ -2311,9 +2809,705 @@
       if (menu) menu.style.display = 'none';
     };
 
+    /* ==========================================================================
+       6B. QUALITY & AUDIO TRACK SELECTOR (HLS.js Levels & Audio Tracks)
+       ========================================================================== */
+    function renderQualityAudioMenu() {
+      const qOptions = document.getElementById('quality-menu-options');
+      const aOptions = document.getElementById('audio-tracks-options');
+      const aHeader = document.getElementById('audio-tracks-header');
+      if (!qOptions) return;
+
+      // Video Quality Options
+      let qHtml = `
+        <button type="button" class="buffer-menu-item ${state.currentQuality === -1 ? 'active' : ''}" onclick="selectQualityLevel(-1)">
+          <div class="buffer-item-left">
+            <div class="buffer-item-title">
+              <span>Auto</span>
+              <span class="buffer-item-badge">Recomendado</span>
+            </div>
+            <span class="buffer-item-desc">Ajuste dinámico según velocidad</span>
+          </div>
+          ${state.currentQuality === -1 ? '<span class="buffer-item-check">✓</span>' : ''}
+        </button>
+      `;
+
+      if (state.availableLevels && state.availableLevels.length > 0) {
+        state.availableLevels.forEach((lvl, idx) => {
+          const height = lvl.height || (lvl.attrs && lvl.attrs.RESOLUTION ? lvl.attrs.RESOLUTION.split('x')[1] : null);
+          const bitrate = lvl.bitrate ? `~${(lvl.bitrate / 1000000).toFixed(1)} Mbps` : '';
+          const label = height ? `${height}p` : `Nivel ${idx + 1}`;
+          let badge = '';
+          if (height >= 1080) badge = 'Full HD';
+          else if (height >= 720) badge = 'HD';
+          else if (height) badge = 'SD';
+
+          const isActive = state.currentQuality === idx;
+          qHtml += `
+            <button type="button" class="buffer-menu-item ${isActive ? 'active' : ''}" onclick="selectQualityLevel(${idx})">
+              <div class="buffer-item-left">
+                <div class="buffer-item-title">
+                  <span>${label}</span>
+                  ${badge ? `<span class="buffer-item-badge">${badge}</span>` : ''}
+                </div>
+                ${bitrate ? `<span class="buffer-item-desc">${bitrate}</span>` : ''}
+              </div>
+              ${isActive ? '<span class="buffer-item-check">✓</span>' : ''}
+            </button>
+          `;
+        });
+      }
+      qOptions.innerHTML = qHtml;
+
+      // Audio Tracks Options
+      if (aOptions) {
+        if (state.availableAudioTracks && state.availableAudioTracks.length > 1) {
+          if (aHeader) aHeader.style.display = 'flex';
+          aOptions.style.display = 'flex';
+          let aHtml = '';
+          state.availableAudioTracks.forEach((track, idx) => {
+            const name = track.name || track.lang || `Audio ${idx + 1}`;
+            const isActive = state.currentAudioTrack === idx;
+            aHtml += `
+              <button type="button" class="buffer-menu-item ${isActive ? 'active' : ''}" onclick="selectAudioTrack(${idx})">
+                <div class="buffer-item-left">
+                  <div class="buffer-item-title">
+                    <span>${escapeHtml(name)}</span>
+                    ${track.lang ? `<span class="buffer-item-badge">${escapeHtml(track.lang.toUpperCase())}</span>` : ''}
+                  </div>
+                </div>
+                ${isActive ? '<span class="buffer-item-check">✓</span>' : ''}
+              </button>
+            `;
+          });
+          aOptions.innerHTML = aHtml;
+        } else {
+          if (aHeader) aHeader.style.display = 'none';
+          aOptions.style.display = 'none';
+        }
+      }
+    }
+
+    window.selectQualityLevel = function(lvlIndex) {
+      state.currentQuality = lvlIndex;
+      if (state.hls) {
+        state.hls.currentLevel = lvlIndex;
+      }
+      renderQualityAudioMenu();
+      closeQualityMenu();
+      const label = lvlIndex === -1 ? 'Auto' : (state.availableLevels[lvlIndex]?.height ? `${state.availableLevels[lvlIndex].height}p` : `Nivel ${lvlIndex}`);
+      showToast(`Calidad de video: ${label}`);
+    };
+
+    window.selectAudioTrack = function(trackIndex) {
+      state.currentAudioTrack = trackIndex;
+      if (state.hls) {
+        state.hls.audioTrack = trackIndex;
+      }
+      renderQualityAudioMenu();
+      closeQualityMenu();
+      const name = state.availableAudioTracks[trackIndex]?.name || `Pista ${trackIndex + 1}`;
+      showToast(`Audio: ${name}`);
+    };
+
+    window.toggleQualityMenu = function(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('quality-popover-menu');
+      if (!menu) return;
+      const isVisible = menu.style.display !== 'none';
+      closeBufferMenu();
+      closeSleepMenu();
+      if (isVisible) {
+        menu.style.display = 'none';
+      } else {
+        renderQualityAudioMenu();
+        menu.style.display = 'flex';
+      }
+    };
+
+    window.closeQualityMenu = function() {
+      const menu = document.getElementById('quality-popover-menu');
+      if (menu) menu.style.display = 'none';
+    };
+
+    /* ==========================================================================
+       6C. SLEEP TIMER (Temporizador de Apagado con Cuenta Regresiva)
+       ========================================================================== */
+    const SLEEP_OPTIONS = [
+      { min: 0, label: 'Desactivado' },
+      { min: 15, label: '15 Minutos' },
+      { min: 30, label: '30 Minutos' },
+      { min: 45, label: '45 Minutos' },
+      { min: 60, label: '1 Hora' },
+      { min: 90, label: '1 Hora 30 Min' }
+    ];
+
+    function renderSleepMenu() {
+      const container = document.getElementById('sleep-menu-options');
+      if (!container) return;
+
+      container.innerHTML = SLEEP_OPTIONS.map(opt => {
+        const isActive = state.sleepTimerMinutes === opt.min;
+        return `
+          <button type="button" class="buffer-menu-item ${isActive ? 'active' : ''}" onclick="setSleepTimer(${opt.min})">
+            <div class="buffer-item-left">
+              <div class="buffer-item-title">
+                <span>${opt.label}</span>
+              </div>
+            </div>
+            ${isActive ? '<span class="buffer-item-check">✓</span>' : ''}
+          </button>
+        `;
+      }).join('');
+    }
+
+    window.setSleepTimer = function(minutes) {
+      state.sleepTimerMinutes = minutes;
+      clearInterval(state.sleepTimerInterval);
+      const badge = document.getElementById('sleep-timer-badge');
+
+      if (minutes <= 0) {
+        state.sleepTimerEndTime = null;
+        if (badge) badge.style.display = 'none';
+        showToast('Temporizador de apagado desactivado');
+      } else {
+        state.sleepTimerEndTime = Date.now() + minutes * 60 * 1000;
+        if (badge) badge.style.display = 'inline-flex';
+        updateSleepCountdown();
+        state.sleepTimerInterval = setInterval(updateSleepCountdown, 1000);
+        showToast(`🌙 Apagado automático en ${minutes} min`);
+      }
+
+      renderSleepMenu();
+      closeSleepMenu();
+    };
+
+    function updateSleepCountdown() {
+      if (!state.sleepTimerEndTime) return;
+      const remaining = Math.max(0, Math.floor((state.sleepTimerEndTime - Date.now()) / 1000));
+      const cd = document.getElementById('sleep-timer-countdown');
+      const badge = document.getElementById('sleep-timer-badge');
+
+      if (remaining <= 0) {
+        clearInterval(state.sleepTimerInterval);
+        state.sleepTimerMinutes = 0;
+        state.sleepTimerEndTime = null;
+        if (badge) badge.style.display = 'none';
+
+        // Power down player
+        video.pause();
+        if (state.hls2) {
+          const video2 = document.getElementById('video-player-2');
+          if (video2) video2.pause();
+        }
+        showToast('🌙 Temporizador de apagado: Alexis TV en reposo');
+        return;
+      }
+
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      if (cd) cd.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    window.toggleSleepMenu = function(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('sleep-popover-menu');
+      if (!menu) return;
+      const isVisible = menu.style.display !== 'none';
+      closeBufferMenu();
+      closeQualityMenu();
+      if (isVisible) {
+        menu.style.display = 'none';
+      } else {
+        renderSleepMenu();
+        menu.style.display = 'flex';
+      }
+    };
+
+    window.closeSleepMenu = function() {
+      const menu = document.getElementById('sleep-popover-menu');
+      if (menu) menu.style.display = 'none';
+    };
+
+    /* ==========================================================================
+       6D. MULTI-VIEW (Pantalla Dividida 50/50 para 2 Canales Simultáneos)
+       ========================================================================== */
+    function toggleMultiView() {
+      if (state.isMultiView) {
+        closeMultiView();
+      } else {
+        openMultiView();
+      }
+    }
+
+    function openMultiView() {
+      state.isMultiView = true;
+      const videoWrapper = document.getElementById('video-wrapper');
+      const mvBtn = document.getElementById('multiview-btn');
+      const slot2 = document.getElementById('multiview-slot-2');
+      const overlay1 = document.getElementById('multiview-overlay-1');
+
+      if (videoWrapper) videoWrapper.classList.add('multiview-active');
+      if (mvBtn) mvBtn.classList.add('active');
+      if (slot2) slot2.style.display = 'flex';
+      if (overlay1) overlay1.style.display = 'flex';
+
+      // Pick a second channel if not already playing
+      if (!state.channel2) {
+        const available = state.channels.filter(c => !state.activeChannel || c.url !== state.activeChannel.url);
+        if (available.length > 0) {
+          playMultiViewChannel(available[0]);
+        }
+      }
+      setMultiViewFocus(2);
+      showToast('Modo Multi-View: Selecciona un canal para la Pantalla 2');
+    }
+
+    function closeMultiView() {
+      state.isMultiView = false;
+      const videoWrapper = document.getElementById('video-wrapper');
+      const mvBtn = document.getElementById('multiview-btn');
+      const slot2 = document.getElementById('multiview-slot-2');
+      const overlay1 = document.getElementById('multiview-overlay-1');
+      const video2 = document.getElementById('video-player-2');
+
+      if (videoWrapper) videoWrapper.classList.remove('multiview-active');
+      if (mvBtn) mvBtn.classList.remove('active');
+      if (slot2) slot2.style.display = 'none';
+      if (overlay1) overlay1.style.display = 'none';
+
+      if (state.hls2) {
+        state.hls2.destroy();
+        state.hls2 = null;
+      }
+      if (video2) {
+        video2.pause();
+        video2.src = '';
+      }
+
+      setMultiViewAudio(1);
+      setMultiViewFocus(1);
+      showToast('Multi-View cerrado: Modo normal');
+    }
+
+    function setMultiViewFocus(slotNumber) {
+      state.multiviewFocus = slotNumber;
+      const slot1El = document.getElementById('multiview-slot-1');
+      const slot2El = document.getElementById('multiview-slot-2');
+      if (slot1El && slot2El) {
+        slot1El.classList.toggle('focus-active', slotNumber === 1);
+        slot2El.classList.toggle('focus-active', slotNumber === 2);
+      }
+    }
+
+    function setMultiViewAudio(slotNumber) {
+      state.activeAudioSlot = slotNumber;
+      const video1 = document.getElementById('video-player');
+      const video2 = document.getElementById('video-player-2');
+      const btn1 = document.getElementById('slot-1-audio-btn');
+      const btn2 = document.getElementById('slot-2-audio-btn');
+      const txt1 = document.getElementById('slot-1-audio-text');
+      const txt2 = document.getElementById('slot-2-audio-text');
+      const ic1 = document.getElementById('slot-1-audio-icon');
+      const ic2 = document.getElementById('slot-2-audio-icon');
+
+      if (slotNumber === 1) {
+        if (video1) video1.muted = false;
+        if (video2) video2.muted = true;
+        if (btn1) btn1.classList.add('active');
+        if (btn2) btn2.classList.remove('active');
+        if (txt1) txt1.textContent = 'Audio Activo';
+        if (txt2) txt2.textContent = 'Silenciado';
+        if (ic1) ic1.textContent = '🔊';
+        if (ic2) ic2.textContent = '🔈';
+      } else {
+        if (video1) video1.muted = true;
+        if (video2) video2.muted = false;
+        if (btn1) btn1.classList.remove('active');
+        if (btn2) btn2.classList.add('active');
+        if (txt1) txt1.textContent = 'Silenciado';
+        if (txt2) txt2.textContent = 'Audio Activo';
+        if (ic1) ic1.textContent = '🔈';
+        if (ic2) ic2.textContent = '🔊';
+      }
+    }
+
+    function playMultiViewChannel(channel) {
+      if (!channel || !channel.url) return;
+      state.channel2 = channel;
+      const video2 = document.getElementById('video-player-2');
+      const title2 = document.getElementById('multiview-title-2');
+      if (title2) title2.textContent = channel.name;
+
+      let streamUrl = channel.url.trim();
+      if (location.protocol === 'https:' && streamUrl.startsWith('http://')) {
+        streamUrl = `/api/tv/proxy?url=${encodeURIComponent(streamUrl)}`;
+      }
+
+      if (state.hls2) {
+        state.hls2.destroy();
+        state.hls2 = null;
+      }
+
+      if (window.Hls && Hls.isSupported()) {
+        const bCfg = BUFFER_CONFIGS[state.bufferMode] || BUFFER_CONFIGS.stable;
+        const hls2 = new Hls({
+          enableWorker: true,
+          liveSyncDurationCount: bCfg.liveSyncDurationCount,
+          maxBufferLength: 20,
+          maxBufferSize: 30 * 1024 * 1024
+        });
+        hls2.loadSource(streamUrl);
+        hls2.attachMedia(video2);
+        hls2.on(Hls.Events.MANIFEST_PARSED, () => {
+          video2.muted = (state.activeAudioSlot !== 2);
+          video2.play().catch(e => console.warn('Autoplay slot 2:', e));
+        });
+        state.hls2 = hls2;
+      } else {
+        video2.src = streamUrl;
+        video2.muted = (state.activeAudioSlot !== 2);
+        video2.play().catch(e => console.warn('Autoplay slot 2:', e));
+      }
+      showToast(`Pantalla 2: ${channel.name}`);
+    }
+
+    /* ==========================================================================
+       6E. ZAPPING, RECALL & CANALES RECIENTES
+       ========================================================================== */
+    function zapChannel(direction) {
+      const list = (state.filteredChannels && state.filteredChannels.length > 0) ? state.filteredChannels : state.channels;
+      if (!list || list.length === 0) return;
+
+      const curIdx = state.activeChannel ? list.findIndex(c => c.url === state.activeChannel.url) : -1;
+      let nextIdx = 0;
+      if (curIdx !== -1) {
+        if (direction === 'next') {
+          nextIdx = (curIdx + 1) % list.length;
+        } else {
+          nextIdx = (curIdx - 1 + list.length) % list.length;
+        }
+      }
+      const targetCh = list[nextIdx];
+      if (targetCh) {
+        showZappingOsd(nextIdx + 1, targetCh.name);
+        playChannel(targetCh);
+      }
+    }
+
+    function showZappingOsd(channelNum, channelName) {
+      const osd = document.getElementById('zapping-osd');
+      const numEl = document.getElementById('zapping-osd-num');
+      const nameEl = document.getElementById('zapping-osd-name');
+      if (!osd || !numEl || !nameEl) return;
+
+      numEl.textContent = `📺 #${channelNum}`;
+      nameEl.textContent = channelName;
+      osd.style.display = 'flex';
+
+      clearTimeout(state.zappingTimeout);
+      state.zappingTimeout = setTimeout(() => {
+        osd.style.display = 'none';
+      }, 2000);
+    }
+
+    function playPreviousChannel() {
+      if (!state.previousChannel) {
+        const recents = getRecentChannels();
+        if (recents.length > 1 && state.activeChannel && recents[0].url === state.activeChannel.url) {
+          state.previousChannel = recents[1];
+        } else if (recents.length > 0 && (!state.activeChannel || recents[0].url !== state.activeChannel.url)) {
+          state.previousChannel = recents[0];
+        }
+      }
+
+      if (state.previousChannel && (!state.activeChannel || state.previousChannel.url !== state.activeChannel.url)) {
+        const target = state.previousChannel;
+        showToast(`⏮️ Canal anterior: ${target.name}`);
+        playChannel(target);
+      } else {
+        showToast('No hay canal anterior registrado');
+      }
+    }
+
+    function getRecentChannels() {
+      return state.recentChannels || [];
+    }
+
+    function addToRecentChannels(channel) {
+      if (!channel || !channel.url) return;
+      let recents = getRecentChannels().filter(c => c.url !== channel.url);
+      recents.unshift({
+        id: channel.id || channel.url,
+        name: channel.name,
+        url: channel.url,
+        logo: channel.logo || '',
+        group: channel.group || 'General',
+        playlistName: channel.playlistName || ''
+      });
+      if (recents.length > 12) recents = recents.slice(0, 12);
+      state.recentChannels = recents;
+      localStorage.setItem('at_tv_recents', JSON.stringify(recents));
+      buildGroups();
+    }
+
+    /* ==========================================================================
+       6F. INSTANT SCREENSHOT (Captura de pantalla HD a PNG)
+       ========================================================================== */
+    function takeScreenshot() {
+      if (!video || video.readyState < 2) {
+        showToast('Espera a que el video esté reproduciendo');
+        return;
+      }
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 1280;
+        canvas.height = video.videoHeight || 720;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Watermark badge
+        const margin = 24;
+        ctx.fillStyle = 'rgba(7, 11, 20, 0.75)';
+        ctx.fillRect(margin, canvas.height - 48, 180, 32);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 14px system-ui, sans-serif';
+        const chName = (state.activeChannel && state.activeChannel.name) ? state.activeChannel.name : 'Alexis TV';
+        ctx.fillText(`Alexis TV • ${chName.substring(0, 14)}`, margin + 12, canvas.height - 27);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            showToast('No se pudo generar la captura');
+            return;
+          }
+          const a = document.createElement('a');
+          const cleanName = (chName || 'Captura').replace(/[^a-zA-Z0-9_-]/g, '_');
+          const dateStr = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+          a.download = `AlexisTV_${cleanName}_${dateStr}.png`;
+          a.href = URL.createObjectURL(blob);
+          a.click();
+          showToast('📸 Captura de pantalla guardada con éxito');
+        }, 'image/png');
+      } catch (err) {
+        console.warn('Error al tomar captura:', err);
+        showToast('No se pudo tomar la captura');
+      }
+    }
+
+    /* ==========================================================================
+       6G. EPG ENGINE (Guía de Programación XMLTV & Fuzzy Matching)
+       ========================================================================== */
+    let epgUpdateTimer = null;
+
+    function cleanChannelName(name) {
+      if (!name) return '';
+      return name.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\b(hd|fhd|4k|sd|hevc|latino|colombia|costa rica|en vivo|live|feed|tv|canal|plus|\+)\b/gi, '')
+        .replace(/[^a-z0-9]/g, '');
+    }
+
+    function parseXmltvTimestamp(ts) {
+      if (!ts) return null;
+      const clean = ts.trim();
+      const year = parseInt(clean.substring(0, 4), 10);
+      const month = parseInt(clean.substring(4, 6), 10) - 1;
+      const day = parseInt(clean.substring(6, 8), 10);
+      const hour = parseInt(clean.substring(8, 10), 10);
+      const min = parseInt(clean.substring(10, 12), 10);
+      const sec = parseInt(clean.substring(12, 14), 10) || 0;
+
+      const tzMatch = clean.match(/([+-])(\d{2})(\d{2})$/);
+      if (tzMatch) {
+        const sign = tzMatch[1] === '+' ? 1 : -1;
+        const tzHours = parseInt(tzMatch[2], 10);
+        const tzMins = parseInt(tzMatch[3], 10);
+        const offsetMs = sign * (tzHours * 60 + tzMins) * 60 * 1000;
+        return new Date(Date.UTC(year, month, day, hour, min, sec) - offsetMs);
+      }
+      return new Date(year, month, day, hour, min, sec);
+    }
+
+    async function loadEpgData(url) {
+      const epgUrl = url || state.epgUrl;
+      if (!epgUrl) return;
+
+      try {
+        console.log('Cargando Guía EPG:', epgUrl);
+        const proxyUrl = `/api/tv/proxy?url=${encodeURIComponent(epgUrl)}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const text = await res.text();
+        parseXmltvData(text);
+        if (state.activeChannel) {
+          updateEpgDisplay(state.activeChannel);
+        }
+      } catch (err) {
+        console.warn('Error cargando EPG:', err);
+      }
+    }
+
+    function parseXmltvData(xmlText) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlText, 'text/xml');
+
+        const chMap = {};
+        const channels = doc.querySelectorAll('channel');
+        channels.forEach(ch => {
+          const id = ch.getAttribute('id');
+          if (!id) return;
+          const dn = ch.querySelector('display-name')?.textContent || id;
+          chMap[id] = cleanChannelName(dn);
+        });
+
+        const programmesByCleanName = {};
+        const progs = doc.querySelectorAll('programme');
+        const now = Date.now();
+        const oneDayAgo = now - 24 * 3600 * 1000;
+        const twoDaysFuture = now + 48 * 3600 * 1000;
+
+        progs.forEach(p => {
+          const chId = p.getAttribute('channel');
+          const start = parseXmltvTimestamp(p.getAttribute('start'));
+          const stop = parseXmltvTimestamp(p.getAttribute('stop'));
+          if (!chId || !start || !stop) return;
+
+          const startMs = start.getTime();
+          if (startMs < oneDayAgo || startMs > twoDaysFuture) return;
+
+          const title = p.querySelector('title')?.textContent || 'Programa';
+          const desc = p.querySelector('desc')?.textContent || '';
+          const progItem = { start, stop, title, desc };
+
+          const cleanId = cleanChannelName(chId);
+          const cleanName = chMap[chId] || cleanId;
+
+          if (!programmesByCleanName[cleanName]) programmesByCleanName[cleanName] = [];
+          programmesByCleanName[cleanName].push(progItem);
+
+          if (cleanId !== cleanName) {
+            if (!programmesByCleanName[cleanId]) programmesByCleanName[cleanId] = [];
+            programmesByCleanName[cleanId].push(progItem);
+          }
+        });
+
+        Object.keys(programmesByCleanName).forEach(k => {
+          programmesByCleanName[k].sort((a, b) => a.start - b.start);
+        });
+
+        state.epgData = programmesByCleanName;
+        console.log(`EPG cargada con éxito: ${Object.keys(programmesByCleanName).length} canales.`);
+      } catch (err) {
+        console.warn('Error parseando XMLTV:', err);
+      }
+    }
+
+    function updateEpgDisplay(channel) {
+      const epgBar = document.getElementById('player-epg-bar');
+      const titleEl = document.getElementById('epg-prog-title');
+      const timeEl = document.getElementById('epg-prog-time');
+      const fillEl = document.getElementById('epg-progress-fill');
+      const nextRow = document.getElementById('epg-next-row');
+      const nextTitle = document.getElementById('epg-next-title');
+
+      if (!epgBar || !titleEl || !timeEl || !fillEl) return;
+      if (!channel) {
+        epgBar.style.display = 'none';
+        return;
+      }
+
+      epgBar.style.display = 'flex';
+      clearInterval(epgUpdateTimer);
+
+      const updateTicker = () => {
+        const now = new Date();
+        const cleanName = cleanChannelName(channel.name);
+        let progs = null;
+
+        if (state.epgData) {
+          if (state.epgData[cleanName]) {
+            progs = state.epgData[cleanName];
+          } else {
+            const key = Object.keys(state.epgData).find(k => k.includes(cleanName) || cleanName.includes(k));
+            if (key) progs = state.epgData[key];
+          }
+        }
+
+        if (progs && progs.length > 0) {
+          const current = progs.find(p => p.start <= now && p.stop > now);
+          const next = progs.find(p => p.start > now);
+
+          if (current) {
+            titleEl.textContent = current.title;
+            const sStr = current.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const eStr = current.stop.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            timeEl.textContent = `${sStr} - ${eStr}`;
+
+            const total = current.stop.getTime() - current.start.getTime();
+            const elapsed = now.getTime() - current.start.getTime();
+            const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+            fillEl.style.width = `${pct}%`;
+
+            if (next && nextTitle && nextRow) {
+              nextRow.style.display = 'flex';
+              const nextTime = next.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              nextTitle.textContent = `${nextTime} • ${next.title}`;
+            } else if (nextRow) {
+              nextRow.style.display = 'none';
+            }
+            return;
+          }
+        }
+
+        titleEl.textContent = `${channel.name} en Directo`;
+        timeEl.textContent = channel.group || 'En Vivo';
+        fillEl.style.width = '100%';
+        if (nextRow) nextRow.style.display = 'none';
+      };
+
+      updateTicker();
+      epgUpdateTimer = setInterval(updateTicker, 15000);
+    }
+
+    window.setEpgPreset = function(url) {
+      const input = document.getElementById('epg-custom-url');
+      if (input) input.value = url;
+      saveEpgSettings();
+    };
+
+    window.saveEpgSettings = async function() {
+      const input = document.getElementById('epg-custom-url');
+      if (!input) return;
+      const url = input.value.trim();
+      state.epgUrl = url;
+      localStorage.setItem('at_tv_epg_url', url);
+      showToast('Guardando configuración de EPG...');
+      await loadEpgData(url);
+      await syncToCloud();
+      showToast('Guía EPG actualizada correctamente');
+      closePlaylistsModal();
+    };
+
+    window.clearEpg = async function() {
+      state.epgUrl = '';
+      state.epgData = null;
+      localStorage.removeItem('at_tv_epg_url');
+      const input = document.getElementById('epg-custom-url');
+      if (input) input.value = '';
+      const epgBar = document.getElementById('player-epg-bar');
+      if (epgBar) epgBar.style.display = 'none';
+      await syncToCloud();
+      showToast('Guía EPG desactivada');
+      closePlaylistsModal();
+    };
+
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.buffer-menu-wrapper')) {
         closeBufferMenu();
+        closeQualityMenu();
+        closeSleepMenu();
       }
     });
 
@@ -2444,13 +3638,27 @@
 
     function playChannel(channel) {
       if (!channel || !channel.url) return;
+
+      if (state.activeChannel && state.activeChannel.url !== channel.url) {
+        state.previousChannel = state.activeChannel;
+      }
+
       state.activeChannel = channel;
       stopWebAudio();
       state.useWebAudio = false;
 
+      // Add to recent channels
+      addToRecentChannels(channel);
+
       // Update UI title & badge
       playerChannelName.textContent = channel.name;
       playerChannelGroup.textContent = channel.group || 'General';
+
+      const mvTitle1 = document.getElementById('multiview-title-1');
+      if (mvTitle1) mvTitle1.textContent = channel.name;
+
+      // Update EPG Display for this channel
+      updateEpgDisplay(channel);
 
       if (channel.logo) {
         playerChannelLogo.src = channel.logo;
@@ -2479,6 +3687,13 @@
         state.hls = null;
       }
 
+      // Reset quality & audio levels
+      state.availableLevels = [];
+      state.availableAudioTracks = [];
+      state.currentQuality = -1;
+      state.currentAudioTrack = 0;
+      renderQualityAudioMenu();
+
       // Engine 1: Hls.js (Chrome, Firefox, Edge, Android)
       if (window.Hls && Hls.isSupported()) {
         const bCfg = BUFFER_CONFIGS[state.bufferMode] || BUFFER_CONFIGS.stable;
@@ -2502,6 +3717,9 @@
           fragLoadingRetryDelay: 500,
           manifestLoadingTimeOut: 20000,
           manifestLoadingMaxRetry: 6,
+          fragLoadingRetryDelay: 500,
+          manifestLoadingTimeOut: 20000,
+          manifestLoadingMaxRetry: 6,
           manifestLoadingRetryDelay: 500,
           levelLoadingTimeOut: 20000,
           levelLoadingMaxRetry: 6,
@@ -2512,8 +3730,22 @@
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          state.availableLevels = hls.levels || [];
+          state.currentQuality = hls.currentLevel;
+          renderQualityAudioMenu();
           video.play().catch(() => showControlsPrompt());
           hideLoader();
+        });
+
+        hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+          state.availableAudioTracks = hls.audioTracks || [];
+          state.currentAudioTrack = hls.audioTrack;
+          renderQualityAudioMenu();
+        });
+
+        hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+          state.currentQuality = data.level;
+          renderQualityAudioMenu();
         });
 
         // In-browser WebAssembly audio decoder fallback & Stall recovery:
@@ -2795,6 +4027,85 @@
         });
       }
 
+      // RECALL / CANAL ANTERIOR
+      const recallBtn = document.getElementById('recall-btn');
+      if (recallBtn) {
+        recallBtn.addEventListener('click', playPreviousChannel);
+      }
+
+      // QUALITY & AUDIO TRACK SELECTOR
+      const qualityAudioBtn = document.getElementById('quality-audio-btn');
+      if (qualityAudioBtn) {
+        qualityAudioBtn.addEventListener('click', (e) => {
+          toggleQualityMenu(e);
+        });
+      }
+
+      // MULTI-VIEW (50/50 Split Screen)
+      const multiviewBtn = document.getElementById('multiview-btn');
+      if (multiviewBtn) {
+        multiviewBtn.addEventListener('click', toggleMultiView);
+      }
+
+      const mvCloseBtn = document.getElementById('multiview-close-btn');
+      if (mvCloseBtn) {
+        mvCloseBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeMultiView();
+        });
+      }
+
+      const slot1AudioBtn = document.getElementById('slot-1-audio-btn');
+      if (slot1AudioBtn) {
+        slot1AudioBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setMultiViewAudio(1);
+        });
+      }
+
+      const slot2AudioBtn = document.getElementById('slot-2-audio-btn');
+      if (slot2AudioBtn) {
+        slot2AudioBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setMultiViewAudio(2);
+        });
+      }
+
+      const slot1El = document.getElementById('multiview-slot-1');
+      if (slot1El) {
+        slot1El.addEventListener('click', () => {
+          if (state.isMultiView) setMultiViewFocus(1);
+        });
+      }
+
+      const slot2El = document.getElementById('multiview-slot-2');
+      if (slot2El) {
+        slot2El.addEventListener('click', () => {
+          if (state.isMultiView) setMultiViewFocus(2);
+        });
+      }
+
+      // SLEEP TIMER
+      const sleepTimerBtn = document.getElementById('sleep-timer-btn');
+      if (sleepTimerBtn) {
+        sleepTimerBtn.addEventListener('click', (e) => {
+          toggleSleepMenu(e);
+        });
+      }
+
+      const sleepBadge = document.getElementById('sleep-timer-badge');
+      if (sleepBadge) {
+        sleepBadge.addEventListener('click', (e) => {
+          toggleSleepMenu(e);
+        });
+      }
+
+      // INSTANT SCREENSHOT
+      const screenshotBtn = document.getElementById('screenshot-btn');
+      if (screenshotBtn) {
+        screenshotBtn.addEventListener('click', takeScreenshot);
+      }
+
       // ANTI-FREEZE WATCHDOG: auto-nudges past micro PTS drops or stuck buffer frames
       let stallWatchdog = null;
       video.addEventListener('waiting', () => {
@@ -2882,10 +4193,12 @@
 
       // Keyboard Shortcuts
       window.addEventListener('keydown', (e) => {
-        if (document.activeElement.tagName === 'INPUT') return;
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
 
         if (e.key === 'Escape') {
           closeBufferMenu();
+          closeQualityMenu();
+          closeSleepMenu();
           closePlaylistsModal();
           closePasswordModal();
           closeInstallModal();
@@ -2898,6 +4211,18 @@
           pipBtn.click();
         } else if (e.key.toLowerCase() === 'm') {
           muteBtn.click();
+        } else if (e.key.toLowerCase() === 'q' || e.key === 'Backspace') {
+          e.preventDefault();
+          playPreviousChannel();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          zapChannel('prev');
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          zapChannel('next');
+        } else if (e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          takeScreenshot();
         }
       });
     }
@@ -2917,19 +4242,25 @@
     window.switchPlaylistTab = function(tab) {
       const urlBtn = document.getElementById('tab-url-btn');
       const fileBtn = document.getElementById('tab-file-btn');
+      const epgBtn = document.getElementById('tab-epg-btn');
       const urlForm = document.getElementById('playlist-url-form');
       const fileForm = document.getElementById('playlist-file-form');
+      const epgForm = document.getElementById('playlist-epg-form');
+
+      [urlBtn, fileBtn, epgBtn].forEach(b => b && b.classList.remove('active'));
+      [urlForm, fileForm, epgForm].forEach(f => f && (f.style.display = 'none'));
 
       if (tab === 'url') {
-        urlBtn.classList.add('active');
-        fileBtn.classList.remove('active');
-        urlForm.style.display = 'block';
-        fileForm.style.display = 'none';
-      } else {
-        urlBtn.classList.remove('active');
-        fileBtn.classList.add('active');
-        urlForm.style.display = 'none';
-        fileForm.style.display = 'block';
+        if (urlBtn) urlBtn.classList.add('active');
+        if (urlForm) urlForm.style.display = 'block';
+      } else if (tab === 'file') {
+        if (fileBtn) fileBtn.classList.add('active');
+        if (fileForm) fileForm.style.display = 'block';
+      } else if (tab === 'epg') {
+        if (epgBtn) epgBtn.classList.add('active');
+        if (epgForm) epgForm.style.display = 'block';
+        const epgInput = document.getElementById('epg-custom-url');
+        if (epgInput && state.epgUrl) epgInput.value = state.epgUrl;
       }
     };
 

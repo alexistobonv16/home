@@ -116,13 +116,15 @@ export async function onRequestPost(context) {
       });
     }
 
-    const { playlists, activePlaylistId, favorites, lastChannel } = body;
+    const { playlists, activePlaylistId, favorites, lastChannel, recentChannels, epgUrl } = body;
 
     const payloadToSave = {
       playlists: Array.isArray(playlists) ? playlists : [],
       activePlaylistId: activePlaylistId || null,
       favorites: Array.isArray(favorites) ? favorites : [],
+      recentChannels: Array.isArray(recentChannels) ? recentChannels.slice(0, 15) : [],
       lastChannel: lastChannel || null,
+      epgUrl: typeof epgUrl === 'string' ? epgUrl : null,
       updatedAt: new Date().toISOString()
     };
 

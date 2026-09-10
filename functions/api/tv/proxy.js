@@ -92,7 +92,9 @@ export async function onRequestGet(context) {
 
           if (res.ok) {
             const contentType = res.headers.get('content-type') || '';
-            const isTextOrM3u = contentType.includes('mpegurl') ||
+            const isXml = contentType.includes('xml') || targetUrl.includes('.xml');
+            const isTextOrM3u = isXml ||
+                                contentType.includes('mpegurl') ||
                                 contentType.includes('m3u') ||
                                 contentType.includes('text') ||
                                 targetUrl.includes('.m3u') ||
@@ -100,6 +102,18 @@ export async function onRequestGet(context) {
 
             if (isTextOrM3u) {
               const bodyText = await res.text();
+
+              if (isXml) {
+                return new Response(bodyText, {
+                  status: 200,
+                  headers: {
+                    'Content-Type': 'application/xml; charset=utf-8',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Cache-Control': 'public, max-age=3600'
+                  }
+                });
+              }
 
               // If it is an HLS sub-manifest or stream playlist (contains #EXT-X-STREAM-INF, #EXT-X-TARGETDURATION)
               // Rewrite relative URLs to absolute proxied URLs so they can be loaded over HTTPS without CORS or mixed content issues
