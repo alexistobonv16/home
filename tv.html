@@ -1420,10 +1420,176 @@
       }
     }
 
+    /* Stats for Nerds Panel */
+    .stats-for-nerds {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      width: 320px;
+      background: rgba(7, 11, 20, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 12px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85);
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      color: #e2e8f0;
+      z-index: 55;
+      pointer-events: auto;
+      user-select: text;
+      animation: popoverSlideUp 0.18s ease-out;
+    }
+    .stats-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.2rem 0;
+    }
+    .stats-label { color: var(--text-muted); }
+    .stats-val { font-weight: 600; color: #fff; }
+    .stats-val.good { color: var(--accent-emerald); }
+    .stats-val.warn { color: var(--accent-amber); }
+
+    /* Channel Health Dots */
+    .health-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.35rem;
+      flex-shrink: 0;
+    }
+    .health-dot.online {
+      background: var(--accent-emerald);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+    }
+    .health-dot.offline {
+      background: var(--accent-red);
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);
+    }
+    .health-dot.checking {
+      background: var(--accent-amber);
+      animation: pulseTimer 1s infinite;
+    }
+
+    /* TV Channel Dialing OSD */
+    .dialing-osd {
+      position: absolute;
+      top: 2rem;
+      right: 2rem;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 2px solid var(--accent-cyan);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.85), 0 0 24px rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      z-index: 50;
+      pointer-events: none;
+      animation: zappingPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .dialing-number {
+      font-family: var(--font-mono);
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      line-height: 1;
+    }
+    .dialing-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .dialing-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .dialing-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Virtual Dial Pad Modal */
+    .dial-pad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+    .dial-pad-key {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 52px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 1.3rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .dial-pad-key:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      transform: scale(1.04);
+    }
+    .dial-pad-key:active {
+      transform: scale(0.96);
+    }
+    .dial-pad-key.action-key {
+      font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    /* Categories Checklist */
+    .category-toggle-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.75rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      transition: background 0.15s ease;
+    }
+    .category-toggle-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .category-toggle-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
     @media (max-width: 540px) {
       .brand-tag { display: none; }
       .btn-pwa-install span, #open-playlists-btn span { display: none; }
       .btn-pwa-install, #open-playlists-btn { padding: 0.5rem; width: 36px; height: 36px; }
+      .stats-for-nerds { width: calc(100vw - 2rem); left: 1rem; }
     }
   </style>
 </head>
@@ -1541,6 +1707,30 @@
         <div id="zapping-osd" class="zapping-osd" style="display: none;">
           <span class="zapping-num" id="zapping-osd-num">📺 #1</span>
           <span class="zapping-name" id="zapping-osd-name">ESPN</span>
+        </div>
+
+        <!-- TV Dialing OSD -->
+        <div id="dialing-osd" class="dialing-osd" style="display: none;">
+          <span class="dialing-number" id="dialing-osd-num">--</span>
+          <div class="dialing-text">
+            <span class="dialing-label">Sintonizando canal</span>
+            <span class="dialing-name" id="dialing-osd-name">Buscando...</span>
+          </div>
+        </div>
+
+        <!-- Stats for Nerds Floating Telemetry Panel -->
+        <div id="stats-for-nerds-panel" class="stats-for-nerds" style="display: none;">
+          <div class="stats-header">
+            <span>Estadísticas para Nerds</span>
+            <button class="btn-icon btn-sm" onclick="toggleStatsForNerds()" style="width: 20px; height: 20px; padding: 0; border: none;" title="Cerrar">✕</button>
+          </div>
+          <div class="stats-row"><span class="stats-label">Canal:</span><span class="stats-val" id="stats-channel">--</span></div>
+          <div class="stats-row"><span class="stats-label">Resolución:</span><span class="stats-val" id="stats-res">--</span></div>
+          <div class="stats-row"><span class="stats-label">Tasa de bits:</span><span class="stats-val good" id="stats-bitrate">--</span></div>
+          <div class="stats-row"><span class="stats-label">Búfer activo:</span><span class="stats-val good" id="stats-buffer">--</span></div>
+          <div class="stats-row"><span class="stats-label">Frames perdidos:</span><span class="stats-val" id="stats-dropped">0 / 0</span></div>
+          <div class="stats-row"><span class="stats-label">Latencia en vivo:</span><span class="stats-val" id="stats-latency">--</span></div>
+          <div class="stats-row"><span class="stats-label">Motor de reproducción:</span><span class="stats-val" id="stats-engine">Hls.js v1.5.8</span></div>
         </div>
 
         <!-- Loading spinner -->
@@ -1695,6 +1885,21 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
               </button>
 
+              <!-- Dial Pad (Marcación por Número) -->
+              <button class="btn-icon" id="dial-pad-btn" title="Teclado Numérico de Canales (🔢)" onclick="openDialPadModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h.01"/><path d="M12 7h.01"/><path d="M17 7h.01"/><path d="M7 12h.01"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 17h.01"/><path d="M12 17h.01"/><path d="M17 17h.01"/></svg>
+              </button>
+
+              <!-- Stats for Nerds -->
+              <button class="btn-icon" id="stats-nerds-btn" title="Estadísticas para Nerds (N)" onclick="toggleStatsForNerds()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              </button>
+
+              <!-- Transmitir a TV (Chromecast / AirPlay) -->
+              <button class="btn-icon" id="cast-btn" title="Transmitir a Smart TV (AirPlay / Cast)" onclick="triggerCastPlayback()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"></path><line x1="2" y1="20" x2="2.01" y2="20"></line></svg>
+              </button>
+
               <!-- Abrir en VLC (.m3u) -->
               <button class="btn-icon" id="open-vlc-btn" title="Abrir canal en VLC / Reproductor Externo (.m3u)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="m6 17 2-8h8l2 8"/><path d="m9 9 1.5-6h3L15 9"/></svg>
@@ -1723,6 +1928,12 @@
           <select id="playlist-filter-select" class="playlist-select" aria-label="Filtrar por lista">
             <option value="all">🌐 Todas las Listas</option>
           </select>
+          <button class="btn btn-outline btn-sm" onclick="openCategoriesModal()" title="Gestionar y ocultar categorías" style="padding: 0.45rem 0.6rem; font-size: 0.78rem;">
+            ⚙️
+          </button>
+          <button class="btn btn-outline btn-sm" id="health-check-btn" onclick="toggleHealthFilter()" title="Verificar canales en línea / caídos (🟢 / 🔴)" style="padding: 0.45rem 0.6rem; font-size: 0.78rem;">
+            🩺
+          </button>
           <button class="btn btn-outline btn-sm" onclick="openPlaylistsModal()" title="Gestionar y subir listas M3U" style="padding: 0.45rem 0.65rem; font-size: 0.78rem;">
             + Listas
           </button>
@@ -1916,10 +2127,67 @@
       </div>
 
       <button class="btn btn-primary" style="width: 100%; margin-top: 1.25rem;" onclick="closeInstallModal()">Entendido</button>
+  <!-- 7. VIRTUAL DIAL PAD MODAL -->
+  <div id="dial-pad-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 340px; text-align: center;">
+      <div class="modal-header-row">
+        <h3 class="modal-title" style="display:flex; align-items:center; gap:0.4rem;">
+          <span>🔢</span> Marcación de Canal
+        </h3>
+        <button class="btn-icon" onclick="closeDialPadModal()" title="Cerrar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div style="background: rgba(0,0,0,0.4); border-radius: 10px; padding: 0.75rem; margin-top: 0.5rem; border: 1px solid var(--border-color);">
+        <div id="dial-pad-display" style="font-family: var(--font-mono); font-size: 2rem; font-weight: 800; color: var(--accent-cyan); min-height: 48px; display: flex; align-items: center; justify-content: center;">--</div>
+        <div id="dial-pad-match" style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ingresa el número de canal</div>
+      </div>
+      <div class="dial-pad-grid">
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('1')">1</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('2')">2</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('3')">3</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('4')">4</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('5')">5</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('6')">6</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('7')">7</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('8')">8</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('9')">9</button>
+        <button type="button" class="dial-pad-key action-key" onclick="dialPadBackspace()">⌫</button>
+        <button type="button" class="dial-pad-key" onclick="dialPadInput('0')">0</button>
+        <button type="button" class="dial-pad-key action-key" style="color: var(--accent-emerald); font-weight: 800;" onclick="dialPadSubmit()">OK</button>
+      </div>
     </div>
   </div>
 
-  <!-- 6. TOAST NOTIFICATION -->
+  <!-- 8. CATEGORIES MANAGER MODAL -->
+  <div id="categories-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header-row">
+        <h3 class="modal-title" style="display:flex; align-items:center; gap:0.4rem;">
+          <span>⚙️</span> Gestionar Categorías
+        </h3>
+        <button class="btn-icon" onclick="closeCategoriesModal()" title="Cerrar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+        Desmarca las categorías que no desees ver para mantener tu lista despejada y rápida.
+      </p>
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="selectAllCategories(true)">Mostrar Todas</button>
+        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="selectAllCategories(false)">Ocultar Todas</button>
+      </div>
+      <div id="categories-list-items" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 280px; overflow-y: auto; padding-right: 0.2rem;">
+        <!-- Injected dynamically -->
+      </div>
+      <div style="display: flex; gap: 0.6rem; margin-top: 1rem;">
+        <button class="btn btn-outline" style="flex: 1;" onclick="closeCategoriesModal()">Cerrar</button>
+        <button class="btn btn-primary" style="flex: 1;" onclick="saveCategoriesSelection()">Guardar y Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. TOAST NOTIFICATION -->
   <div id="tv-toast" class="tv-toast">Mensaje</div>
 
   <!-- CLIENT-SIDE APPLICATION JAVASCRIPT -->
@@ -1962,7 +2230,15 @@
       sleepTimerMinutes: 0,
       sleepTimerEndTime: null,
       sleepTimerInterval: null,
-      zappingTimeout: null
+      zappingTimeout: null,
+      hiddenGroups: JSON.parse(localStorage.getItem('at_tv_hidden_groups') || '[]'),
+      channelHealth: {},
+      healthFilterActive: false,
+      isCheckingHealth: false,
+      dialBuffer: '',
+      dialTimeout: null,
+      statsForNerdsOpen: false,
+      statsInterval: null
     };
 
     // Channel & Playlist Aggregation Helpers
@@ -2283,6 +2559,11 @@
             if (epgInput) epgInput.value = state.epgUrl;
           }
 
+          if (Array.isArray(json.data.hiddenGroups)) {
+            state.hiddenGroups = json.data.hiddenGroups;
+            localStorage.setItem('at_tv_hidden_groups', JSON.stringify(state.hiddenGroups));
+          }
+
           updatePlaylistSelector();
           renderSavedPlaylistsModal();
           updateChannelsState();
@@ -2327,7 +2608,8 @@
             name: state.activeChannel.name,
             url: state.activeChannel.url
           } : null,
-          epgUrl: state.epgUrl || null
+          epgUrl: state.epgUrl || null,
+          hiddenGroups: state.hiddenGroups || []
         };
 
         await fetch('/api/tv/sync', {
@@ -2533,9 +2815,14 @@
       groupsBarEl.innerHTML = '';
       updateChannelsState();
 
-      // Count per group in active list
+      // Count per group in active list, excluding hidden groups
       const counts = {};
-      state.channels.forEach(ch => {
+      const visibleChannels = state.channels.filter(ch => {
+        const g = ch.group || 'General';
+        return !state.hiddenGroups || !state.hiddenGroups.includes(g);
+      });
+
+      visibleChannels.forEach(ch => {
         const g = ch.group || 'General';
         counts[g] = (counts[g] || 0) + 1;
       });
@@ -2561,7 +2848,7 @@
       // Special pill: Todos
       const allBtn = document.createElement('button');
       allBtn.className = 'group-chip' + (state.activeGroup === 'all' ? ' active' : '');
-      allBtn.textContent = `Todos (${state.channels.length})`;
+      allBtn.textContent = `Todos (${visibleChannels.length})`;
       allBtn.onclick = () => selectGroup('all');
       groupsBarEl.appendChild(allBtn);
 
@@ -2597,9 +2884,18 @@
         list = getRecentChannels();
       } else {
         list = state.channels;
+        // Filter out hidden categories if not viewing explicit favorites
+        if (state.hiddenGroups && state.hiddenGroups.length > 0) {
+          list = list.filter(ch => !state.hiddenGroups.includes(ch.group || 'General'));
+        }
         if (state.activeGroup !== 'all') {
           list = list.filter(ch => (ch.group || 'General') === state.activeGroup);
         }
+      }
+
+      // Filter by Channel Health if filter is active
+      if (state.healthFilterActive) {
+        list = list.filter(ch => state.channelHealth[ch.url] !== 'offline');
       }
 
       if (state.searchQuery) {
@@ -2639,6 +2935,16 @@
 
         const initials = channel.name.substring(0, 2).toUpperCase();
 
+        const health = state.channelHealth[channel.url];
+        let healthDot = '';
+        if (health === 'online') {
+          healthDot = '<span class="health-dot online" title="Canal activo y funcional (🟢)"></span>';
+        } else if (health === 'offline') {
+          healthDot = '<span class="health-dot offline" title="Canal caído o sin respuesta (🔴)"></span>';
+        } else if (health === 'checking') {
+          healthDot = '<span class="health-dot checking" title="Comprobando señal (🟡)..."></span>';
+        }
+
         item.innerHTML = `
           <div class="channel-thumb">
             ${channel.logo ? 
@@ -2646,7 +2952,7 @@
               `<span class="channel-thumb-fallback">${initials}</span>`}
           </div>
           <div class="channel-info-meta">
-            <span class="channel-name">${escapeHtml(channel.name)}</span>
+            <span class="channel-name">${healthDot}${escapeHtml(channel.name)}</span>
             <div class="channel-meta-row">
               <span class="channel-category-tag">${escapeHtml(channel.group || 'General')}</span>
               ${showPlaylistBadge && channel.playlistName ? `<span class="channel-playlist-tag" title="Lista: ${escapeHtml(channel.playlistName)}">${escapeHtml(channel.playlistName)}</span>` : ''}
@@ -4202,6 +4508,15 @@
           closePlaylistsModal();
           closePasswordModal();
           closeInstallModal();
+          closeDialPadModal();
+          closeCategoriesModal();
+          if (state.statsForNerdsOpen) toggleStatsForNerds();
+        } else if (e.key >= '0' && e.key <= '9') {
+          handleDirectDialKey(e.key);
+        } else if (e.key === 'Enter' && state.dialBuffer) {
+          executeDial();
+        } else if (e.key.toLowerCase() === 'n') {
+          toggleStatsForNerds();
         } else if (e.key === ' ' || e.key.toLowerCase() === 'k') {
           e.preventDefault();
           togglePlay();
@@ -4226,6 +4541,393 @@
         }
       });
     }
+
+    /* ==========================================================================
+       6H. STATS FOR NERDS (Telemetría de Reproducción en Vivo)
+       ========================================================================== */
+    window.toggleStatsForNerds = function() {
+      const panel = document.getElementById('stats-for-nerds-panel');
+      const btn = document.getElementById('stats-nerds-btn');
+      if (!panel) return;
+
+      state.statsForNerdsOpen = !state.statsForNerdsOpen;
+      panel.style.display = state.statsForNerdsOpen ? 'flex' : 'none';
+      if (btn) btn.classList.toggle('active', state.statsForNerdsOpen);
+
+      if (state.statsForNerdsOpen) {
+        updateStatsTelemetry();
+        clearInterval(state.statsInterval);
+        state.statsInterval = setInterval(updateStatsTelemetry, 1000);
+      } else {
+        clearInterval(state.statsInterval);
+      }
+    };
+
+    function updateStatsTelemetry() {
+      if (!state.statsForNerdsOpen) return;
+      const chEl = document.getElementById('stats-channel');
+      const resEl = document.getElementById('stats-res');
+      const bitEl = document.getElementById('stats-bitrate');
+      const bufEl = document.getElementById('stats-buffer');
+      const dropEl = document.getElementById('stats-dropped');
+      const latEl = document.getElementById('stats-latency');
+      const engEl = document.getElementById('stats-engine');
+
+      if (chEl) {
+        chEl.textContent = state.activeChannel ? state.activeChannel.name : '--';
+      }
+
+      // Resolution & Dimensions
+      if (resEl) {
+        if (video.videoWidth && video.videoHeight) {
+          resEl.textContent = `${video.videoWidth}x${video.videoHeight}`;
+        } else {
+          resEl.textContent = 'Calculando...';
+        }
+      }
+
+      // Bitrate
+      if (bitEl) {
+        if (state.hls && state.hls.levels && state.hls.currentLevel >= 0) {
+          const lvl = state.hls.levels[state.hls.currentLevel];
+          if (lvl && lvl.bitrate) {
+            bitEl.textContent = `${(lvl.bitrate / 1000000).toFixed(2)} Mbps`;
+          } else {
+            bitEl.textContent = 'Dinámico (Auto)';
+          }
+        } else {
+          bitEl.textContent = 'En directo (HLS)';
+        }
+      }
+
+      // Buffered seconds ahead
+      if (bufEl) {
+        let ahead = 0;
+        try {
+          const cur = video.currentTime;
+          const b = video.buffered;
+          for (let i = 0; i < b.length; i++) {
+            if (cur >= b.start(i) && cur <= b.end(i)) {
+              ahead = b.end(i) - cur;
+              break;
+            }
+          }
+        } catch (e) {}
+        bufEl.textContent = `${ahead.toFixed(1)}s adelante`;
+        bufEl.className = 'stats-val ' + (ahead > 5 ? 'good' : (ahead > 2 ? 'warn' : 'bad'));
+      }
+
+      // Dropped frames
+      if (dropEl) {
+        if (typeof video.getVideoPlaybackQuality === 'function') {
+          const q = video.getVideoPlaybackQuality();
+          dropEl.textContent = `${q.droppedVideoFrames} / ${q.totalVideoFrames}`;
+        } else if (typeof video.webkitDroppedFrameCount !== 'undefined') {
+          dropEl.textContent = `${video.webkitDroppedFrameCount} caídos`;
+        } else {
+          dropEl.textContent = '0 (Estable)';
+        }
+      }
+
+      // Live latency
+      if (latEl) {
+        if (state.hls && typeof state.hls.liveSyncPosition === 'number' && state.hls.liveSyncPosition > 0) {
+          const latency = Math.max(0, state.hls.liveSyncPosition - video.currentTime);
+          latEl.textContent = `${latency.toFixed(1)}s`;
+        } else {
+          latEl.textContent = '< 3.0s';
+        }
+      }
+
+      // Engine
+      if (engEl) {
+        if (state.useWebAudio) {
+          engEl.textContent = 'HLS.js + Wasm MP2 Audio';
+        } else if (state.hls) {
+          engEl.textContent = 'Hls.js v1.5.8 (MSE)';
+        } else {
+          engEl.textContent = 'Nativo (Safari/iOS)';
+        }
+      }
+    }
+
+    /* ==========================================================================
+       6I. CHANNEL HEALTH CHECKER (Verificador de Salud de Canales 🟢 / 🔴)
+       ========================================================================== */
+    window.startHealthCheck = async function() {
+      if (state.isCheckingHealth) return;
+      state.isCheckingHealth = true;
+      const btn = document.getElementById('health-check-btn');
+      if (btn) btn.classList.add('active');
+      showToast('🩺 Verificando estado de canales...');
+
+      const channelsToCheck = state.channels.slice(0, 120);
+      channelsToCheck.forEach(ch => {
+        state.channelHealth[ch.url] = 'checking';
+      });
+      renderChannels();
+
+      const CONCURRENCY = 5;
+      let currentIndex = 0;
+      let onlineCount = 0;
+      let offlineCount = 0;
+
+      async function worker() {
+        while (currentIndex < channelsToCheck.length) {
+          const ch = channelsToCheck[currentIndex++];
+          if (!ch || !ch.url) continue;
+
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4500);
+            const proxyUrl = `/api/tv/proxy?url=${encodeURIComponent(ch.url)}`;
+            const res = await fetch(proxyUrl, {
+              headers: { 'Range': 'bytes=0-1024' },
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (res.ok || res.status === 206 || res.status === 200 || res.status === 302) {
+              state.channelHealth[ch.url] = 'online';
+              onlineCount++;
+            } else {
+              state.channelHealth[ch.url] = 'offline';
+              offlineCount++;
+            }
+          } catch (e) {
+            state.channelHealth[ch.url] = 'offline';
+            offlineCount++;
+          }
+          if (currentIndex % 4 === 0 || currentIndex >= channelsToCheck.length) {
+            renderChannels();
+          }
+        }
+      }
+
+      const workers = Array.from({ length: CONCURRENCY }, () => worker());
+      await Promise.all(workers);
+
+      state.isCheckingHealth = false;
+      renderChannels();
+      showToast(`🩺 Verificación finalizada: ${onlineCount} activos 🟢, ${offlineCount} caídos 🔴`);
+    };
+
+    window.toggleHealthFilter = function() {
+      if (Object.keys(state.channelHealth).length === 0 && !state.isCheckingHealth) {
+        startHealthCheck();
+        return;
+      }
+      state.healthFilterActive = !state.healthFilterActive;
+      const btn = document.getElementById('health-check-btn');
+      if (btn) {
+        btn.classList.toggle('active', state.healthFilterActive);
+        btn.style.borderColor = state.healthFilterActive ? 'var(--accent-emerald)' : '';
+        btn.style.color = state.healthFilterActive ? 'var(--accent-emerald)' : '';
+      }
+      filterAndRenderChannels();
+      showToast(state.healthFilterActive ? '🟢 Filtrando: Solo canales en línea' : 'Mostrando todos los canales');
+    };
+
+    /* ==========================================================================
+       6J. DIAL PAD & DIRECT CHANNEL DIALING (Marcación por Teclado Numérico)
+       ========================================================================== */
+    function handleDirectDialKey(digit) {
+      state.dialBuffer += digit;
+      showDialingOsd();
+
+      clearTimeout(state.dialTimeout);
+      state.dialTimeout = setTimeout(() => {
+        executeDial();
+      }, 1400);
+    }
+
+    function showDialingOsd() {
+      const osd = document.getElementById('dialing-osd');
+      const numEl = document.getElementById('dialing-osd-num');
+      const nameEl = document.getElementById('dialing-osd-name');
+      if (!osd || !numEl || !nameEl) return;
+
+      const num = parseInt(state.dialBuffer, 10);
+      const list = (state.filteredChannels && state.filteredChannels.length > 0) ? state.filteredChannels : state.channels;
+      const targetCh = (num > 0 && num <= list.length) ? list[num - 1] : null;
+
+      numEl.textContent = `CH ${state.dialBuffer}`;
+      nameEl.textContent = targetCh ? targetCh.name : (num > list.length ? 'Canal fuera de rango' : 'Sintonizando...');
+      osd.style.display = 'flex';
+    }
+
+    function executeDial() {
+      const osd = document.getElementById('dialing-osd');
+      const num = parseInt(state.dialBuffer, 10);
+      const list = (state.filteredChannels && state.filteredChannels.length > 0) ? state.filteredChannels : state.channels;
+      const targetCh = (num > 0 && num <= list.length) ? list[num - 1] : null;
+
+      if (targetCh) {
+        playChannel(targetCh);
+        showToast(`📺 Sintonizado Canal ${num}: ${targetCh.name}`);
+      } else if (state.dialBuffer) {
+        showToast(`Canal ${state.dialBuffer} no encontrado`);
+      }
+
+      state.dialBuffer = '';
+      if (osd) osd.style.display = 'none';
+    }
+
+    window.openDialPadModal = function() {
+      state.dialBuffer = '';
+      updateDialPadModalDisplay();
+      document.getElementById('dial-pad-modal').classList.add('active');
+    };
+
+    window.closeDialPadModal = function() {
+      document.getElementById('dial-pad-modal').classList.remove('active');
+      state.dialBuffer = '';
+    };
+
+    window.dialPadInput = function(char) {
+      if (state.dialBuffer.length < 4) {
+        state.dialBuffer += char;
+        updateDialPadModalDisplay();
+      }
+    };
+
+    window.dialPadBackspace = function() {
+      state.dialBuffer = state.dialBuffer.slice(0, -1);
+      updateDialPadModalDisplay();
+    };
+
+    window.dialPadSubmit = function() {
+      executeDial();
+      closeDialPadModal();
+    };
+
+    function updateDialPadModalDisplay() {
+      const displayEl = document.getElementById('dial-pad-display');
+      const matchEl = document.getElementById('dial-pad-match');
+      if (!displayEl || !matchEl) return;
+
+      displayEl.textContent = state.dialBuffer || '--';
+      if (!state.dialBuffer) {
+        matchEl.textContent = 'Ingresa el número de canal';
+        matchEl.style.color = 'var(--text-secondary)';
+        return;
+      }
+
+      const num = parseInt(state.dialBuffer, 10);
+      const list = (state.filteredChannels && state.filteredChannels.length > 0) ? state.filteredChannels : state.channels;
+      const targetCh = (num > 0 && num <= list.length) ? list[num - 1] : null;
+
+      if (targetCh) {
+        matchEl.textContent = `▶ ${targetCh.name}`;
+        matchEl.style.color = 'var(--accent-emerald)';
+      } else {
+        matchEl.textContent = `Canal fuera de rango (1 - ${list.length})`;
+        matchEl.style.color = 'var(--accent-red)';
+      }
+    }
+
+    /* ==========================================================================
+       6K. CATEGORIES MANAGER (Gestión y Ocultación de Categorías)
+       ========================================================================== */
+    window.openCategoriesModal = function() {
+      renderCategoriesModal();
+      document.getElementById('categories-modal').classList.add('active');
+    };
+
+    window.closeCategoriesModal = function() {
+      document.getElementById('categories-modal').classList.remove('active');
+    };
+
+    function renderCategoriesModal() {
+      const listEl = document.getElementById('categories-list-items');
+      if (!listEl) return;
+
+      const groupCounts = {};
+      const allChs = state.channels;
+      allChs.forEach(c => {
+        const g = c.group || 'General';
+        groupCounts[g] = (groupCounts[g] || 0) + 1;
+      });
+
+      const sortedGroups = Object.keys(groupCounts).sort();
+      if (!sortedGroups.length) {
+        listEl.innerHTML = '<span style="font-size:0.85rem; color:var(--text-muted);">No hay categorías disponibles.</span>';
+        return;
+      }
+
+      listEl.innerHTML = sortedGroups.map(group => {
+        const isHidden = (state.hiddenGroups || []).includes(group);
+        const isChecked = !isHidden;
+        const count = groupCounts[group];
+        return `
+          <label class="category-toggle-item" style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:8px; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <input type="checkbox" class="cat-checkbox" value="${escapeHtml(group)}" ${isChecked ? 'checked' : ''} style="width:18px; height:18px; accent-color:var(--accent-cyan); cursor:pointer;">
+              <span style="font-size:0.88rem; font-weight:500;">${escapeHtml(group)}</span>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted); background:rgba(255,255,255,0.06); padding:0.15rem 0.4rem; border-radius:12px;">${count}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    window.selectAllCategories = function(showAll) {
+      const checkboxes = document.querySelectorAll('#categories-list-items .cat-checkbox');
+      checkboxes.forEach(cb => { cb.checked = showAll; });
+    };
+
+    window.saveCategoriesSelection = async function() {
+      const checkboxes = document.querySelectorAll('#categories-list-items .cat-checkbox');
+      const hidden = [];
+      checkboxes.forEach(cb => {
+        if (!cb.checked) {
+          hidden.push(cb.value);
+        }
+      });
+
+      state.hiddenGroups = hidden;
+      localStorage.setItem('at_tv_hidden_groups', JSON.stringify(hidden));
+
+      if (state.hiddenGroups.includes(state.activeGroup)) {
+        state.activeGroup = 'all';
+      }
+
+      buildGroups();
+      filterAndRenderChannels();
+      closeCategoriesModal();
+      showToast(`Categorías actualizadas: ${hidden.length} ocultas`);
+      await syncToCloud();
+    };
+
+    /* ==========================================================================
+       6L. CHROMECAST & AIRPLAY (Transmisión a Smart TV)
+       ========================================================================== */
+    window.triggerCastPlayback = async function() {
+      if (video.remote && typeof video.remote.prompt === 'function') {
+        try {
+          await video.remote.prompt();
+          showToast('Conectando con Smart TV...');
+          return;
+        } catch (err) {
+          if (err.name !== 'NotAllowedError') {
+            console.warn('Remote playback prompt error:', err);
+          }
+        }
+      }
+
+      if (typeof video.webkitShowPlaybackTargetPicker === 'function') {
+        try {
+          video.webkitShowPlaybackTargetPicker();
+          showToast('Iniciando AirPlay / Pantalla remota...');
+          return;
+        } catch (err) {
+          console.warn('Airplay target picker error:', err);
+        }
+      }
+
+      // If Remote Playback API isn't supported or prompt failed
+      showToast('📺 Para transmitir a Chromecast: Usa el menú ⋮ de Chrome > Transmitir');
+    };
 
     /* ==========================================================================
        7. PLAYLIST MANAGER MODAL & SAVED LISTS

@@ -116,7 +116,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    const { playlists, activePlaylistId, favorites, lastChannel, recentChannels, epgUrl } = body;
+    const { playlists, activePlaylistId, favorites, lastChannel, recentChannels, epgUrl, hiddenGroups } = body;
 
     const payloadToSave = {
       playlists: Array.isArray(playlists) ? playlists : [],
@@ -125,6 +125,7 @@ export async function onRequestPost(context) {
       recentChannels: Array.isArray(recentChannels) ? recentChannels.slice(0, 15) : [],
       lastChannel: lastChannel || null,
       epgUrl: typeof epgUrl === 'string' ? epgUrl : null,
+      hiddenGroups: Array.isArray(hiddenGroups) ? hiddenGroups : [],
       updatedAt: new Date().toISOString()
     };
 
