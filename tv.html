@@ -569,6 +569,44 @@
       flex-shrink: 0;
     }
 
+    .playlist-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .playlist-select {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.45rem 0.65rem;
+      color: #fff;
+      font-size: 0.82rem;
+      font-family: inherit;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .playlist-select:focus { border-color: var(--accent-cyan); }
+    .playlist-select option { background: #0f172a; color: #fff; }
+
+    .channel-playlist-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      background: rgba(129, 140, 248, 0.15);
+      border: 1px solid rgba(129, 140, 248, 0.3);
+      color: var(--accent-indigo);
+      white-space: nowrap;
+    }
+
     .search-box {
       position: relative;
       width: 100%;
@@ -1113,6 +1151,16 @@
     <!-- Channels Sidebar -->
     <aside class="channels-sidebar" id="channels-sidebar">
       <div class="sidebar-header">
+        <!-- Playlist Selector & Management -->
+        <div class="playlist-bar">
+          <select id="playlist-filter-select" class="playlist-select" aria-label="Filtrar por lista">
+            <option value="all">🌐 Todas las Listas</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="openPlaylistsModal()" title="Gestionar y subir listas M3U" style="padding: 0.45rem 0.65rem; font-size: 0.78rem;">
+            + Listas
+          </button>
+        </div>
+
         <!-- Search -->
         <div class="search-box">
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -1293,7 +1341,7 @@
     const state = {
       token: localStorage.getItem('at_tv_token') || '',
       playlists: [],
-      activePlaylistId: null,
+      activePlaylistId: localStorage.getItem('at_tv_active_pl') || 'all',
       channels: [],
       filteredChannels: [],
       activeChannel: null,
@@ -1307,6 +1355,55 @@
       useWebAudio: false,
       isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
     };
+
+    // Channel & Playlist Aggregation Helpers
+    function getAllChannels() {
+      const combined = [];
+      const seenUrls = new Set();
+      state.playlists.forEach(pl => {
+        (pl.channels || []).forEach(ch => {
+          const key = ch.url || ch.id;
+          if (!seenUrls.has(key)) {
+            seenUrls.add(key);
+            combined.push({
+              ...ch,
+              playlistName: pl.name || 'Lista',
+              playlistId: pl.id
+            });
+          }
+        });
+      });
+      return combined;
+    }
+
+    function getActiveChannels() {
+      if (!state.activePlaylistId || state.activePlaylistId === 'all') {
+        return getAllChannels();
+      }
+      const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+      if (!pl) return getAllChannels();
+      return (pl.channels || []).map(ch => ({
+        ...ch,
+        playlistName: pl.name || 'Lista',
+        playlistId: pl.id
+      }));
+    }
+
+    function updateChannelsState() {
+      state.channels = getActiveChannels();
+    }
+
+    function updatePlaylistSelector() {
+      const select = document.getElementById('playlist-filter-select');
+      if (!select) return;
+      const total = getAllChannels().length;
+      let html = `<option value="all" ${state.activePlaylistId === 'all' ? 'selected' : ''}>🌐 Todas las Listas (${total})</option>`;
+      state.playlists.forEach(pl => {
+        const count = pl.channelsCount || pl.channels?.length || 0;
+        html += `<option value="${pl.id}" ${state.activePlaylistId === pl.id ? 'selected' : ''}>📁 ${escapeHtml(pl.name)} (${count})</option>`;
+      });
+      select.innerHTML = html;
+    }
 
     // DOM Elements
     const video = document.getElementById('video-player');
@@ -1562,21 +1659,22 @@
         const json = await res.json();
         if (json.success && json.data) {
           state.playlists = json.data.playlists || [];
-          state.activePlaylistId = json.data.activePlaylistId || (state.playlists[0]?.id || null);
+          state.activePlaylistId = json.data.activePlaylistId || localStorage.getItem('at_tv_active_pl') || 'all';
           state.favorites = new Set(json.data.favorites || []);
 
+          updatePlaylistSelector();
           renderSavedPlaylistsModal();
 
-          // Load active playlist channels
-          const activePl = state.playlists.find(p => p.id === state.activePlaylistId);
-          if (activePl && activePl.channels && activePl.channels.length > 0) {
-            state.channels = activePl.channels;
+          updateChannelsState();
+
+          if (state.channels.length > 0) {
             buildGroups();
             filterAndRenderChannels();
 
             // Resume last watched channel or play first
+            const allChs = getAllChannels();
             const toPlay = json.data.lastChannel ? 
-              (state.channels.find(c => c.url === json.data.lastChannel.url) || state.channels[0]) : 
+              (allChs.find(c => c.url === json.data.lastChannel.url) || state.channels[0]) : 
               state.channels[0];
 
             if (toPlay) playChannel(toPlay);
@@ -1594,6 +1692,7 @@
     async function syncToCloud() {
       if (!state.token) return;
       try {
+        localStorage.setItem('at_tv_active_pl', state.activePlaylistId || 'all');
         const payload = {
           playlists: state.playlists,
           activePlaylistId: state.activePlaylistId,
@@ -1726,8 +1825,9 @@
         };
 
         state.playlists.push(newPlaylist);
-        state.activePlaylistId = newPlaylist.id;
-        state.channels = parsedChannels;
+        state.activePlaylistId = 'all';
+        updateChannelsState();
+        updatePlaylistSelector();
 
         buildGroups();
         filterAndRenderChannels();
@@ -1776,8 +1876,9 @@
           };
 
           state.playlists.push(newPlaylist);
-          state.activePlaylistId = newPlaylist.id;
-          state.channels = parsedChannels;
+          state.activePlaylistId = 'all';
+          updateChannelsState();
+          updatePlaylistSelector();
 
           buildGroups();
           filterAndRenderChannels();
@@ -1803,19 +1904,20 @@
        ========================================================================== */
     function buildGroups() {
       groupsBarEl.innerHTML = '';
+      updateChannelsState();
 
-      // Count per group
+      // Count per group in active list
       const counts = {};
       state.channels.forEach(ch => {
         const g = ch.group || 'General';
         counts[g] = (counts[g] || 0) + 1;
       });
 
-      // Special pill: Favoritos
-      const favCount = state.channels.filter(ch => state.favorites.has(ch.url || ch.id)).length;
+      // Special pill: Favoritos (GLOBAL across ALL playlists!)
+      const allFavs = getAllChannels().filter(ch => state.favorites.has(ch.url || ch.id));
       const favBtn = document.createElement('button');
       favBtn.className = 'group-chip' + (state.activeGroup === 'fav' ? ' active' : '');
-      favBtn.textContent = `⭐ Favoritos (${favCount})`;
+      favBtn.textContent = `⭐ Favoritos (${allFavs.length})`;
       favBtn.onclick = () => selectGroup('fav');
       groupsBarEl.appendChild(favBtn);
 
@@ -1848,18 +1950,24 @@
     });
 
     function filterAndRenderChannels() {
-      let list = state.channels;
+      updateChannelsState();
+      let list;
 
       if (state.activeGroup === 'fav') {
-        list = list.filter(ch => state.favorites.has(ch.url || ch.id));
-      } else if (state.activeGroup !== 'all') {
-        list = list.filter(ch => (ch.group || 'General') === state.activeGroup);
+        // GLOBAL favorites from ALL playlists!
+        list = getAllChannels().filter(ch => state.favorites.has(ch.url || ch.id));
+      } else {
+        list = state.channels;
+        if (state.activeGroup !== 'all') {
+          list = list.filter(ch => (ch.group || 'General') === state.activeGroup);
+        }
       }
 
       if (state.searchQuery) {
         list = list.filter(ch => 
           ch.name.toLowerCase().includes(state.searchQuery) ||
-          (ch.group && ch.group.toLowerCase().includes(state.searchQuery))
+          (ch.group && ch.group.toLowerCase().includes(state.searchQuery)) ||
+          (ch.playlistName && ch.playlistName.toLowerCase().includes(state.searchQuery))
         );
       }
 
@@ -1881,6 +1989,7 @@
       }
 
       const fragment = document.createDocumentFragment();
+      const showPlaylistBadge = (state.activePlaylistId === 'all' || state.activeGroup === 'fav');
 
       state.filteredChannels.forEach(channel => {
         const item = document.createElement('div');
@@ -1901,6 +2010,7 @@
             <span class="channel-name">${escapeHtml(channel.name)}</span>
             <div class="channel-meta-row">
               <span class="channel-category-tag">${escapeHtml(channel.group || 'General')}</span>
+              ${showPlaylistBadge && channel.playlistName ? `<span class="channel-playlist-tag" title="Lista: ${escapeHtml(channel.playlistName)}">${escapeHtml(channel.playlistName)}</span>` : ''}
             </div>
           </div>
           <button class="channel-fav-btn ${isFav ? 'is-fav' : ''}" title="Guardar favorito">
@@ -1947,31 +2057,40 @@
        ========================================================================== */
     const BUFFER_CONFIGS = {
       stable: {
-        name: '🛡️ Búfer Estable (6s - Astra Sync)',
-        liveSyncDurationCount: 2,
-        liveMaxLatencyDurationCount: 4,
-        maxBufferLength: 15,
-        maxMaxBufferLength: 30,
-        maxBufferSize: 30 * 1024 * 1024,
-        maxBufferHole: 0.5
+        name: '🛡️ Búfer Estable (Recomendado - Sin cortes)',
+        liveSyncDurationCount: 3.5,
+        liveMaxLatencyDurationCount: 8,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1024 * 1024,
+        maxBufferHole: 0.9,
+        highBufferWatchdogPeriod: 3,
+        nudgeOffset: 0.2,
+        nudgeMaxRetry: 10
       },
       max: {
-        name: '🚀 Búfer Máximo (9s)',
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 5,
-        maxBufferLength: 20,
-        maxMaxBufferLength: 35,
-        maxBufferSize: 40 * 1024 * 1024,
-        maxBufferHole: 0.8
+        name: '🚀 Búfer Máximo (Ultra estable)',
+        liveSyncDurationCount: 4.5,
+        liveMaxLatencyDurationCount: 10,
+        maxBufferLength: 45,
+        maxMaxBufferLength: 90,
+        maxBufferSize: 80 * 1024 * 1024,
+        maxBufferHole: 1.0,
+        highBufferWatchdogPeriod: 3,
+        nudgeOffset: 0.2,
+        nudgeMaxRetry: 12
       },
       fast: {
-        name: '⚡ Ultrarrápido En Vivo (3s)',
-        liveSyncDurationCount: 1,
-        liveMaxLatencyDurationCount: 3,
-        maxBufferLength: 10,
-        maxMaxBufferLength: 20,
-        maxBufferSize: 15 * 1024 * 1024,
-        maxBufferHole: 0.3
+        name: '⚡ En Vivo Rápido (Baja latencia)',
+        liveSyncDurationCount: 2,
+        liveMaxLatencyDurationCount: 5,
+        maxBufferLength: 15,
+        maxMaxBufferLength: 30,
+        maxBufferSize: 25 * 1024 * 1024,
+        maxBufferHole: 0.6,
+        highBufferWatchdogPeriod: 2,
+        nudgeOffset: 0.15,
+        nudgeMaxRetry: 6
       }
     };
 
@@ -2150,9 +2269,11 @@
           maxMaxBufferLength: bCfg.maxMaxBufferLength,
           maxBufferSize: bCfg.maxBufferSize,
           maxBufferHole: bCfg.maxBufferHole,
-          highBufferWatchdogPeriod: 2,
-          nudgeOffset: 0.1,
-          nudgeMaxRetry: 5,
+          backBufferLength: 30,
+          liveDurationInfinity: true,
+          highBufferWatchdogPeriod: bCfg.highBufferWatchdogPeriod,
+          nudgeOffset: bCfg.nudgeOffset,
+          nudgeMaxRetry: bCfg.nudgeMaxRetry,
           fragLoadingTimeOut: 20000,
           fragLoadingMaxRetry: 6,
           fragLoadingRetryDelay: 500,
@@ -2172,13 +2293,26 @@
           hideLoader();
         });
 
-        // In-browser WebAssembly audio decoder fallback:
-        // If browser MediaSource rejects MP2 audio (Chrome/Edge), keep playing video smoothly and route audio through WebAudio
+        // In-browser WebAssembly audio decoder fallback & Stall recovery:
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.details === Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR && data.sourceBufferName === 'audio') {
             console.log('Códec MP2 detectado. Activando decodificación directa en navegador vía WebAssembly...');
             state.useWebAudio = true;
             initWebAudio();
+            return;
+          }
+
+          if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+            try {
+              const cur = video.currentTime;
+              const b = video.buffered;
+              for (let i = 0; i < b.length; i++) {
+                if (cur >= b.start(i) - 0.1 && cur < b.end(i) - 0.2) {
+                  video.currentTime = cur + 0.15;
+                  break;
+                }
+              }
+            } catch (e) {}
             return;
           }
 
@@ -2225,7 +2359,7 @@
             }
 
             const now = audioCtx.currentTime;
-            if (nextAudioTime < now) {
+            if (nextAudioTime < now || Math.abs(nextAudioTime - now) > 2.0) {
               nextAudioTime = now + 0.05;
             }
 
@@ -2419,11 +2553,14 @@
             state.hls.config.maxMaxBufferLength = cfg.maxMaxBufferLength;
             state.hls.config.maxBufferSize = cfg.maxBufferSize;
             state.hls.config.maxBufferHole = cfg.maxBufferHole;
+            state.hls.config.highBufferWatchdogPeriod = cfg.highBufferWatchdogPeriod;
+            state.hls.config.nudgeOffset = cfg.nudgeOffset;
+            state.hls.config.nudgeMaxRetry = cfg.nudgeMaxRetry;
           }
         });
       }
 
-      // ANTI-FREEZE WATCHDOG: if video stalls on packet drop, auto-nudge past stuck frame only if buffer exists
+      // ANTI-FREEZE WATCHDOG: auto-nudges past micro PTS drops or stuck buffer frames
       let stallWatchdog = null;
       video.addEventListener('waiting', () => {
         clearTimeout(stallWatchdog);
@@ -2433,19 +2570,40 @@
             const b = video.buffered;
             const cur = video.currentTime;
             for (let i = 0; i < b.length; i++) {
-              if (b.start(i) > cur && b.start(i) - cur < 2.5) {
+              // Case 1: Video stalled on a frame inside an already-buffered range
+              if (cur >= b.start(i) - 0.1 && cur < b.end(i) - 0.2) {
+                video.currentTime = cur + 0.15;
+                return;
+              }
+              // Case 2: Small gap to next buffered segment
+              if (b.start(i) > cur && b.start(i) - cur < 3.0) {
                 video.currentTime = b.start(i) + 0.05;
                 return;
               }
             }
           } catch (e) {}
-        }, 4000);
+        }, 1500);
       });
 
       video.addEventListener('playing', () => {
         clearTimeout(stallWatchdog);
         hideLoader();
       });
+
+      // PLAYLIST FILTER DROPDOWN IN SIDEBAR HEADER
+      const plSelect = document.getElementById('playlist-filter-select');
+      if (plSelect) {
+        plSelect.addEventListener('change', (e) => {
+          state.activePlaylistId = e.target.value;
+          state.activeGroup = 'all';
+          updateChannelsState();
+          buildGroups();
+          filterAndRenderChannels();
+          renderSavedPlaylistsModal();
+          syncToCloud();
+          showToast(state.activePlaylistId === 'all' ? 'Mostrando todas las listas' : 'Lista filtrada');
+        });
+      }
 
       // VLC / EXTERNAL PLAYER ACTIONS (Optional utility icon in controls)
       if (openVlcBtn) openVlcBtn.addEventListener('click', () => openInVlc(state.activeChannel));
@@ -2544,33 +2702,56 @@
         return;
       }
 
-      listEl.innerHTML = state.playlists.map(pl => `
-        <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.04); padding:0.5rem 0.75rem; border-radius:8px; border:1px solid var(--border-color);">
-          <div style="cursor:pointer; flex:1;" onclick="activatePlaylist('${pl.id}')">
-            <strong style="font-size:0.88rem; color:${pl.id === state.activePlaylistId ? 'var(--accent-cyan)' : 'inherit'};">${escapeHtml(pl.name)}</strong>
-            <div style="font-size:0.75rem; color:var(--text-muted);">${pl.channelsCount || pl.channels?.length || 0} canales</div>
+      const totalChannels = getAllChannels().length;
+      const isAllActive = state.activePlaylistId === 'all';
+
+      let html = `
+        <div style="display:flex; align-items:center; justify-content:space-between; background:${isAllActive ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255,255,255,0.04)'}; padding:0.6rem 0.75rem; border-radius:8px; border:1px solid ${isAllActive ? 'var(--accent-cyan)' : 'var(--border-color)'}; margin-bottom: 0.5rem;">
+          <div style="cursor:pointer; flex:1;" onclick="activatePlaylist('all')">
+            <strong style="font-size:0.88rem; color:${isAllActive ? 'var(--accent-cyan)' : 'inherit'};">🌐 Todas las Listas (Combinadas)</strong>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${totalChannels} canales en total</div>
           </div>
-          <div style="display:flex; gap:0.4rem;">
-            <button class="btn btn-outline btn-sm" onclick="activatePlaylist('${pl.id}')">Cargar</button>
-            <button class="btn-icon" style="width:30px; height:30px; color:var(--accent-red);" onclick="deletePlaylist('${pl.id}')" title="Eliminar lista">🗑️</button>
+          <div>
+            <button class="btn ${isAllActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="activatePlaylist('all')">
+              ${isAllActive ? 'Activa' : 'Ver Todos'}
+            </button>
           </div>
         </div>
-      `).join('');
+      `;
+
+      html += state.playlists.map(pl => {
+        const isPlActive = pl.id === state.activePlaylistId;
+        return `
+          <div style="display:flex; align-items:center; justify-content:space-between; background:${isPlActive ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255,255,255,0.04)'}; padding:0.5rem 0.75rem; border-radius:8px; border:1px solid ${isPlActive ? 'var(--accent-cyan)' : 'var(--border-color)'}; margin-bottom:0.35rem;">
+            <div style="cursor:pointer; flex:1;" onclick="activatePlaylist('${pl.id}')">
+              <strong style="font-size:0.88rem; color:${isPlActive ? 'var(--accent-cyan)' : 'inherit'};">📁 ${escapeHtml(pl.name)}</strong>
+              <div style="font-size:0.75rem; color:var(--text-muted);">${pl.channelsCount || pl.channels?.length || 0} canales</div>
+            </div>
+            <div style="display:flex; gap:0.4rem;">
+              <button class="btn ${isPlActive ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="activatePlaylist('${pl.id}')">
+                ${isPlActive ? 'Activa' : 'Cargar'}
+              </button>
+              <button class="btn-icon" style="width:30px; height:30px; color:var(--accent-red);" onclick="deletePlaylist('${pl.id}')" title="Eliminar lista">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.innerHTML = html;
     }
 
     window.activatePlaylist = function(id) {
-      const pl = state.playlists.find(p => p.id === id);
-      if (!pl) return;
-
       state.activePlaylistId = id;
-      state.channels = pl.channels || [];
+      state.activeGroup = 'all';
+      updateChannelsState();
+      updatePlaylistSelector();
       buildGroups();
       filterAndRenderChannels();
       renderSavedPlaylistsModal();
       closePlaylistsModal();
 
-      if (state.channels[0]) playChannel(state.channels[0]);
-      showToast(`Lista activa: ${pl.name}`);
+      if (state.channels[0] && !state.activeChannel) playChannel(state.channels[0]);
+      showToast(id === 'all' ? 'Mostrando todos los canales combinados' : 'Lista seleccionada');
       syncToCloud();
     };
 
@@ -2579,12 +2760,13 @@
       state.playlists = state.playlists.filter(p => p.id !== id);
 
       if (state.activePlaylistId === id) {
-        state.activePlaylistId = state.playlists[0]?.id || null;
-        state.channels = state.playlists[0]?.channels || [];
-        buildGroups();
-        filterAndRenderChannels();
+        state.activePlaylistId = 'all';
       }
 
+      updateChannelsState();
+      updatePlaylistSelector();
+      buildGroups();
+      filterAndRenderChannels();
       renderSavedPlaylistsModal();
       await syncToCloud();
       showToast('Lista eliminada.');
