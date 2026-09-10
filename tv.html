@@ -1027,8 +1027,8 @@
 
         <div class="form-group">
           <label class="form-label" for="pl-url">URL de la Lista M3U o M3U8</label>
-          <input type="url" id="pl-url" class="form-input" placeholder="https://ejemplo.com/lista.m3u" required>
-          <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Soporta listas remotas con bypass automático de CORS.</span>
+          <input type="text" inputmode="url" id="pl-url" class="form-input" placeholder="http://servidor:8080/get.php?... o https://..." required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">Compatible con enlaces Xtream Codes, IPTV, GitHub y listas M3U/M3U8.</span>
         </div>
 
         <button type="submit" id="submit-url-btn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
@@ -1430,26 +1430,41 @@
     // Load M3U from URL (via CORS proxy)
     async function loadPlaylistFromUrl() {
       const name = document.getElementById('pl-name').value.trim() || 'Lista IPTV';
-      const url = document.getElementById('pl-url').value.trim();
+      let url = document.getElementById('pl-url').value.trim();
       if (!url) return;
 
+      // Auto-prefix http:// if user pasted without protocol
+      if (!/^https?:\/\//i.test(url)) {
+        url = 'http://' + url;
+      }
+
       showToast('Descargando lista M3U...');
-      showLoader('Descargando lista...');
+      showLoader('Descargando y procesando lista...');
 
       try {
-        // Try fetch via proxy to guarantee bypass of CORS restrictions
         const proxyUrl = `/api/tv/proxy?url=${encodeURIComponent(url)}`;
-        let response = await fetch(proxyUrl);
+        let response;
+
+        try {
+          response = await fetch(proxyUrl);
+        } catch (fetchErr) {
+          throw new Error('No se pudo establecer conexión con el servidor de la app. Comprueba tu conexión a internet.');
+        }
+
         if (!response.ok) {
-          // Fallback direct
-          response = await fetch(url);
+          const errData = await response.json().catch(() => null);
+          const errMsg = errData?.error || `El servidor proxy no pudo obtener la lista (Código ${response.status}: ${response.statusText})`;
+          throw new Error(errMsg);
         }
 
         const text = await response.text();
         const parsedChannels = parseM3U(text);
 
         if (!parsedChannels.length) {
-          throw new Error('No se encontraron canales válidos en el archivo M3U.');
+          if (text.includes('<html') || text.includes('<!DOCTYPE') || text.toLowerCase().includes('expired')) {
+            throw new Error('El proveedor devolvió una página web o aviso de cuenta expirada en lugar de una lista de canales. Verifica tus credenciales IPTV.');
+          }
+          throw new Error('No se encontraron canales válidos en el contenido descargado. Asegúrate de que el enlace apunte a una lista M3U válida.');
         }
 
         const newPlaylist = {
@@ -1475,7 +1490,7 @@
 
         await syncToCloud();
       } catch (err) {
-        alert('Error al cargar la lista: ' + err.message);
+        alert('Error al cargar la lista:\n\n' + err.message + '\n\n💡 Consejo: Si tienes el archivo .m3u descargado en tu dispositivo, puedes cargarlo directamente desde la pestaña "Subir Archivo (.m3u)".');
       } finally {
         hideLoader();
       }
