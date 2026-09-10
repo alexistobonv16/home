@@ -477,14 +477,9 @@
     .player-menu-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.2);
+      background: transparent;
       z-index: 9990;
       pointer-events: auto;
-      animation: fadeInBackdrop 0.18s ease;
-    }
-    @keyframes fadeInBackdrop {
-      from { opacity: 0; }
-      to { opacity: 1; }
     }
 
     .buffer-menu-options {
@@ -2408,6 +2403,9 @@
       </div>
 
       <button class="btn btn-primary" style="width: 100%; margin-top: 1.25rem;" onclick="closeInstallModal()">Entendido</button>
+    </div>
+  </div>
+
   <!-- 7. VIRTUAL DIAL PAD MODAL -->
   <div id="dial-pad-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 340px; text-align: center;">
@@ -2465,6 +2463,9 @@
         <button class="btn btn-outline" style="flex: 1;" onclick="closeCategoriesModal()">Cerrar</button>
         <button class="btn btn-primary" style="flex: 1;" onclick="saveCategoriesSelection()">Guardar y Aplicar</button>
       </div>
+    </div>
+  </div>
+
   <!-- 8B. CHROMECAST & SMART TV MODAL -->
   <div id="cast-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 480px;">
@@ -4285,7 +4286,7 @@
     };
 
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.buffer-menu-wrapper')) {
+      if (!e.target.closest('.buffer-popover-menu, #quality-audio-btn, #buffer-mode-btn, #sleep-timer-btn, #top-sleep-btn, .buffer-menu-wrapper')) {
         closeBufferMenu();
         closeQualityMenu();
         closeSleepMenu();
