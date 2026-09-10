@@ -245,19 +245,20 @@
     .player-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 40%, rgba(0,0,0,0.6) 100%);
+      background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 35%, transparent 65%, rgba(0,0,0,0.7) 100%);
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 1.25rem;
+      padding: 1rem 1.25rem;
       pointer-events: none;
       z-index: 20;
     }
 
-    .player-stage:hover .player-overlay,
-    .player-stage.controls-visible .player-overlay {
+    /* Controls visible on user activity or when paused */
+    .player-stage.controls-active .player-overlay,
+    .player-stage.paused .player-overlay {
       opacity: 1;
       pointer-events: auto;
     }
@@ -1111,8 +1112,7 @@
       }
 
       .player-overlay {
-        opacity: 1;
-        background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
+        background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 35%, transparent 60%, rgba(0,0,0,0.75) 100%);
       }
 
       .volume-slider { display: none; }
@@ -1328,18 +1328,15 @@
       top: 0;
       left: 0;
       right: 0;
-      padding: 0.45rem 0.65rem;
-      background: linear-gradient(to bottom, rgba(7, 11, 20, 0.85) 0%, transparent 100%);
+      padding: 0.55rem 0.85rem;
+      background: linear-gradient(to bottom, rgba(7, 11, 20, 0.95) 0%, rgba(7, 11, 20, 0.6) 70%, transparent 100%);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      z-index: 15;
-      opacity: 0.85;
-      transition: opacity 0.2s ease;
-    }
-
-    .multiview-slot:hover .multiview-slot-overlay {
+      z-index: 35 !important;
+      pointer-events: auto !important;
       opacity: 1;
+      transition: opacity 0.2s ease;
     }
 
     .multiview-info {
@@ -1373,7 +1370,37 @@
     .multiview-actions {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.45rem;
+      z-index: 40 !important;
+      pointer-events: auto !important;
+    }
+
+    #multiview-close-btn {
+      width: 32px !important;
+      height: 32px !important;
+      background: rgba(239, 68, 68, 0.28) !important;
+      color: #f87171 !important;
+      border: 1px solid rgba(239, 68, 68, 0.55) !important;
+      border-radius: 8px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      transition: all 0.2s ease !important;
+      flex-shrink: 0 !important;
+    }
+
+    #multiview-close-btn:hover {
+      background: rgba(239, 68, 68, 0.6) !important;
+      color: #fff !important;
+      transform: scale(1.08) !important;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.6) !important;
+    }
+
+    /* When multi-view is active, hide the main player overlay's top-bar-right to prevent obstruction of slot 2 */
+    .video-wrapper.multiview-active .player-top-bar .top-bar-right {
+      display: none !important;
     }
 
     .multiview-audio-pill {
@@ -1423,22 +1450,26 @@
     /* Stats for Nerds Panel */
     .stats-for-nerds {
       position: absolute;
-      top: 1rem;
+      top: 4.2rem;
       left: 1rem;
-      width: 320px;
-      background: rgba(7, 11, 20, 0.9);
+      width: 310px;
+      max-width: calc(100% - 2rem);
+      background: rgba(10, 15, 29, 0.94);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(56, 189, 248, 0.35);
+      border: 1px solid rgba(56, 189, 248, 0.4);
       border-radius: 12px;
       box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85);
-      padding: 0.75rem 1rem;
+      padding: 0.85rem 1rem;
       font-family: var(--font-mono);
       font-size: 0.73rem;
       color: #e2e8f0;
-      z-index: 55;
+      z-index: 60;
       pointer-events: auto;
       user-select: text;
+      display: none;
+      flex-direction: column !important;
+      gap: 0.35rem;
       animation: popoverSlideUp 0.18s ease-out;
     }
     .stats-header {
@@ -1447,19 +1478,26 @@
       justify-content: space-between;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       padding-bottom: 0.4rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.2rem;
       font-weight: 700;
       color: var(--accent-cyan);
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }
     .stats-row {
-      display: flex;
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center;
       justify-content: space-between;
-      padding: 0.2rem 0;
+      padding: 0.22rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      gap: 0.5rem;
     }
-    .stats-label { color: var(--text-muted); }
-    .stats-val { font-weight: 600; color: #fff; }
+    .stats-row:last-child {
+      border-bottom: none;
+    }
+    .stats-label { color: var(--text-muted); white-space: nowrap; font-weight: 500; }
+    .stats-val { font-weight: 600; color: #fff; text-align: right; word-break: break-all; }
     .stats-val.good { color: var(--accent-emerald); }
     .stats-val.warn { color: var(--accent-amber); }
 
@@ -1585,11 +1623,93 @@
       cursor: pointer;
     }
 
-    @media (max-width: 540px) {
+    @media (max-width: 640px) {
       .brand-tag { display: none; }
       .btn-pwa-install span, #open-playlists-btn span { display: none; }
-      .btn-pwa-install, #open-playlists-btn { padding: 0.5rem; width: 36px; height: 36px; }
-      .stats-for-nerds { width: calc(100vw - 2rem); left: 1rem; }
+      .btn-pwa-install, #open-playlists-btn { padding: 0.45rem; width: 34px; height: 34px; min-width: 34px; }
+      .header-actions { gap: 0.4rem; }
+
+      /* Mobile Video Player Header: clean, single line, no clipping */
+      .player-top-bar {
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .player-top-bar .player-epg-bar {
+        display: none !important; /* Hide long EPG title inside mobile video overlay to prevent collision */
+      }
+      .current-channel-badge {
+        max-width: calc(100% - 95px);
+        padding: 0.25rem 0.6rem;
+        gap: 0.4rem;
+      }
+      .current-channel-name {
+        font-size: 0.8rem;
+        max-width: 120px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .current-channel-group {
+        display: none;
+      }
+      .live-status-pill {
+        padding: 0.22rem 0.5rem;
+        font-size: 0.68rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      /* Mobile Video Player Bottom Controls: streamlined, no overlapping */
+      .player-bottom-bar {
+        padding: 0.35rem 0.55rem;
+        gap: 0.35rem;
+        border-radius: 10px;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      .controls-left, .controls-right {
+        gap: 0.2rem;
+      }
+      .controls-right {
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .controls-right::-webkit-scrollbar {
+        display: none;
+      }
+
+      /* Hide excessive desktop-only buttons on mobile */
+      #screenshot-btn,
+      #multiview-btn,
+      #stats-nerds-btn,
+      #open-vlc-btn {
+        display: none !important;
+      }
+
+      .btn-icon {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 5px !important;
+      }
+
+      .stats-for-nerds {
+        top: 3.2rem;
+        left: 0.5rem;
+        width: calc(100% - 1rem);
+        max-width: calc(100% - 1rem);
+        font-size: 0.68rem;
+        padding: 0.6rem 0.75rem;
+      }
+
+      /* Playlist header buttons on mobile */
+      .playlist-bar {
+        gap: 0.35rem;
+      }
+      .playlist-bar .btn {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 0.75rem !important;
+      }
     }
   </style>
 </head>
@@ -1696,8 +1816,8 @@
                 <span id="slot-2-audio-icon">🔈</span>
                 <span id="slot-2-audio-text">Silenciado</span>
               </button>
-              <button class="btn-icon btn-sm" id="multiview-close-btn" title="Cerrar Multi-View" style="width:28px; height:28px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <button type="button" class="btn-icon btn-sm" id="multiview-close-btn" onclick="closeMultiView()" title="Cerrar Pantalla 2 (Multi-View)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>
           </div>
@@ -3396,6 +3516,9 @@
       showToast('Multi-View cerrado: Modo normal');
     }
 
+    window.toggleMultiView = toggleMultiView;
+    window.closeMultiView = closeMultiView;
+
     function setMultiViewFocus(slotNumber) {
       state.multiviewFocus = slotNumber;
       const slot1El = document.getElementById('multiview-slot-1');
@@ -4258,28 +4381,76 @@
         togglePlay();
       });
 
-      // Clicking directly on video or overlay toggles play/pause like YouTube
-      const overlayEl = document.getElementById('player-overlay');
-      if (overlayEl) {
-        overlayEl.addEventListener('click', (e) => {
-          if (e.target.closest('button, input, select, a, .buffer-popover-menu, .current-channel-badge, .live-status-pill, .player-bottom-bar, .player-top-bar')) {
-            return;
-          }
-          togglePlay();
-        });
+      // AUTO-HIDE CONTROLS ENGINE (Auto-ocultar controles tras 3s de inactividad)
+      let controlsHideTimeout = null;
+
+      function isAnyMenuOpen() {
+        const buf = document.getElementById('buffer-popover-menu');
+        const qua = document.getElementById('quality-popover-menu');
+        const sle = document.getElementById('sleep-popover-menu');
+        const st = document.getElementById('stats-for-nerds-panel');
+        return (
+          (buf && buf.style.display !== 'none') ||
+          (qua && qua.style.display !== 'none') ||
+          (sle && sle.style.display !== 'none') ||
+          (st && st.style.display !== 'none')
+        );
       }
 
-      video.addEventListener('click', () => {
-        togglePlay();
-      });
+      function showPlayerControls(autoHideDelay = 3000) {
+        playerStage.classList.add('controls-active');
+        clearTimeout(controlsHideTimeout);
+        if (!video.paused && !isAnyMenuOpen()) {
+          controlsHideTimeout = setTimeout(() => {
+            hidePlayerControls();
+          }, autoHideDelay);
+        }
+      }
+
+      function hidePlayerControls() {
+        if (video.paused || isAnyMenuOpen()) return;
+        playerStage.classList.remove('controls-active');
+      }
+
+      // Interaction listeners to reveal controls and refresh idle timer
+      playerStage.addEventListener('mousemove', () => showPlayerControls(3000));
+      playerStage.addEventListener('touchstart', () => showPlayerControls(3500), { passive: true });
+
+      function handlePlayerStageTap(e) {
+        // If clicking on an active control button or interactive element, keep controls alive and let button act
+        if (e.target.closest('button, input, select, a, .buffer-popover-menu, .stats-for-nerds, .category-toggle-item, .multiview-actions, .multiview-slot-overlay, .multiview-slot')) {
+          showPlayerControls(4000);
+          return;
+        }
+
+        const isControlsVisible = playerStage.classList.contains('controls-active') || playerStage.classList.contains('paused');
+
+        if (!isControlsVisible) {
+          // Tap 1: Reveal controls without pausing video
+          showPlayerControls(3500);
+        } else {
+          // Tap 2: Toggle play / pause
+          togglePlay();
+          showPlayerControls(3000);
+        }
+      }
+
+      const overlayEl = document.getElementById('player-overlay');
+      if (overlayEl) {
+        overlayEl.addEventListener('click', handlePlayerStageTap);
+      }
+      video.addEventListener('click', handlePlayerStageTap);
 
       video.addEventListener('play', () => {
         playerStage.classList.remove('paused');
         bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+        showPlayerControls(2500);
       });
+
       video.addEventListener('pause', () => {
         playerStage.classList.add('paused');
         bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+        showPlayerControls(60000); // Keep open while paused
       });
 
       // PICTURE-IN-PICTURE (PiP)
