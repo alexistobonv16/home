@@ -863,11 +863,29 @@
       display: flex;
       gap: 0.4rem;
       overflow-x: auto;
-      padding-bottom: 0.2rem;
-      scrollbar-width: none;
+      padding-bottom: 0.45rem;
+      padding-top: 0.1rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.4) rgba(15, 23, 42, 0.6);
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
       flex-shrink: 0;
     }
-    .groups-bar::-webkit-scrollbar { display: none; }
+    .groups-bar::-webkit-scrollbar {
+      height: 5px;
+    }
+    .groups-bar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 4px;
+    }
+    .groups-bar::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.35);
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .groups-bar::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
+    }
 
     .group-chip {
       padding: 0.3rem 0.65rem;
@@ -2711,6 +2729,16 @@
       initPlayerControls();
       initAuth();
 
+      // Horizontal mouse wheel scrolling for category chips
+      if (groupsBarEl) {
+        groupsBarEl.addEventListener('wheel', (e) => {
+          if (e.deltaY !== 0) {
+            e.preventDefault();
+            groupsBarEl.scrollLeft += e.deltaY;
+          }
+        }, { passive: false });
+      }
+
       // Check if already authenticated
       if (state.token) {
         unlockApp();
@@ -3252,6 +3280,10 @@
       state.activeGroup = group;
       buildGroups();
       filterAndRenderChannels();
+      const activeEl = groupsBarEl ? groupsBarEl.querySelector('.group-chip.active') : null;
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
     }
 
     searchInput.addEventListener('input', (e) => {
