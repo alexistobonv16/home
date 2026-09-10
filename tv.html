@@ -330,29 +330,162 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 72px;
-      height: 72px;
+      width: 76px;
+      height: 76px;
       border-radius: 50%;
-      background: rgba(15, 23, 42, 0.85);
-      border: 2px solid rgba(255, 255, 255, 0.2);
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 2px solid rgba(255, 255, 255, 0.25);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       opacity: 0;
-      pointer-events: auto;
+      pointer-events: none;
+      z-index: 30;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     }
 
     .player-center-play:hover {
-      transform: translate(-50%, -50%) scale(1.08);
+      transform: translate(-50%, -50%) scale(1.12);
       border-color: var(--accent-cyan);
-      background: rgba(2, 132, 199, 0.85);
+      background: rgba(2, 132, 199, 0.9);
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
     }
 
     .player-stage.paused .player-center-play {
       opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* YouTube-style Buffer Popover Menu */
+    .buffer-menu-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .buffer-popover-menu {
+      position: absolute;
+      bottom: calc(100% + 14px);
+      right: -20px;
+      width: 270px;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(56, 189, 248, 0.2);
+      padding: 0.5rem;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      animation: popoverSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: auto;
+    }
+
+    @keyframes popoverSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .buffer-menu-header {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.4rem 0.6rem 0.45rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .buffer-menu-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      margin-top: 0.2rem;
+    }
+
+    .buffer-menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.55rem 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      text-align: left;
+      color: #fff;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .buffer-menu-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .buffer-menu-item.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .buffer-item-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .buffer-item-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .buffer-menu-item.active .buffer-item-title {
+      color: var(--accent-cyan);
+    }
+
+    .buffer-item-badge {
+      font-size: 0.65rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
+    }
+
+    .buffer-menu-item.active .buffer-item-badge {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent-cyan);
+    }
+
+    .buffer-item-desc {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .buffer-item-check {
+      color: var(--accent-cyan);
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-left: 0.5rem;
     }
 
     /* Codec Incompatible / Audio MP2 Notice Overlay */
@@ -1123,10 +1256,22 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"></rect><path d="M8 10h8M8 14h8"></path></svg>
               </button>
 
-              <!-- Buffer Stability Mode (Antilag) -->
-              <button class="btn-icon" id="buffer-mode-btn" title="Estabilidad de Búfer (Estable / Máximo / Rápido)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              </button>
+              <!-- Buffer Stability Mode (YouTube-style Popover Menu) -->
+              <div class="buffer-menu-wrapper">
+                <button class="btn-icon" id="buffer-mode-btn" title="Estabilidad de Búfer">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </button>
+
+                <div id="buffer-popover-menu" class="buffer-popover-menu" style="display: none;">
+                  <div class="buffer-menu-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Estabilidad del Búfer</span>
+                  </div>
+                  <div class="buffer-menu-options" id="buffer-menu-options">
+                    <!-- Dynamic Buffer Options -->
+                  </div>
+                </div>
+              </div>
 
               <!-- Abrir en VLC (.m3u) -->
               <button class="btn-icon" id="open-vlc-btn" title="Abrir canal en VLC / Reproductor Externo (.m3u)">
@@ -2057,7 +2202,10 @@
        ========================================================================== */
     const BUFFER_CONFIGS = {
       stable: {
-        name: '🛡️ Búfer Estable (Recomendado - Sin cortes)',
+        id: 'stable',
+        name: '🛡️ Búfer Estable',
+        badge: 'Recomendado',
+        desc: 'Colchón de 10s • Fluidez óptima sin cortes',
         liveSyncDurationCount: 3.5,
         liveMaxLatencyDurationCount: 8,
         maxBufferLength: 30,
@@ -2069,7 +2217,10 @@
         nudgeMaxRetry: 10
       },
       max: {
-        name: '🚀 Búfer Máximo (Ultra estable)',
+        id: 'max',
+        name: '🚀 Búfer Máximo',
+        badge: 'Ultra estable',
+        desc: 'Colchón de 15s • Ideal para conexiones lentas',
         liveSyncDurationCount: 4.5,
         liveMaxLatencyDurationCount: 10,
         maxBufferLength: 45,
@@ -2081,7 +2232,10 @@
         nudgeMaxRetry: 12
       },
       fast: {
-        name: '⚡ En Vivo Rápido (Baja latencia)',
+        id: 'fast',
+        name: '⚡ En Vivo Rápido',
+        badge: 'Baja latencia',
+        desc: 'Colchón de 5s • En tiempo real para eventos',
         liveSyncDurationCount: 2,
         liveMaxLatencyDurationCount: 5,
         maxBufferLength: 15,
@@ -2093,6 +2247,75 @@
         nudgeMaxRetry: 6
       }
     };
+
+    function renderBufferMenu() {
+      const container = document.getElementById('buffer-menu-options');
+      if (!container) return;
+
+      container.innerHTML = Object.keys(BUFFER_CONFIGS).map(key => {
+        const cfg = BUFFER_CONFIGS[key];
+        const isActive = state.bufferMode === key;
+        return `
+          <button type="button" class="buffer-menu-item ${isActive ? 'active' : ''}" onclick="selectBufferMode('${key}')">
+            <div class="buffer-item-left">
+              <div class="buffer-item-title">
+                <span>${cfg.name}</span>
+                <span class="buffer-item-badge">${cfg.badge}</span>
+              </div>
+              <span class="buffer-item-desc">${cfg.desc}</span>
+            </div>
+            ${isActive ? '<span class="buffer-item-check">✓</span>' : ''}
+          </button>
+        `;
+      }).join('');
+    }
+
+    window.selectBufferMode = function(mode) {
+      if (!BUFFER_CONFIGS[mode]) return;
+      state.bufferMode = mode;
+      localStorage.setItem('at_tv_buffer_mode', mode);
+
+      const cfg = BUFFER_CONFIGS[mode];
+      if (state.hls) {
+        state.hls.config.liveSyncDurationCount = cfg.liveSyncDurationCount;
+        state.hls.config.liveMaxLatencyDurationCount = cfg.liveMaxLatencyDurationCount;
+        state.hls.config.maxBufferLength = cfg.maxBufferLength;
+        state.hls.config.maxMaxBufferLength = cfg.maxMaxBufferLength;
+        state.hls.config.maxBufferSize = cfg.maxBufferSize;
+        state.hls.config.maxBufferHole = cfg.maxBufferHole;
+        state.hls.config.highBufferWatchdogPeriod = cfg.highBufferWatchdogPeriod;
+        state.hls.config.nudgeOffset = cfg.nudgeOffset;
+        state.hls.config.nudgeMaxRetry = cfg.nudgeMaxRetry;
+      }
+
+      renderBufferMenu();
+      closeBufferMenu();
+      showToast(`Búfer configurado: ${cfg.name} (${cfg.badge})`);
+    };
+
+    window.toggleBufferMenu = function(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('buffer-popover-menu');
+      if (!menu) return;
+      const isVisible = menu.style.display !== 'none';
+      if (isVisible) {
+        closeBufferMenu();
+      } else {
+        renderBufferMenu();
+        menu.style.display = 'flex';
+      }
+    };
+
+    window.closeBufferMenu = function() {
+      const menu = document.getElementById('buffer-popover-menu');
+      if (menu) menu.style.display = 'none';
+    };
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.buffer-menu-wrapper')) {
+        closeBufferMenu();
+      }
+    });
 
     // WebAudio & WebAssembly MP2 Decoder Pipeline (Enables in-browser playback of all TV channels)
     let audioCtx = null;
@@ -2462,14 +2685,21 @@
 
     function initPlayerControls() {
       // Play / Pause toggle
-      function togglePlay() {
+      async function togglePlay() {
         if (video.paused) {
-          video.play();
-          if (state.useWebAudio && audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
+          try {
+            await video.play();
+            if (state.useWebAudio && audioCtx && audioCtx.state === 'suspended') {
+              audioCtx.resume();
+            }
+            playerStage.classList.remove('paused');
+            bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+          } catch (err) {
+            console.warn('Error al reanudar reproducción:', err);
+            if (state.activeChannel) {
+              playChannel(state.activeChannel);
+            }
           }
-          playerStage.classList.remove('paused');
-          bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
         } else {
           video.pause();
           if (state.useWebAudio && audioCtx && audioCtx.state === 'running') {
@@ -2480,8 +2710,31 @@
         }
       }
 
-      bottomPlayBtn.addEventListener('click', togglePlay);
-      centerPlayBtn.addEventListener('click', togglePlay);
+      bottomPlayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePlay();
+      });
+
+      centerPlayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePlay();
+      });
+
+      // Clicking directly on video or overlay toggles play/pause like YouTube
+      const overlayEl = document.getElementById('player-overlay');
+      if (overlayEl) {
+        overlayEl.addEventListener('click', (e) => {
+          if (e.target.closest('button, input, select, a, .buffer-popover-menu, .current-channel-badge, .live-status-pill, .player-bottom-bar, .player-top-bar')) {
+            return;
+          }
+          togglePlay();
+        });
+      }
+
+      video.addEventListener('click', () => {
+        togglePlay();
+      });
+
       video.addEventListener('play', () => {
         playerStage.classList.remove('paused');
         bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
@@ -2535,28 +2788,10 @@
         showToast(`Formato: ${labels[nextMode]}`);
       });
 
-      // BUFFER STABILITY SELECTOR (Stable / Max / Fast)
+      // BUFFER STABILITY SELECTOR (YouTube-style Popover Menu)
       if (bufferModeBtn) {
-        bufferModeBtn.addEventListener('click', () => {
-          const modes = ['stable', 'max', 'fast'];
-          const nextIdx = (modes.indexOf(state.bufferMode) + 1) % modes.length;
-          state.bufferMode = modes[nextIdx];
-          localStorage.setItem('at_tv_buffer_mode', state.bufferMode);
-
-          const cfg = BUFFER_CONFIGS[state.bufferMode];
-          showToast(`Búfer: ${cfg.name}`);
-
-          if (state.hls) {
-            state.hls.config.liveSyncDurationCount = cfg.liveSyncDurationCount;
-            state.hls.config.liveMaxLatencyDurationCount = cfg.liveMaxLatencyDurationCount;
-            state.hls.config.maxBufferLength = cfg.maxBufferLength;
-            state.hls.config.maxMaxBufferLength = cfg.maxMaxBufferLength;
-            state.hls.config.maxBufferSize = cfg.maxBufferSize;
-            state.hls.config.maxBufferHole = cfg.maxBufferHole;
-            state.hls.config.highBufferWatchdogPeriod = cfg.highBufferWatchdogPeriod;
-            state.hls.config.nudgeOffset = cfg.nudgeOffset;
-            state.hls.config.nudgeMaxRetry = cfg.nudgeMaxRetry;
-          }
+        bufferModeBtn.addEventListener('click', (e) => {
+          toggleBufferMenu(e);
         });
       }
 
@@ -2649,7 +2884,12 @@
       window.addEventListener('keydown', (e) => {
         if (document.activeElement.tagName === 'INPUT') return;
 
-        if (e.key === ' ' || e.key.toLowerCase() === 'k') {
+        if (e.key === 'Escape') {
+          closeBufferMenu();
+          closePlaylistsModal();
+          closePasswordModal();
+          closeInstallModal();
+        } else if (e.key === ' ' || e.key.toLowerCase() === 'k') {
           e.preventDefault();
           togglePlay();
         } else if (e.key.toLowerCase() === 'f') {
