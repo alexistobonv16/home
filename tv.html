@@ -348,6 +348,123 @@
       opacity: 1;
     }
 
+    /* Codec Incompatible / Audio MP2 Notice Overlay */
+    .codec-alert-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 11, 20, 0.92);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 28;
+      text-align: center;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .codec-card {
+      max-width: 480px;
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .codec-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.8rem;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--accent-amber);
+      color: var(--accent-amber);
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .codec-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .codec-desc {
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .codec-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      justify-content: center;
+      margin: 0.2rem 0;
+    }
+
+    .feat-pill {
+      font-size: 0.72rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .feat-pill.feat-ok {
+      color: var(--accent-emerald);
+      border-color: rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .feat-pill.feat-vlc {
+      color: var(--accent-cyan);
+      border-color: rgba(56, 189, 248, 0.3);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .codec-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+      margin-top: 0.3rem;
+    }
+
+    .codec-actions .btn {
+      width: 100%;
+      justify-content: center;
+      font-size: 0.85rem;
+      padding: 0.65rem 1rem;
+    }
+
+    .channel-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .badge-codec-vlc {
+      font-size: 0.65rem;
+      padding: 0.08rem 0.35rem;
+      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--accent-amber);
+      font-family: var(--font-mono);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
     .player-bottom-bar {
       display: flex;
       align-items: center;
@@ -917,6 +1034,36 @@
           <svg id="center-play-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         </button>
 
+        <!-- Codec / Incompatible Audio Notice Overlay -->
+        <div class="codec-alert-overlay" id="codec-alert-overlay" style="display: none;">
+          <div class="codec-card">
+            <div class="codec-badge">⚠️ Audio MP2 Detectado</div>
+            <h3 id="codec-channel-name">Canal Seleccionado</h3>
+            <p class="codec-desc">
+              Este canal emite audio en formato <strong>MPEG-1/2 (MP2)</strong>, no soportado por los navegadores de escritorio (Chrome, Edge). Funciona de manera nativa en celulares Android, iOS, Smart TV o en reproductores como VLC.
+            </p>
+            <div class="codec-features">
+              <span class="feat-pill feat-ok">📱 Móvil Android / iOS</span>
+              <span class="feat-pill feat-ok">📺 Smart TV</span>
+              <span class="feat-pill feat-vlc">💻 VLC / Reproductor PC</span>
+            </div>
+            <div class="codec-actions">
+              <button class="btn btn-primary" id="btn-open-vlc">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="m6 17 2-8h8l2 8"/><path d="m9 9 1.5-6h3L15 9"/></svg>
+                <span>Abrir en VLC / Descargar archivo (.m3u)</span>
+              </button>
+              <button class="btn btn-secondary" id="btn-copy-stream">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                <span>Copiar Enlace Directo</span>
+              </button>
+              <button class="btn btn-outline" id="btn-next-aac">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                <span>Ver Canal Compatible en Navegador (AAC)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Player Controls Overlay -->
         <div class="player-overlay" id="player-overlay">
           <!-- Top Overlay: Current Channel & Live Status -->
@@ -964,6 +1111,11 @@
               <!-- Buffer Stability Mode (Antilag) -->
               <button class="btn-icon" id="buffer-mode-btn" title="Estabilidad de Búfer (Estable / Máximo / Rápido)">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              </button>
+
+              <!-- Abrir en VLC (.m3u) -->
+              <button class="btn-icon" id="open-vlc-btn" title="Abrir canal en VLC / Reproductor Externo (.m3u)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="m6 17 2-8h8l2 8"/><path d="m9 9 1.5-6h3L15 9"/></svg>
               </button>
 
               <!-- PICTURE-IN-PICTURE (PiP) -->
@@ -1138,7 +1290,9 @@
       aspectMode: 'contain', // contain, cover, fill
       bufferMode: localStorage.getItem('at_tv_buffer_mode') || 'stable', // stable, max, fast
       hls: null,
-      deferredPrompt: null
+      deferredPrompt: null,
+      unsupportedCodecs: {},
+      isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
     };
 
     // DOM Elements
@@ -1146,6 +1300,12 @@
     const playerStage = document.getElementById('player-stage');
     const loader = document.getElementById('player-loader');
     const loaderText = document.getElementById('loader-text');
+    const codecAlertOverlay = document.getElementById('codec-alert-overlay');
+    const codecChannelName = document.getElementById('codec-channel-name');
+    const btnOpenVlc = document.getElementById('btn-open-vlc');
+    const btnCopyStream = document.getElementById('btn-copy-stream');
+    const btnNextAac = document.getElementById('btn-next-aac');
+    const openVlcBtn = document.getElementById('open-vlc-btn');
     const pinOverlay = document.getElementById('pin-overlay');
     const pinInput = document.getElementById('pin-input');
     const pinError = document.getElementById('pin-error');
@@ -1644,6 +1804,7 @@
         const item = document.createElement('div');
         const isActive = state.activeChannel && state.activeChannel.url === channel.url;
         const isFav = state.favorites.has(channel.url || channel.id);
+        const isCodecUnsupported = state.unsupportedCodecs[channel.url];
 
         item.className = 'channel-item' + (isActive ? ' active' : '');
         item.setAttribute('data-id', channel.id);
@@ -1658,7 +1819,10 @@
           </div>
           <div class="channel-info-meta">
             <span class="channel-name">${escapeHtml(channel.name)}</span>
-            <span class="channel-category-tag">${escapeHtml(channel.group || 'General')}</span>
+            <div class="channel-meta-row">
+              <span class="channel-category-tag">${escapeHtml(channel.group || 'General')}</span>
+              ${isCodecUnsupported ? `<span class="badge-codec-vlc" title="Audio MP2: Recomendado abrir en VLC o móvil">VLC / Móvil</span>` : ''}
+            </div>
           </div>
           <button class="channel-fav-btn ${isFav ? 'is-fav' : ''}" title="Guardar favorito">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -1704,37 +1868,41 @@
        ========================================================================== */
     const BUFFER_CONFIGS = {
       stable: {
-        name: '🛡️ Búfer Estable (12s - Recomendado)',
-        liveSyncDurationCount: 4,
-        liveMaxLatencyDurationCount: 9,
-        maxBufferLength: 35,
-        maxMaxBufferLength: 70,
-        maxBufferSize: 60 * 1024 * 1024,
-        maxBufferHole: 0.6
-      },
-      max: {
-        name: '🚀 Búfer Máximo Anti-Cortes (25s)',
-        liveSyncDurationCount: 8,
-        liveMaxLatencyDurationCount: 16,
-        maxBufferLength: 75,
-        maxMaxBufferLength: 140,
-        maxBufferSize: 120 * 1024 * 1024,
-        maxBufferHole: 0.9
-      },
-      fast: {
-        name: '⚡ Ultrarrápido En Vivo (5s)',
+        name: '🛡️ Búfer Estable (6s - Astra Sync)',
         liveSyncDurationCount: 2,
-        liveMaxLatencyDurationCount: 5,
+        liveMaxLatencyDurationCount: 4,
         maxBufferLength: 15,
         maxMaxBufferLength: 30,
         maxBufferSize: 30 * 1024 * 1024,
+        maxBufferHole: 0.5
+      },
+      max: {
+        name: '🚀 Búfer Máximo (9s)',
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 5,
+        maxBufferLength: 20,
+        maxMaxBufferLength: 35,
+        maxBufferSize: 40 * 1024 * 1024,
+        maxBufferHole: 0.8
+      },
+      fast: {
+        name: '⚡ Ultrarrápido En Vivo (3s)',
+        liveSyncDurationCount: 1,
+        liveMaxLatencyDurationCount: 3,
+        maxBufferLength: 10,
+        maxMaxBufferLength: 20,
+        maxBufferSize: 15 * 1024 * 1024,
         maxBufferHole: 0.3
       }
     };
 
+    let streamLoadTimeout = null;
+
     function playChannel(channel) {
       if (!channel || !channel.url) return;
       state.activeChannel = channel;
+      hideCodecAlert();
+      clearTimeout(streamLoadTimeout);
 
       // Update UI title & badge
       playerChannelName.textContent = channel.name;
@@ -1767,13 +1935,21 @@
         state.hls = null;
       }
 
+      // Watchdog timeout: if channel takes > 8s without starting on desktop, check for codec issue
+      streamLoadTimeout = setTimeout(() => {
+        if (!video.currentTime && !video.paused && state.isDesktop) {
+          console.warn('Playback start timeout, checking potential codec stall...');
+          showCodecAlert(channel);
+        }
+      }, 8000);
+
       // Engine 1: Hls.js (Chrome, Firefox, Edge, Android)
       if (window.Hls && Hls.isSupported()) {
         const bCfg = BUFFER_CONFIGS[state.bufferMode] || BUFFER_CONFIGS.stable;
 
         const hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: false, // Disabling lowLatencyMode stops constant buffer drops
+          lowLatencyMode: false,
           liveSyncDurationCount: bCfg.liveSyncDurationCount,
           liveMaxLatencyDurationCount: bCfg.liveMaxLatencyDurationCount,
           maxBufferLength: bCfg.maxBufferLength,
@@ -1783,7 +1959,7 @@
           highBufferWatchdogPeriod: 2,
           nudgeOffset: 0.1,
           nudgeMaxRetry: 5,
-          fragLoadingTimeOut: 25000,
+          fragLoadingTimeOut: 20000,
           fragLoadingMaxRetry: 6,
           fragLoadingRetryDelay: 500,
           manifestLoadingTimeOut: 20000,
@@ -1803,6 +1979,27 @@
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
+          // Detect unsupported audio codec in browser MSE (e.g. MP2 audio in desktop Chrome/Edge)
+          const isCodecUnsupported = 
+            data.details === Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR ||
+            data.details === 'bufferAddCodecError' ||
+            data.details === Hls.ErrorDetails.BUFFER_INCOMPATIBLE_CODECS_ERROR ||
+            (data.error && data.error.name === 'NotSupportedError') ||
+            (data.mimeType && data.mimeType.includes('mp4a.40.33'));
+
+          if (isCodecUnsupported) {
+            console.warn('Unsupported codec in browser MSE (e.g. MP2 audio on desktop):', data);
+            clearTimeout(streamLoadTimeout);
+            state.unsupportedCodecs[channel.url] = true;
+            renderChannels();
+            showCodecAlert(channel);
+            if (state.hls) {
+              state.hls.destroy();
+              state.hls = null;
+            }
+            return;
+          }
+
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
@@ -1818,7 +2015,7 @@
                 showToast('Reiniciando señal...');
                 setTimeout(() => {
                   if (state.activeChannel) playChannel(state.activeChannel);
-                }, 1000);
+                }, 1500);
                 break;
             }
           }
@@ -1846,6 +2043,74 @@
     function showControlsPrompt() {
       playerStage.classList.add('paused');
       hideLoader();
+    }
+
+    function showCodecAlert(channel) {
+      if (!codecAlertOverlay) return;
+      hideLoader();
+      codecChannelName.textContent = (channel && channel.name) || 'Canal Seleccionado';
+      codecAlertOverlay.style.display = 'flex';
+      playerStage.classList.add('paused');
+    }
+
+    function hideCodecAlert() {
+      if (codecAlertOverlay) {
+        codecAlertOverlay.style.display = 'none';
+      }
+    }
+
+    function openInVlc(channel) {
+      const target = channel || state.activeChannel;
+      if (!target || !target.url) {
+        showToast('No hay canal seleccionado');
+        return;
+      }
+
+      // Generate & download single-channel .m3u file for VLC / external players
+      const m3u = `#EXTM3U\n#EXTINF:-1,${target.name}\n${target.url}\n`;
+      const blob = new Blob([m3u], { type: 'audio/x-mpegurl' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const safeName = (target.name || 'canal').replace(/[^a-zA-Z0-9_-]/g, '_');
+      a.download = `AlexisTV_${safeName}.m3u`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('Descargando archivo .m3u para VLC...');
+
+      // Try opening via vlc:// protocol handler
+      try {
+        window.location.href = 'vlc://' + target.url;
+      } catch (e) {}
+    }
+
+    function copyStreamUrl(channel) {
+      const target = channel || state.activeChannel;
+      if (!target || !target.url) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(target.url).then(() => {
+          showToast('Enlace copiado al portapapeles');
+        }).catch(() => {
+          prompt('Copia este enlace para tu reproductor:', target.url);
+        });
+      } else {
+        prompt('Copia este enlace para tu reproductor:', target.url);
+      }
+    }
+
+    function playNextCompatibleChannel() {
+      hideCodecAlert();
+      const preferred = ['11 - Repretel', '6 - Repretel', 'Adult Swim', 'Animal Planet HD', 'ATB HD', 'Azteca Deportes', 'CINECANAL HD'];
+      let found = state.channels.find(c => preferred.includes(c.name));
+      if (!found) {
+        found = state.channels.find(c => !state.unsupportedCodecs[c.url]);
+      }
+      if (found) {
+        playChannel(found);
+        showToast(`Cambiando a canal compatible: ${found.name}`);
+      } else {
+        showToast('No se encontró otro canal compatible');
+      }
     }
 
     function initPlayerControls() {
@@ -1964,8 +2229,16 @@
 
       video.addEventListener('playing', () => {
         clearTimeout(stallWatchdog);
+        clearTimeout(streamLoadTimeout);
         hideLoader();
+        hideCodecAlert();
       });
+
+      // VLC / EXTERNAL PLAYER ACTIONS
+      if (btnOpenVlc) btnOpenVlc.addEventListener('click', () => openInVlc(state.activeChannel));
+      if (btnCopyStream) btnCopyStream.addEventListener('click', () => copyStreamUrl(state.activeChannel));
+      if (btnNextAac) btnNextAac.addEventListener('click', playNextCompatibleChannel);
+      if (openVlcBtn) openVlcBtn.addEventListener('click', () => openInVlc(state.activeChannel));
 
       // VOLUME & MUTE
       volumeSlider.addEventListener('input', (e) => {
