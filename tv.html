@@ -4766,25 +4766,42 @@
         clearTimeout(controlsHideTimeout);
       }
 
-      // Interaction listeners to reveal controls and refresh idle timer
-      playerStage.addEventListener('mousemove', () => showPlayerControls(3500));
+      // Interaction listeners to reveal controls and refresh idle timer (mouse-only to avoid touch tap collisions)
+      let lastControlsRevealTime = 0;
+
+      playerStage.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'mouse') {
+          showPlayerControls(3500);
+        }
+      });
 
       function handlePlayerStageTap(e) {
-        // If clicking on an active control button or interactive element, keep controls alive and let button act
-        if (e.target.closest('button, input, select, a, .buffer-popover-menu, .stats-for-nerds, .category-toggle-item, .multiview-actions, .multiview-slot-overlay, .multiview-slot')) {
+        const isControlsVisible = playerStage.classList.contains('controls-active');
+        const now = Date.now();
+
+        // If controls were just revealed in this gesture (<400ms ago):
+        // Keep them visible, do not re-hide!
+        if (now - lastControlsRevealTime < 400) {
           showPlayerControls(4000);
           return;
         }
 
-        const isControlsVisible = playerStage.classList.contains('controls-active');
-
+        // If controls are currently hidden:
+        // Wake them up!
         if (!isControlsVisible) {
-          // Tap 1: Reveal controls without affecting playback
-          showPlayerControls(3500);
-        } else {
-          // Tap 2: Tap on empty player area hides controls immediately (YouTube mobile style)
-          hidePlayerControls();
+          lastControlsRevealTime = now;
+          showPlayerControls(4000);
+          return;
         }
+
+        // If clicking on an active control button or interactive element, keep controls alive
+        if (e.target.closest('button, input, select, a, .buffer-popover-menu, .stats-for-nerds, .category-toggle-item, .multiview-actions, .multiview-slot-overlay, .multiview-slot')) {
+          showPlayerControls(4500);
+          return;
+        }
+
+        // Tap on empty player area when controls are already visible: hide them (YouTube style)
+        hidePlayerControls();
       }
 
       const overlayEl = document.getElementById('player-overlay');
@@ -4884,19 +4901,30 @@
       }
 
       // ABSORB TAPS ON CONTROLS BARS (Prevents accidental close when touching bar gaps/padding)
+      function interceptControlsCapture(e) {
+        const isControlsVisible = playerStage.classList.contains('controls-active');
+        const now = Date.now();
+
+        // If controls are currently hidden OR were just revealed in this same gesture (<400ms ago):
+        // Wake up controls only and block the underlying button from firing!
+        if (!isControlsVisible || (now - lastControlsRevealTime < 400)) {
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          e.preventDefault();
+          lastControlsRevealTime = now;
+          showPlayerControls(4000);
+          return;
+        }
+        showPlayerControls(4500);
+      }
+
       const bottomBarEl = document.querySelector('.player-bottom-bar');
       if (bottomBarEl) {
-        bottomBarEl.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showPlayerControls(4500);
-        });
+        bottomBarEl.addEventListener('click', interceptControlsCapture, true);
       }
       const topBarEl = document.querySelector('.player-top-bar');
       if (topBarEl) {
-        topBarEl.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showPlayerControls(4500);
-        });
+        topBarEl.addEventListener('click', interceptControlsCapture, true);
       }
 
       // MULTI-VIEW (50/50 Split Screen)
