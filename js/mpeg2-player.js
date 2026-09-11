@@ -81,11 +81,13 @@ class Mpeg2LivePlayer {
   pushChunk(chunkBuffer) {
     if (!this.worker || !chunkBuffer) return;
     try {
-      // Pass copy of the TS buffer to worker without mutating original
-      const copy = new Uint8Array(chunkBuffer);
+      const copyBuffer = chunkBuffer instanceof ArrayBuffer
+        ? chunkBuffer.slice(0)
+        : (chunkBuffer.buffer ? chunkBuffer.buffer.slice(chunkBuffer.byteOffset, chunkBuffer.byteOffset + chunkBuffer.byteLength) : null);
+      if (!copyBuffer) return;
       this.worker.postMessage(
-        { type: 'decode-ts', buffer: copy.buffer },
-        [copy.buffer]
+        { type: 'decode-ts', buffer: copyBuffer },
+        [copyBuffer]
       );
     } catch (e) {
       console.warn('[Mpeg2LivePlayer] Push chunk error:', e);

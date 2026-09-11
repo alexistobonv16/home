@@ -5486,51 +5486,52 @@
             }
           }
 
+          if (state.useWebAudio && rawTsBuffer) {
+            try {
+              const rawAudio = extractMp2FromTs(rawTsBuffer);
+              if (rawAudio && rawAudio.length) {
+                await initWebAudio();
+                if (audioDecoder && audioCtx) {
+                  const decoded = audioDecoder.decode(rawAudio);
+                  if (decoded && decoded.channelData && decoded.channelData.length && decoded.channelData[0].length) {
+                    const numChannels = decoded.channelData.length;
+                    const numSamples = decoded.channelData[0].length;
+                    const sampleRate = decoded.sampleRate || 48000;
+                    const duration = numSamples / sampleRate;
+
+                    const buffer = audioCtx.createBuffer(numChannels, numSamples, sampleRate);
+                    for (let c = 0; c < numChannels; c++) {
+                      buffer.copyToChannel(decoded.channelData[c], c);
+                    }
+
+                    const now = audioCtx.currentTime;
+                    if (nextAudioTime < now || Math.abs(nextAudioTime - now) > 2.0) {
+                      nextAudioTime = now + 0.05;
+                    }
+
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioGain);
+                    source.start(nextAudioTime);
+                    activeAudioSources.push(source);
+                    source.onended = () => {
+                      const idx = activeAudioSources.indexOf(source);
+                      if (idx !== -1) activeAudioSources.splice(idx, 1);
+                    };
+
+                    nextAudioTime += duration;
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('Error decodificando audio en WebAudio:', err);
+            }
+          }
+
           if (state.isMpeg2Decoding && state.mpeg2Player && rawTsBuffer) {
             state.mpeg2Player.pushChunk(rawTsBuffer);
             hideLoader();
             hideMpeg2Alert();
-          }
-
-          if (!state.useWebAudio || !rawTsBuffer) return;
-          try {
-            const rawAudio = extractMp2FromTs(rawTsBuffer);
-            if (!rawAudio || !rawAudio.length) return;
-
-            await initWebAudio();
-            if (!audioDecoder || !audioCtx) return;
-
-            const decoded = audioDecoder.decode(rawAudio);
-            if (!decoded || !decoded.channelData || !decoded.channelData.length || !decoded.channelData[0].length) return;
-
-            const numChannels = decoded.channelData.length;
-            const numSamples = decoded.channelData[0].length;
-            const sampleRate = decoded.sampleRate || 48000;
-            const duration = numSamples / sampleRate;
-
-            const buffer = audioCtx.createBuffer(numChannels, numSamples, sampleRate);
-            for (let c = 0; c < numChannels; c++) {
-              buffer.copyToChannel(decoded.channelData[c], c);
-            }
-
-            const now = audioCtx.currentTime;
-            if (nextAudioTime < now || Math.abs(nextAudioTime - now) > 2.0) {
-              nextAudioTime = now + 0.05;
-            }
-
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioGain);
-            source.start(nextAudioTime);
-            activeAudioSources.push(source);
-            source.onended = () => {
-              const idx = activeAudioSources.indexOf(source);
-              if (idx !== -1) activeAudioSources.splice(idx, 1);
-            };
-
-            nextAudioTime += duration;
-          } catch (err) {
-            console.warn('Error decodificando audio en WebAudio:', err);
           }
         });
 
