@@ -1193,8 +1193,10 @@
         top: 0;
         z-index: 30;
         width: 100%;
-        height: min(56.25vw, 42vh);
-        min-height: 220px;
+        flex: 0 0 auto !important;
+        aspect-ratio: 16 / 9;
+        height: auto !important;
+        max-height: 48vh;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
       }
 
@@ -2236,7 +2238,7 @@
           <button class="btn btn-outline btn-sm playlist-action-btn" onclick="openCategoriesModal()" title="Gestionar y ocultar categorías">
             ⚙️
           </button>
-          <button class="btn btn-outline btn-sm playlist-action-btn" id="health-check-btn" onclick="toggleHealthFilter()" title="Verificar canales en línea / caídos (🟢 / 🔴)">
+          <button class="btn btn-outline btn-sm playlist-action-btn" id="health-check-btn" onclick="toggleHealthFilter()" ondblclick="startHealthCheck(true)" title="Verificar canales en línea / caídos (🟢 / 🔴). Doble clic para reescanear">
             🩺
           </button>
           <button class="btn btn-outline btn-sm playlist-action-btn" onclick="openPlaylistsModal()" title="Subir y gestionar listas M3U">
@@ -3178,6 +3180,7 @@
         };
 
         state.playlists.push(newPlaylist);
+        resetHealthStateForPlaylistSwitch();
         state.activePlaylistId = 'all';
         updateChannelsState();
         updatePlaylistSelector();
@@ -3229,6 +3232,7 @@
           };
 
           state.playlists.push(newPlaylist);
+          resetHealthStateForPlaylistSwitch();
           state.activePlaylistId = 'all';
           updateChannelsState();
           updatePlaylistSelector();
@@ -5055,6 +5059,7 @@
       const plSelect = document.getElementById('playlist-filter-select');
       if (plSelect) {
         plSelect.addEventListener('change', (e) => {
+          resetHealthStateForPlaylistSwitch();
           state.activePlaylistId = e.target.value;
           state.activeGroup = 'all';
           updateChannelsState();
@@ -5272,26 +5277,54 @@
     /* ==========================================================================
        6I. CHANNEL HEALTH CHECKER (Verificador de Salud de Canales 🟢 / 🔴)
        ========================================================================== */
-    window.startHealthCheck = async function() {
-      if (state.isCheckingHealth) return;
+    let currentHealthSession = 0;
+
+    function resetHealthStateForPlaylistSwitch() {
+      currentHealthSession++;
+      state.isCheckingHealth = false;
+      state.channelHealth = {};
+      state.healthFilterActive = false;
+      const btn = document.getElementById('health-check-btn');
+      if (btn) {
+        btn.classList.remove('active');
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }
+    }
+    window.resetHealthStateForPlaylistSwitch = resetHealthStateForPlaylistSwitch;
+
+    window.startHealthCheck = async function(force = false) {
+      if (state.isCheckingHealth) {
+        showToast('🩺 Verificación ya en progreso...');
+        return;
+      }
+
+      if (!state.channels || state.channels.length === 0) {
+        showToast('No hay canales en esta lista para verificar');
+        return;
+      }
+
+      const thisSession = ++currentHealthSession;
       state.isCheckingHealth = true;
       const btn = document.getElementById('health-check-btn');
       if (btn) btn.classList.add('active');
       showToast('🩺 Verificando estado de canales...');
 
-      const channelsToCheck = state.channels.slice(0, 120);
+      const channelsToCheck = state.channels.slice(0, 150);
       channelsToCheck.forEach(ch => {
         state.channelHealth[ch.url] = 'checking';
       });
-      renderChannels();
+      filterAndRenderChannels();
 
-      const CONCURRENCY = 5;
+      const CONCURRENCY = 6;
       let currentIndex = 0;
       let onlineCount = 0;
       let offlineCount = 0;
 
       async function worker() {
         while (currentIndex < channelsToCheck.length) {
+          if (thisSession !== currentHealthSession) return; // Playlist changed, terminate worker
+
           const ch = channelsToCheck[currentIndex++];
           if (!ch || !ch.url) continue;
 
@@ -5305,6 +5338,8 @@
             });
             clearTimeout(timeoutId);
 
+            if (thisSession !== currentHealthSession) return;
+
             if (res.ok || res.status === 206 || res.status === 200 || res.status === 302) {
               state.channelHealth[ch.url] = 'online';
               onlineCount++;
@@ -5313,11 +5348,12 @@
               offlineCount++;
             }
           } catch (e) {
+            if (thisSession !== currentHealthSession) return;
             state.channelHealth[ch.url] = 'offline';
             offlineCount++;
           }
-          if (currentIndex % 4 === 0 || currentIndex >= channelsToCheck.length) {
-            renderChannels();
+          if (thisSession === currentHealthSession && (currentIndex % 4 === 0 || currentIndex >= channelsToCheck.length)) {
+            filterAndRenderChannels();
           }
         }
       }
@@ -5325,16 +5361,28 @@
       const workers = Array.from({ length: CONCURRENCY }, () => worker());
       await Promise.all(workers);
 
+      if (thisSession !== currentHealthSession) return;
+
       state.isCheckingHealth = false;
-      renderChannels();
+      filterAndRenderChannels();
       showToast(`🩺 Verificación finalizada: ${onlineCount} activos 🟢, ${offlineCount} caídos 🔴`);
     };
 
     window.toggleHealthFilter = function() {
-      if (Object.keys(state.channelHealth).length === 0 && !state.isCheckingHealth) {
+      // Check if current active playlist has any checked channels
+      const currentUrls = new Set(state.channels.map(ch => ch.url));
+      const checkedInCurrent = Object.keys(state.channelHealth).filter(url => currentUrls.has(url) && state.channelHealth[url] !== 'checking');
+
+      if (checkedInCurrent.length === 0 && !state.isCheckingHealth) {
         startHealthCheck();
         return;
       }
+
+      if (state.isCheckingHealth) {
+        showToast(`🩺 Verificación en curso (${checkedInCurrent.length} analizados)...`);
+        return;
+      }
+
       state.healthFilterActive = !state.healthFilterActive;
       const btn = document.getElementById('health-check-btn');
       if (btn) {
@@ -5730,6 +5778,7 @@
     }
 
     window.activatePlaylist = function(id) {
+      resetHealthStateForPlaylistSwitch();
       state.activePlaylistId = id;
       state.activeGroup = 'all';
       updateChannelsState();
@@ -5749,6 +5798,7 @@
       state.playlists = state.playlists.filter(p => p.id !== id);
 
       if (state.activePlaylistId === id) {
+        resetHealthStateForPlaylistSwitch();
         state.activePlaylistId = 'all';
       }
 
