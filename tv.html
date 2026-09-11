@@ -5156,6 +5156,8 @@
     let nextAudioTime = 0;
     let activeAudioSources = [];
 
+    let audioDecoderReadyPromise = null;
+
     async function initWebAudio() {
       if (!audioCtx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -5170,10 +5172,15 @@
       if (!audioDecoder && window['mpg123-decoder'] && window['mpg123-decoder'].MPEGDecoder) {
         try {
           audioDecoder = new window['mpg123-decoder'].MPEGDecoder();
-          await audioDecoder.ready;
+          audioDecoderReadyPromise = audioDecoder.ready;
         } catch (e) {
           console.warn('No se pudo inicializar decodificador mpg123:', e);
         }
+      }
+      if (audioDecoderReadyPromise) {
+        try {
+          await audioDecoderReadyPromise;
+        } catch (e) {}
       }
     }
 
@@ -5491,6 +5498,9 @@
               const rawAudio = extractMp2FromTs(rawTsBuffer);
               if (rawAudio && rawAudio.length) {
                 await initWebAudio();
+                if (audioDecoder && audioDecoder.ready) {
+                  try { await audioDecoder.ready; } catch (e) {}
+                }
                 if (audioDecoder && audioCtx) {
                   const decoded = audioDecoder.decode(rawAudio);
                   if (decoded && decoded.channelData && decoded.channelData.length && decoded.channelData[0].length) {
