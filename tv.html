@@ -29,8 +29,20 @@
   <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
   <!-- Google Cast Framework SDK for Chromecast / Google TV playback -->
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" defer></script>
+  <script>
+    (function() {
+      var saved = localStorage.getItem('at_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
 
   <style>
+    /* Theme icon visibility */
+    [data-theme="dark"] .sun-icon { display: block; }
+    [data-theme="dark"] .moon-icon { display: none; }
+    [data-theme="light"] .sun-icon { display: none; }
+    [data-theme="light"] .moon-icon { display: block; }
+
     :root {
       --bg-primary: #070b14;
       --bg-secondary: #0f172a;
@@ -50,6 +62,170 @@
       --font-mono: 'JetBrains Mono', monospace;
       --player-height-mobile: 42vw;
       --sidebar-width: 360px;
+    }
+
+    /* Light Theme Palette */
+    [data-theme="light"] {
+      --bg-primary: #f1f5f9;
+      --bg-secondary: #ffffff;
+      --bg-card: #ffffff;
+      --bg-hover: #e2e8f0;
+      --border-color: rgba(0, 0, 0, 0.1);
+      --border-hover: rgba(2, 132, 199, 0.4);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --accent-cyan: #0284c7;
+    }
+
+    [data-theme="light"] .playlist-select {
+      background: #ffffff;
+      border-color: rgba(0, 0, 0, 0.15);
+      color: #0f172a;
+    }
+    [data-theme="light"] .playlist-select option {
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .search-input {
+      background: #f8fafc;
+      border-color: rgba(0, 0, 0, 0.15);
+      color: #0f172a;
+    }
+
+    [data-theme="light"] .group-chip {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.1);
+      color: var(--text-secondary);
+    }
+    [data-theme="light"] .group-chip:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: #0f172a;
+    }
+    [data-theme="light"] .group-chip.active {
+      background: rgba(2, 132, 199, 0.12);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    [data-theme="light"] .channel-item:hover {
+      background: #f1f5f9;
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    [data-theme="light"] .channel-item.active {
+      background: rgba(2, 132, 199, 0.1);
+      border-color: rgba(2, 132, 199, 0.35);
+    }
+    [data-theme="light"] .channel-thumb {
+      background: rgba(0, 0, 0, 0.03);
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+
+    [data-theme="light"] .btn-outline {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0f172a;
+    }
+    [data-theme="light"] .btn-outline:hover {
+      background: rgba(0, 0, 0, 0.08);
+      border-color: var(--accent-cyan);
+    }
+    [data-theme="light"] .btn-icon {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.12);
+      color: #0f172a;
+    }
+    [data-theme="light"] .btn-icon:hover {
+      background: rgba(0, 0, 0, 0.08);
+      border-color: var(--accent-cyan);
+    }
+
+    [data-theme="light"] .modal-card {
+      background: #ffffff;
+      border-color: rgba(0, 0, 0, 0.12);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+      color: #0f172a;
+    }
+    [data-theme="light"] .pin-box {
+      background: #ffffff;
+      border-color: rgba(0, 0, 0, 0.12);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
+      color: #0f172a;
+    }
+    [data-theme="light"] .pin-lock-container {
+      background: #f1f5f9;
+    }
+    [data-theme="light"] .form-input {
+      background: #f8fafc;
+      border-color: rgba(0, 0, 0, 0.15);
+      color: #0f172a;
+    }
+    [data-theme="light"] .dial-pad-key {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.1);
+      color: #0f172a;
+    }
+    [data-theme="light"] .dial-pad-key:hover {
+      background: rgba(2, 132, 199, 0.15);
+      border-color: var(--accent-cyan);
+    }
+    [data-theme="light"] .category-toggle-item {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    [data-theme="light"] .category-toggle-item:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    [data-theme="light"] .buffer-popover-menu {
+      background: rgba(255, 255, 255, 0.98);
+      border-color: rgba(0, 0, 0, 0.15);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+      color: #0f172a;
+    }
+    [data-theme="light"] .buffer-menu-item {
+      color: #0f172a;
+    }
+    [data-theme="light"] .buffer-menu-item:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    [data-theme="light"] .buffer-menu-header {
+      border-bottom-color: rgba(0, 0, 0, 0.08);
+    }
+    [data-theme="light"] .buffer-item-title {
+      color: #0f172a;
+    }
+    [data-theme="light"] .menu-close-btn {
+      background: rgba(0, 0, 0, 0.06) !important;
+      border-color: rgba(0, 0, 0, 0.12) !important;
+      color: var(--text-secondary) !important;
+    }
+
+    [data-theme="light"] .channels-list,
+    [data-theme="light"] .groups-bar {
+      scrollbar-color: rgba(2, 132, 199, 0.4) rgba(0, 0, 0, 0.05);
+    }
+    [data-theme="light"] .channels-list::-webkit-scrollbar-track,
+    [data-theme="light"] .groups-bar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.04);
+    }
+    [data-theme="light"] .channels-list::-webkit-scrollbar-thumb,
+    [data-theme="light"] .groups-bar::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Video player overlay buttons always stay high-contrast dark-glass with white text/icons */
+    .player-overlay .btn-icon,
+    .player-overlay .mobile-top-btn {
+      color: #f8fafc !important;
+      background: rgba(15, 23, 42, 0.75) !important;
+      border-color: rgba(255, 255, 255, 0.15) !important;
+    }
+    .player-overlay .btn-icon:hover,
+    .player-overlay .mobile-top-btn:hover {
+      background: rgba(30, 41, 59, 0.9) !important;
+      border-color: var(--accent-cyan) !important;
     }
 
     *, *::before, *::after {
@@ -1983,6 +2159,12 @@
       <button id="open-playlists-btn" class="btn btn-outline" title="Cargar y gestionar listas M3U">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
         <span>Mis Listas</span>
+      </button>
+
+      <!-- Theme Toggle button (Modo Oscuro / Claro) -->
+      <button id="theme-toggle-btn" class="btn-icon" aria-label="Cambiar modo oscuro / claro" title="Cambiar tema claro/oscuro" onclick="toggleTheme()">
+        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="12" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
       </button>
 
       <!-- Change Password button -->
@@ -4876,18 +5058,80 @@
         pipBtn.style.display = 'none';
       }
 
-      // FULLSCREEN
-      fullscreenBtn.addEventListener('click', (e) => {
-        if (e) e.stopPropagation();
+      // FULLSCREEN WITH AUTOMATIC LANDSCAPE ROTATION ON MOBILE
+      async function toggleFullscreen() {
         showPlayerControls(4500);
         const target = document.getElementById('player-stage') || video;
-        if (!document.fullscreenElement) {
-          if (target.requestFullscreen) target.requestFullscreen();
-          else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iOS Safari
+        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+
+        if (!isFullscreen) {
+          try {
+            if (target.requestFullscreen) {
+              await target.requestFullscreen();
+            } else if (target.webkitRequestFullscreen) {
+              await target.webkitRequestFullscreen();
+            } else if (video.webkitEnterFullscreen) {
+              video.webkitEnterFullscreen(); // iOS Safari
+            }
+
+            // Automatically rotate mobile screen to landscape
+            if (screen.orientation && typeof screen.orientation.lock === 'function') {
+              try {
+                await screen.orientation.lock('landscape');
+              } catch (err) {
+                console.log('Screen orientation lock not allowed or unsupported:', err);
+              }
+            }
+          } catch (err) {
+            console.warn('Error entering fullscreen:', err);
+          }
         } else {
-          document.exitFullscreen();
+          try {
+            if (document.exitFullscreen) {
+              await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+              await document.webkitExitFullscreen();
+            }
+          } catch (err) {}
+
+          if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+            try {
+              screen.orientation.unlock();
+            } catch (err) {}
+          }
         }
+      }
+
+      fullscreenBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        toggleFullscreen();
       });
+
+      // Double-click/double-tap on video to toggle fullscreen
+      video.addEventListener('dblclick', (e) => {
+        if (e) e.stopPropagation();
+        toggleFullscreen();
+      });
+
+      // Handle exit via hardware Back button, Escape key, or swipe gestures
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+      function handleFullscreenChange() {
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        if (!isFs) {
+          if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+            try {
+              screen.orientation.unlock();
+            } catch (e) {}
+          }
+        } else {
+          // If entered fullscreen via any trigger on mobile, lock orientation to landscape
+          if (window.innerWidth <= 900 && screen.orientation && typeof screen.orientation.lock === 'function') {
+            screen.orientation.lock('landscape').catch(() => {});
+          }
+        }
+      }
 
       // ASPECT RATIO TOGGLE (Contain / Cover / Fill)
       aspectRatioBtn.addEventListener('click', (e) => {
@@ -5850,6 +6094,33 @@
         '"': '&quot;'
       }[tag] || tag));
     }
+
+    /* ==========================================================================
+       9. THEME TOGGLE (Modo Oscuro / Claro)
+       ========================================================================== */
+    function initTheme() {
+      const saved = localStorage.getItem('at_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+      updateMetaThemeColor(saved);
+    }
+
+    window.toggleTheme = function() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('at_theme', next);
+      updateMetaThemeColor(next);
+      showToast(next === 'dark' ? '🌙 Modo oscuro activado' : '☀️ Modo claro activado');
+    };
+
+    function updateMetaThemeColor(theme) {
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute('content', theme === 'light' ? '#f1f5f9' : '#070b14');
+      }
+    }
+
+    initTheme();
   </script>
 </body>
 </html>
