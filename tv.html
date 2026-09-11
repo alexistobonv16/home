@@ -1314,7 +1314,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      padding: 0.75rem;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
       opacity: 0;
       visibility: hidden;
       transition: all 0.25s ease;
@@ -1322,8 +1325,10 @@
     .modal-overlay.active { opacity: 1; visibility: visible; }
 
     .modal-card {
+      box-sizing: border-box;
       width: 100%;
       max-width: 520px;
+      margin: auto;
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 1.25rem;
@@ -1333,6 +1338,8 @@
       transition: transform 0.2s ease;
       max-height: 90vh;
       overflow-y: auto;
+      overflow-x: hidden;
+      word-break: break-word;
     }
     .modal-overlay.active .modal-card { transform: scale(1); }
 
@@ -2119,6 +2126,111 @@
     .stats-val.good { color: var(--accent-emerald); }
     .stats-val.warn { color: var(--accent-amber); }
 
+    /* MPEG-2 Video Incompatibility Alert Overlay */
+    .mpeg2-alert-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 55;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.85rem;
+      background: rgba(3, 7, 18, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events: auto;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .mpeg2-alert-card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 14px;
+      padding: 1.15rem 1.25rem;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(245, 158, 11, 0.15);
+      color: #f8fafc;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      animation: popoverSlideUp 0.18s ease-out;
+    }
+    .mpeg2-alert-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .mpeg2-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .mpeg2-alert-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin: 0 0 0.4rem 0;
+      line-height: 1.35;
+    }
+    .mpeg2-alert-text {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      line-height: 1.45;
+      margin: 0 0 0.9rem 0;
+    }
+    .mpeg2-alert-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .mpeg2-alert-actions .btn {
+      width: 100%;
+      justify-content: center;
+      font-size: 0.8rem;
+      padding: 0.52rem 0.75rem;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.25;
+    }
+    [data-theme="light"] .mpeg2-alert-card {
+      background: #ffffff;
+      border-color: rgba(217, 119, 6, 0.4);
+      color: #0f172a;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25), 0 0 25px rgba(217, 119, 6, 0.1);
+    }
+    [data-theme="light"] .mpeg2-alert-title { color: #0f172a; }
+    [data-theme="light"] .mpeg2-alert-text { color: #475569; }
+
+    /* Responsive Smart TV & VLC Modal Actions */
+    .cast-action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+    }
+    @media (min-width: 440px) {
+      .cast-action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .cast-action-buttons .btn {
+      width: 100%;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.25;
+      padding: 0.55rem 0.6rem;
+      font-size: 0.78rem;
+    }
+
     /* Channel Health Dots */
     .health-dot {
       width: 7px;
@@ -2260,6 +2372,11 @@
         border-radius: 1.15rem;
         max-height: 90vh;
         overflow-y: auto;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: auto !important;
         -webkit-overflow-scrolling: touch;
       }
       .modal-tab-btn {
@@ -2586,6 +2703,31 @@
           </div>
         </div>
 
+        <!-- MPEG-2 Codec Incompatibility Alert Overlay -->
+        <div id="mpeg2-alert-overlay" class="mpeg2-alert-overlay" style="display: none;">
+          <div class="mpeg2-alert-card">
+            <div class="mpeg2-alert-header">
+              <span class="mpeg2-badge">⚠️ SEÑAL SATELITAL MPEG-2</span>
+              <button type="button" class="btn-icon btn-sm" onclick="hideMpeg2Alert()" style="width: 22px; height: 22px; padding: 0; border: none; font-size: 0.9rem;" title="Cerrar aviso">✕</button>
+            </div>
+            <h4 id="mpeg2-alert-title" class="mpeg2-alert-title">Señal en Formato MPEG-2 (Solo Audio en Web)</h4>
+            <p class="mpeg2-alert-text">
+              Esta señal es muy estable pero emite en formato satelital <strong>MPEG-2</strong>, el cual ningún navegador web puede renderizar. Puedes reproducirla con video completo en VLC o ver una señal compatible:
+            </p>
+            <div class="mpeg2-alert-actions">
+              <button type="button" class="btn btn-primary btn-sm" id="mpeg2-open-vlc-btn" onclick="openInVlc()">
+                🚀 Reproducir en VLC / App Externa (Recomendado)
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="mpeg2-switch-alt-btn" onclick="switchChannelToCompatibleAlt()" style="display: none;">
+                📺 Ver señal compatible (H.264)
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="copyActiveStreamUrl()">
+                📋 Copiar Enlace Directo
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Stats for Nerds Floating Telemetry Panel -->
         <div id="stats-for-nerds-panel" class="stats-for-nerds" style="display: none;">
           <div class="stats-header">
@@ -2644,6 +2786,11 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                 <span id="sleep-timer-countdown">30:00</span>
               </div>
+
+              <!-- Quick launch in VLC / External Player -->
+              <button type="button" class="btn-icon mobile-top-btn" id="top-vlc-btn" title="Abrir canal en VLC / App Externa" onclick="openInVlc()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="m6 17 2-8h8l2 8"/><path d="m9 9 1.5-6h3L15 9"/></svg>
+              </button>
 
               <!-- Stats for Nerds button for mobile top bar -->
               <button type="button" class="btn-icon mobile-top-btn" id="top-stats-btn" title="Estadísticas para Nerds" onclick="toggleStatsForNerds()">
@@ -3083,8 +3230,8 @@
 
       <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem;">
         <!-- Method 1: Google Cast -->
-        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 0.9rem;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 0.9rem; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.35rem;">
             <strong style="font-size: 0.88rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.4rem;">
               <span>📺</span> Google Cast / Chromecast
             </strong>
@@ -3092,14 +3239,14 @@
               Transmitir Ahora
             </button>
           </div>
-          <p style="font-size: 0.76rem; color: var(--text-secondary); margin: 0;">
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
             Asegúrate de estar en la misma red Wi-Fi. En Chrome o Edge también puedes usar el menú superior <strong>⋮ > Transmitir...</strong>
           </p>
         </div>
 
         <!-- Method 2: Apple AirPlay -->
-        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 0.9rem;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 0.9rem; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.35rem;">
             <strong style="font-size: 0.88rem; color: #fff; display: flex; align-items: center; gap: 0.4rem;">
               <span>🍏</span> Apple TV / AirPlay
             </strong>
@@ -3107,27 +3254,27 @@
               Abrir AirPlay
             </button>
           </div>
-          <p style="font-size: 0.76rem; color: var(--text-secondary); margin: 0;">
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
             Desde Safari en tu iPhone, iPad o Mac, pulsa para enviar la señal a cualquier televisor compatible con AirPlay 2.
           </p>
         </div>
 
         <!-- Method 3: Direct Stream URL / VLC -->
-        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 0.9rem;">
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 0.9rem; box-sizing: border-box;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
             <strong style="font-size: 0.88rem; color: var(--accent-emerald); display: flex; align-items: center; gap: 0.4rem;">
               <span>🔗</span> Smart IPTV / VLC / Apps de TV
             </strong>
           </div>
-          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-            Copia el enlace en vivo del canal activo para reproducirlo en TiviMate, Smart IPTV, IBO Player o VLC en tu televisor:
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 0.6rem; line-height: 1.4;">
+            Copia el enlace en vivo del canal activo para reproducirlo en TiviMate, Smart IPTV, IBO Player o VLC en tu televisor o celular:
           </p>
-          <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-outline btn-sm" style="flex: 1;" onclick="copyActiveStreamUrl()">
+          <div class="cast-action-buttons">
+            <button type="button" class="btn btn-outline btn-sm" onclick="copyActiveStreamUrl()">
               📋 Copiar Enlace del Canal
             </button>
-            <button class="btn btn-outline btn-sm" style="flex: 1;" onclick="openInVlc()">
-              📥 Abrir en VLC (.m3u)
+            <button type="button" class="btn btn-primary btn-sm" onclick="openInVlc()">
+              🚀 Abrir en VLC / App Externa
             </button>
           </div>
         </div>
@@ -5127,6 +5274,7 @@
       }
 
       // Update active state in channel list
+      hideMpeg2Alert();
       document.querySelectorAll('.channel-item').forEach(el => {
         el.classList.toggle('active', el.getAttribute('data-id') === channel.id);
       });
@@ -5193,6 +5341,13 @@
           state.currentQuality = hls.currentLevel;
           renderQualityAudioMenu();
           triggerAutoPlay();
+
+          if (mpeg2CheckTimer) clearTimeout(mpeg2CheckTimer);
+          mpeg2CheckTimer = setTimeout(() => {
+            if (video && video.currentTime > 0.3 && video.videoWidth === 0 && !video.paused) {
+              showMpeg2Alert(state.activeChannel);
+            }
+          }, 3200);
         });
 
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
@@ -5248,8 +5403,15 @@
           }
         });
 
-        // Real-time MP2 audio demuxing and WebAudio playback
+        // Real-time MP2 audio demuxing, WebAudio playback and MPEG-2 Video Detection
         hls.on(Hls.Events.FRAG_LOADED, async (event, data) => {
+          // Detect audio-only stream where video is missing or unsupported MPEG-2
+          if (data && data.frag && data.frag.elementaryStreams) {
+            if (data.frag.elementaryStreams.video === null && data.frag.elementaryStreams.audio) {
+              showMpeg2Alert(state.activeChannel);
+            }
+          }
+
           if (!state.useWebAudio || !data.payload) return;
           try {
             const rawAudio = extractMp2FromTs(data.payload);
@@ -5358,17 +5520,74 @@
       hideLoader();
     }
 
-    function showCodecAlert() {}
-    function hideCodecAlert() {}
+    let mpeg2CheckTimer = null;
+    function hideMpeg2Alert() {
+      const overlay = document.getElementById('mpeg2-alert-overlay');
+      if (overlay) overlay.style.display = 'none';
+      if (mpeg2CheckTimer) {
+        clearTimeout(mpeg2CheckTimer);
+        mpeg2CheckTimer = null;
+      }
+    }
+    window.hideMpeg2Alert = hideMpeg2Alert;
 
-    function openInVlc(channel) {
+    function showMpeg2Alert(channel) {
+      const overlay = document.getElementById('mpeg2-alert-overlay');
+      if (!overlay) return;
       const target = channel || state.activeChannel;
-      if (!target || !target.url) {
-        showToast('No hay canal seleccionado');
-        return;
+      const title = document.getElementById('mpeg2-alert-title');
+      if (title && target) {
+        title.textContent = `${target.name}: Señal Satelital MPEG-2`;
       }
 
-      // Generate & download single-channel .m3u file for VLC / external players
+      const alt = findCompatibleAlternative(target);
+      const altBtn = document.getElementById('mpeg2-switch-alt-btn');
+      if (alt && altBtn) {
+        altBtn.textContent = `📺 Cambiar a señal compatible (${alt.playlist.name})`;
+        altBtn.style.display = 'inline-flex';
+        state.currentMpeg2Alt = alt;
+      } else if (altBtn) {
+        altBtn.style.display = 'none';
+        state.currentMpeg2Alt = null;
+      }
+
+      overlay.style.display = 'flex';
+    }
+    window.showMpeg2Alert = showMpeg2Alert;
+
+    function findCompatibleAlternative(targetCh) {
+      if (!targetCh || !targetCh.name || !Array.isArray(state.playlists)) return null;
+      const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const targetClean = clean(targetCh.name);
+
+      for (const pl of state.playlists) {
+        if (pl.id === state.activePlaylistId) continue;
+        for (const c of (pl.channels || [])) {
+          const cClean = clean(c.name);
+          if (cClean === targetClean || cClean === targetClean + 'hd' || targetClean === cClean + 'hd' || (cClean.includes(targetClean) && targetClean.length >= 4)) {
+            // Avoid server 181.118.152.45 known to be raw mpeg2
+            if (!c.url.includes('181.118.152.45')) {
+              return { playlist: pl, channel: c };
+            }
+          }
+        }
+      }
+      return null;
+    }
+
+    window.switchChannelToCompatibleAlt = function() {
+      if (state.currentMpeg2Alt) {
+        const { playlist, channel } = state.currentMpeg2Alt;
+        hideMpeg2Alert();
+        activatePlaylist(playlist.id);
+        playChannel(channel);
+        showToast(`Sintonizando ${channel.name} (${playlist.name})`);
+      } else {
+        showToast('No se encontró señal alternativa automática.');
+      }
+    };
+
+    function triggerM3uDownload(target) {
       const m3u = `#EXTM3U\n#EXTINF:-1,${target.name}\n${target.url}\n`;
       const blob = new Blob([m3u], { type: 'audio/x-mpegurl' });
       const a = document.createElement('a');
@@ -5378,13 +5597,49 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showToast('Descargando archivo .m3u para VLC...');
+      showToast('🚀 Archivo .m3u descargado para VLC');
+    }
 
-      // Try opening via vlc:// protocol handler
+    function openInVlc(channel) {
+      const target = channel || state.activeChannel;
+      if (!target || !target.url) {
+        showToast('No hay canal seleccionado');
+        return;
+      }
+
+      const rawUrl = target.url;
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+      // 1. Android: Open directly in VLC for Android or system video player chooser
+      if (isAndroid) {
+        const streamNoProto = rawUrl.replace(/^https?:\/\//i, '');
+        const intentUrl = `intent://${streamNoProto}#Intent;action=android.intent.action.VIEW;type=video/*;package=org.videolan.vlc;scheme=http;end;`;
+        window.location.href = intentUrl;
+        showToast('🚀 Abriendo en VLC para Android...');
+        setTimeout(() => {
+          triggerM3uDownload(target);
+        }, 1800);
+        return;
+      }
+
+      // 2. iOS: Open in VLC for iOS via custom scheme
+      if (isIOS) {
+        window.location.href = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(rawUrl)}`;
+        showToast('🚀 Abriendo en VLC para iOS...');
+        setTimeout(() => {
+          triggerM3uDownload(target);
+        }, 1800);
+        return;
+      }
+
+      // 3. Desktop: Download .m3u and attempt vlc:// protocol handler
+      triggerM3uDownload(target);
       try {
-        window.location.href = 'vlc://' + target.url;
+        window.location.href = 'vlc://' + rawUrl;
       } catch (e) {}
     }
+    window.openInVlc = openInVlc;
 
     function copyStreamUrl(channel) {
       const target = channel || state.activeChannel;
@@ -5800,6 +6055,9 @@
       video.addEventListener('playing', () => {
         clearTimeout(stallWatchdog);
         hideLoader();
+        if (video.videoWidth > 0) {
+          hideMpeg2Alert();
+        }
       });
 
       // PLAYLIST FILTER DROPDOWN IN SIDEBAR HEADER
