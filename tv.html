@@ -5343,7 +5343,26 @@
       if (window.Hls && Hls.isSupported()) {
         const bCfg = BUFFER_CONFIGS[state.bufferMode] || BUFFER_CONFIGS.stable;
 
+        // Custom fragment loader to intercept raw MPEG-2 TS chunk bytes before worker detachment
+        class CustomFragLoader extends Hls.DefaultConfig.loader {
+          constructor(config) {
+            super(config);
+            const load = this.load.bind(this);
+            this.load = (context, config, callbacks) => {
+              const origSuccess = callbacks.onSuccess;
+              callbacks.onSuccess = (response, stats, context, networkDetails) => {
+                if (context.frag && response.data) {
+                  context.frag._rawChunkBuffer = response.data.slice(0);
+                }
+                origSuccess(response, stats, context, networkDetails);
+              };
+              load(context, config, callbacks);
+            };
+          }
+        }
+
         const hls = new Hls({
+          fLoader: CustomFragLoader,
           enableWorker: true,
           lowLatencyMode: false,
           liveSyncDurationCount: bCfg.liveSyncDurationCount,
@@ -5449,29 +5468,33 @@
         });
 
         // Real-time MP2 audio demuxing, WebAudio playback and MPEG-2 Video Software Decoding
-        hls.on(Hls.Events.FRAG_LOADED, async (event, data) => {
+        hls.on(Hls.Events.FRAG_PARSED, async (event, data) => {
           // Detect audio-only stream where video is missing or raw MPEG-2
           const lacksMseVideo = data && data.frag && data.frag.elementaryStreams &&
                                 data.frag.elementaryStreams.video === null &&
                                 data.frag.elementaryStreams.audio;
 
+          const rawTsBuffer = (data && data.frag && data.frag._rawChunkBuffer) ? data.frag._rawChunkBuffer : (data ? data.payload : null);
+
           if (lacksMseVideo) {
             state.useWebAudio = true;
             initWebAudio();
+            hideMpeg2Alert();
             if (!state.isMpeg2Decoding && state.mpeg2Player) {
               state.isMpeg2Decoding = true;
               state.mpeg2Player.start();
             }
           }
 
-          if (state.isMpeg2Decoding && state.mpeg2Player && data.payload) {
-            state.mpeg2Player.pushChunk(data.payload);
+          if (state.isMpeg2Decoding && state.mpeg2Player && rawTsBuffer) {
+            state.mpeg2Player.pushChunk(rawTsBuffer);
             hideLoader();
+            hideMpeg2Alert();
           }
 
-          if (!state.useWebAudio || !data.payload) return;
+          if (!state.useWebAudio || !rawTsBuffer) return;
           try {
-            const rawAudio = extractMp2FromTs(data.payload);
+            const rawAudio = extractMp2FromTs(rawTsBuffer);
             if (!rawAudio || !rawAudio.length) return;
 
             await initWebAudio();
