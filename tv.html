@@ -1669,6 +1669,7 @@
 
       body {
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
 
       .tv-container {
@@ -1676,6 +1677,7 @@
         height: auto;
         min-height: calc(100vh - 58px);
         max-height: none;
+        overflow: visible !important;
       }
 
       .player-stage {
@@ -1697,12 +1699,16 @@
         flex: 1;
         height: auto;
         max-height: none;
+        overflow: visible !important;
       }
 
       .channels-list {
         flex: 1 1 auto;
-        max-height: 60vh;
-        min-height: 200px;
+        max-height: none !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        overscroll-behavior: auto !important;
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom, 24px)) !important;
       }
 
       .player-stage.controls-active .player-overlay {
@@ -2237,9 +2243,11 @@
       .header-actions { gap: 0.4rem; }
 
       .modal-card {
-        padding: 1.25rem 1rem;
+        padding: 1.25rem 1rem 2.25rem 1rem !important;
         border-radius: 1.15rem;
-        max-height: 92vh;
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
       .modal-tab-btn {
         padding: 0.5rem 0.25rem;
@@ -2895,7 +2903,7 @@
       <!-- Saved playlists in Cloudflare KV -->
       <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
         <h4 style="font-size: 0.88rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-secondary);">Listas Guardadas en la Nube</h4>
-        <div id="saved-playlists-list" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 180px; overflow-y: auto;">
+        <div id="saved-playlists-list" style="display: flex; flex-direction: column; gap: 0.4rem;">
           <!-- Injected via script -->
         </div>
       </div>
