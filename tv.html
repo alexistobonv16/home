@@ -1662,53 +1662,66 @@
 
     /* Responsive Mobile Adjustments */
     @media (max-width: 900px) {
-      html, body {
+      html {
         height: auto;
         min-height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
       }
 
       body {
-        overflow-y: auto;
+        height: auto;
+        min-height: 100%;
+        overflow: visible !important;
+        display: block !important;
         -webkit-overflow-scrolling: touch;
       }
 
+      .tv-header {
+        position: relative;
+        z-index: 40;
+      }
+
       .tv-container {
-        flex-direction: column;
-        height: auto;
-        min-height: calc(100vh - 58px);
-        max-height: none;
+        display: block !important;
+        height: auto !important;
+        min-height: 100% !important;
+        max-height: none !important;
         overflow: visible !important;
       }
 
       .player-stage {
-        position: sticky;
-        top: 0;
-        z-index: 30;
-        width: 100%;
+        position: -webkit-sticky !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 100 !important;
+        width: 100% !important;
         flex: 0 0 auto !important;
-        aspect-ratio: 16 / 9;
+        aspect-ratio: 16 / 9 !important;
         height: auto !important;
-        max-height: 48vh;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+        max-height: 48vh !important;
+        background: #000 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8) !important;
       }
 
       .channels-sidebar {
-        width: 100%;
-        border-left: none;
-        border-top: 1px solid var(--border-color);
-        flex: 1;
-        height: auto;
-        max-height: none;
+        width: 100% !important;
+        border-left: none !important;
+        border-top: 1px solid var(--border-color) !important;
+        display: block !important;
+        height: auto !important;
+        max-height: none !important;
         overflow: visible !important;
       }
 
       .channels-list {
-        flex: 1 1 auto;
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
         max-height: none !important;
-        min-height: auto !important;
         overflow: visible !important;
         overscroll-behavior: auto !important;
-        padding-bottom: calc(5rem + env(safe-area-inset-bottom, 24px)) !important;
+        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 24px)) !important;
       }
 
       .player-stage.controls-active .player-overlay {
@@ -2523,7 +2536,7 @@
       <div class="video-wrapper" id="video-wrapper">
         <!-- Main Slot (Pantalla 1) -->
         <div class="multiview-slot focus-active" id="multiview-slot-1">
-          <video id="video-player" playsinline preload="auto"></video>
+          <video id="video-player" playsinline preload="auto" autoplay></video>
           <div class="multiview-slot-overlay" id="multiview-overlay-1" style="display: none;">
             <div class="multiview-info">
               <span class="multiview-label">Pantalla 1</span>
@@ -4047,6 +4060,8 @@
         // Click to play channel
         item.addEventListener('click', (e) => {
           if (e.target.closest('.channel-fav-btn')) return;
+          // Prime video element inside synchronous user gesture
+          video.play().catch(() => {});
           if (state.isMultiView && state.multiviewFocus === 2) {
             playMultiViewChannel(channel);
           } else {
@@ -5177,8 +5192,7 @@
           state.availableLevels = hls.levels || [];
           state.currentQuality = hls.currentLevel;
           renderQualityAudioMenu();
-          video.play().catch(() => showControlsPrompt());
-          hideLoader();
+          triggerAutoPlay();
         });
 
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
@@ -5284,17 +5298,59 @@
         // Engine 2: Native Safari HLS (iPhone, iPad, Mac)
         video.src = streamUrl;
         video.addEventListener('loadedmetadata', () => {
-          video.play().catch(() => showControlsPrompt());
-          hideLoader();
+          triggerAutoPlay();
         }, { once: true });
       } else {
         // Direct MP4 / WebM fallback
         video.src = streamUrl;
-        video.play().catch(() => showControlsPrompt());
-        hideLoader();
+        triggerAutoPlay();
       }
 
       syncToCloud();
+    }
+
+    function triggerAutoPlay() {
+      const p = video.play();
+      if (p !== undefined) {
+        p.then(() => {
+          playerStage.classList.remove('paused');
+          hideLoader();
+        }).catch((err) => {
+          console.warn('Reproducción con audio bloqueada por el navegador, reintentando silenciado:', err);
+          // Fallback a reproducción silenciada (permitida al 100% por navegadores sin interacción previa)
+          video.muted = true;
+          updateVolumeIcon();
+          const pMuted = video.play();
+          if (pMuted !== undefined) {
+            pMuted.then(() => {
+              playerStage.classList.remove('paused');
+              hideLoader();
+              showToast('🔇 Video reproduciendo. Toca el botón de volumen para activar sonido');
+              enableSoundOnFirstInteraction();
+            }).catch(() => {
+              showControlsPrompt();
+            });
+          }
+        });
+      } else {
+        hideLoader();
+      }
+    }
+
+    let soundUnlockAttached = false;
+    function enableSoundOnFirstInteraction() {
+      if (soundUnlockAttached) return;
+      soundUnlockAttached = true;
+      const unmuteOnTap = () => {
+        if (video.muted && !video.paused) {
+          video.muted = false;
+          updateVolumeIcon();
+          showToast('🔊 Sonido activado');
+        }
+        ['click', 'touchstart', 'keydown'].forEach(ev => document.removeEventListener(ev, unmuteOnTap));
+        soundUnlockAttached = false;
+      };
+      ['click', 'touchstart', 'keydown'].forEach(ev => document.addEventListener(ev, unmuteOnTap, { once: true }));
     }
 
     function showControlsPrompt() {
