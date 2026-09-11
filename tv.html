@@ -27,6 +27,8 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
   <!-- WebAssembly MP2/MPEG audio decoder for in-browser TV audio decoding -->
   <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
+  <!-- In-Browser Native MPEG-2 Video Software Player -->
+  <script src="/js/mpeg2-player.js"></script>
   <!-- Google Cast Framework SDK for Chromecast / Google TV playback -->
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" defer></script>
   <script>
@@ -521,6 +523,20 @@
     video.fit-cover { object-fit: cover; }
     video.fit-fill { object-fit: fill; }
     video.fit-contain { object-fit: contain; }
+
+    .mpeg2-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .mpeg2-canvas.fit-cover { object-fit: cover; }
+    .mpeg2-canvas.fit-fill { object-fit: fill; }
+    .mpeg2-canvas.fit-contain { object-fit: contain; }
 
     /* Custom Player Overlay Controls */
     .player-overlay {
@@ -2668,6 +2684,7 @@
         <!-- Main Slot (Pantalla 1) -->
         <div class="multiview-slot focus-active" id="multiview-slot-1">
           <video id="video-player" playsinline preload="auto" autoplay></video>
+          <canvas id="mpeg2-canvas" class="mpeg2-canvas" style="display: none;"></canvas>
           <div class="multiview-slot-overlay" id="multiview-overlay-1" style="display: none;">
             <div class="multiview-info">
               <span class="multiview-label">Pantalla 1</span>
@@ -3375,6 +3392,8 @@
       hls: null,
       deferredPrompt: null,
       useWebAudio: false,
+      mpeg2Player: null,
+      isMpeg2Decoding: false,
       isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent),
       epgUrl: localStorage.getItem('at_tv_epg_url') || '',
       epgData: null,
@@ -3476,12 +3495,16 @@
     const bufferModeBtn = document.getElementById('buffer-mode-btn');
     const reloadStreamBtn = document.getElementById('reload-stream-btn');
     const pwaInstallBtn = document.getElementById('pwa-install-btn');
+    const mpeg2Canvas = document.getElementById('mpeg2-canvas');
 
     /* ==========================================================================
        1. INITIALIZATION & PWA SERVICE WORKER
        ========================================================================== */
     document.addEventListener('DOMContentLoaded', () => {
       initPwaServiceWorker();
+      if (window.Mpeg2LivePlayer && mpeg2Canvas) {
+        state.mpeg2Player = new Mpeg2LivePlayer(mpeg2Canvas);
+      }
       initPlayerControls();
       initAuth();
 
@@ -5255,6 +5278,10 @@
       if (!channel || !channel.url) return;
 
       hideMpeg2Alert();
+      if (state.mpeg2Player) {
+        state.mpeg2Player.stop();
+      }
+      state.isMpeg2Decoding = false;
 
       if (state.activeChannel && state.activeChannel.url !== channel.url) {
         state.previousChannel = state.activeChannel;
@@ -5355,9 +5382,9 @@
 
           if (mpeg2CheckTimer) clearTimeout(mpeg2CheckTimer);
           mpeg2CheckTimer = setTimeout(() => {
-            // If playing but videoWidth is 0 (raw satellite MPEG-2 video feed), activate in-player live audio mode
-            if (video && video.currentTime > 0.3 && video.videoWidth === 0 && !video.paused) {
-              console.log('[Alexis TV] Señal original conectada en modo audio en vivo (video satelital MPEG-2)');
+            // If playing but videoWidth is 0 and software MPEG-2 decoder is not active, activate audio notice
+            if (!state.isMpeg2Decoding && video && video.currentTime > 0.3 && video.videoWidth === 0 && !video.paused) {
+              console.log('[Alexis TV] Señal original conectada en modo audio en vivo');
               showMpeg2Notice(state.activeChannel);
             }
           }, 3200);
@@ -5421,15 +5448,25 @@
           }
         });
 
-        // Real-time MP2 audio demuxing, WebAudio playback and Video Demux Detection
+        // Real-time MP2 audio demuxing, WebAudio playback and MPEG-2 Video Software Decoding
         hls.on(Hls.Events.FRAG_LOADED, async (event, data) => {
           // Detect audio-only stream where video is missing or raw MPEG-2
-          if (data && data.frag && data.frag.elementaryStreams) {
-            if (data.frag.elementaryStreams.video === null && data.frag.elementaryStreams.audio) {
-              state.useWebAudio = true;
-              initWebAudio();
-              showMpeg2Notice(state.activeChannel);
+          const lacksMseVideo = data && data.frag && data.frag.elementaryStreams &&
+                                data.frag.elementaryStreams.video === null &&
+                                data.frag.elementaryStreams.audio;
+
+          if (lacksMseVideo) {
+            state.useWebAudio = true;
+            initWebAudio();
+            if (!state.isMpeg2Decoding && state.mpeg2Player) {
+              state.isMpeg2Decoding = true;
+              state.mpeg2Player.start();
             }
+          }
+
+          if (state.isMpeg2Decoding && state.mpeg2Player && data.payload) {
+            state.mpeg2Player.pushChunk(data.payload);
+            hideLoader();
           }
 
           if (!state.useWebAudio || !data.payload) return;
@@ -5552,6 +5589,7 @@
     window.hideMpeg2Alert = hideMpeg2Alert;
 
     function showMpeg2Notice(channel) {
+      if (state.isMpeg2Decoding) return;
       const target = channel || state.activeChannel;
       if (!target) return;
       const overlay = document.getElementById('mpeg2-alert-overlay');
@@ -5606,6 +5644,9 @@
             if (state.useWebAudio && audioCtx && audioCtx.state === 'suspended') {
               audioCtx.resume();
             }
+            if (state.isMpeg2Decoding && state.mpeg2Player) {
+              state.mpeg2Player.start();
+            }
             playerStage.classList.remove('paused');
             bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
           } catch (err) {
@@ -5618,6 +5659,9 @@
           video.pause();
           if (state.useWebAudio && audioCtx && audioCtx.state === 'running') {
             audioCtx.suspend();
+          }
+          if (state.isMpeg2Decoding && state.mpeg2Player) {
+            state.mpeg2Player.stop();
           }
           playerStage.classList.add('paused');
           bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
@@ -5829,6 +5873,7 @@
         state.aspectMode = nextMode;
 
         video.className = nextMode;
+        if (mpeg2Canvas) mpeg2Canvas.className = 'mpeg2-canvas ' + nextMode;
         const labels = { 'fit-contain': 'Ajustar (16:9)', 'fit-cover': 'Rellenar Pantalla', 'fit-fill': 'Estirar' };
         showToast(`Formato: ${labels[nextMode]}`);
       });
@@ -6129,7 +6174,9 @@
 
       // Resolution & Dimensions
       if (resEl) {
-        if (video.videoWidth && video.videoHeight) {
+        if (state.isMpeg2Decoding && state.mpeg2Player && state.mpeg2Player.canvas && state.mpeg2Player.canvas.width) {
+          resEl.textContent = `${state.mpeg2Player.canvas.width}x${state.mpeg2Player.canvas.height} (MPEG-2 SW)`;
+        } else if (video.videoWidth && video.videoHeight) {
           resEl.textContent = `${video.videoWidth}x${video.videoHeight}`;
         } else {
           resEl.textContent = 'Calculando...';
@@ -6169,7 +6216,9 @@
 
       // Dropped frames
       if (dropEl) {
-        if (typeof video.getVideoPlaybackQuality === 'function') {
+        if (state.isMpeg2Decoding && state.mpeg2Player) {
+          dropEl.textContent = `0 / ${state.mpeg2Player.renderedFrameCount}`;
+        } else if (typeof video.getVideoPlaybackQuality === 'function') {
           const q = video.getVideoPlaybackQuality();
           dropEl.textContent = `${q.droppedVideoFrames} / ${q.totalVideoFrames}`;
         } else if (typeof video.webkitDroppedFrameCount !== 'undefined') {
@@ -6191,7 +6240,9 @@
 
       // Engine
       if (engEl) {
-        if (state.useWebAudio) {
+        if (state.isMpeg2Decoding) {
+          engEl.textContent = 'Hls.js + WebWorker MPEG-2 + WebAudio MP2';
+        } else if (state.useWebAudio) {
           engEl.textContent = 'HLS.js + Wasm MP2 Audio';
         } else if (state.hls) {
           engEl.textContent = 'Hls.js v1.5.8 (MSE)';
