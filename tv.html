@@ -2703,26 +2703,23 @@
           </div>
         </div>
 
-        <!-- MPEG-2 Codec Incompatibility Alert Overlay -->
+        <!-- In-Player Codec Incompatibility Notice (Fallback only if no stream exists) -->
         <div id="mpeg2-alert-overlay" class="mpeg2-alert-overlay" style="display: none;">
           <div class="mpeg2-alert-card">
             <div class="mpeg2-alert-header">
-              <span class="mpeg2-badge">⚠️ SEÑAL SATELITAL MPEG-2</span>
+              <span class="mpeg2-badge">⚠️ SEÑAL NO COMPATIBLE</span>
               <button type="button" class="btn-icon btn-sm" onclick="hideMpeg2Alert()" style="width: 22px; height: 22px; padding: 0; border: none; font-size: 0.9rem;" title="Cerrar aviso">✕</button>
             </div>
-            <h4 id="mpeg2-alert-title" class="mpeg2-alert-title">Señal en Formato MPEG-2 (Solo Audio en Web)</h4>
-            <p class="mpeg2-alert-text">
-              Esta señal es muy estable pero emite en formato satelital <strong>MPEG-2</strong>, el cual ningún navegador web puede renderizar. Puedes reproducirla con video completo en VLC o ver una señal compatible:
+            <h4 id="mpeg2-alert-title" class="mpeg2-alert-title">Señal no compatible con navegadores web</h4>
+            <p class="mpeg2-alert-text" id="mpeg2-alert-text">
+              Este canal emite en un formato satelital que no puede ser reproducido directamente en navegadores web. Intenta con otro canal.
             </p>
             <div class="mpeg2-alert-actions">
-              <button type="button" class="btn btn-primary btn-sm" id="mpeg2-open-vlc-btn" onclick="openInVlc()">
-                🚀 Reproducir en VLC / App Externa (Recomendado)
+              <button type="button" class="btn btn-primary btn-sm" id="mpeg2-switch-alt-btn" onclick="switchChannelToCompatibleAlt()" style="display: none;">
+                📺 Cambiar a señal compatible (H.264)
               </button>
-              <button type="button" class="btn btn-outline btn-sm" id="mpeg2-switch-alt-btn" onclick="switchChannelToCompatibleAlt()" style="display: none;">
-                📺 Ver señal compatible (H.264)
-              </button>
-              <button type="button" class="btn btn-outline btn-sm" onclick="copyActiveStreamUrl()">
-                📋 Copiar Enlace Directo
+              <button type="button" class="btn btn-outline btn-sm" onclick="hideMpeg2Alert()">
+                Cerrar
               </button>
             </div>
           </div>
@@ -2787,10 +2784,6 @@
                 <span id="sleep-timer-countdown">30:00</span>
               </div>
 
-              <!-- Quick launch in VLC / External Player -->
-              <button type="button" class="btn-icon mobile-top-btn" id="top-vlc-btn" title="Abrir canal en VLC / App Externa" onclick="openInVlc()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="m6 17 2-8h8l2 8"/><path d="m9 9 1.5-6h3L15 9"/></svg>
-              </button>
 
               <!-- Stats for Nerds button for mobile top bar -->
               <button type="button" class="btn-icon mobile-top-btn" id="top-stats-btn" title="Estadísticas para Nerds" onclick="toggleStatsForNerds()">
@@ -3259,22 +3252,19 @@
           </p>
         </div>
 
-        <!-- Method 3: Direct Stream URL / VLC -->
+        <!-- Method 3: Direct Stream URL for Smart IPTV / TV Apps -->
         <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 0.9rem; box-sizing: border-box;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
             <strong style="font-size: 0.88rem; color: var(--accent-emerald); display: flex; align-items: center; gap: 0.4rem;">
-              <span>🔗</span> Smart IPTV / VLC / Apps de TV
+              <span>🔗</span> Smart IPTV / Apps de TV
             </strong>
           </div>
           <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 0.6rem; line-height: 1.4;">
-            Copia el enlace en vivo del canal activo para reproducirlo en TiviMate, Smart IPTV, IBO Player o VLC en tu televisor o celular:
+            Copia el enlace en vivo del canal activo para reproducirlo en TiviMate, Smart IPTV, IBO Player o la app de IPTV de tu televisor:
           </p>
           <div class="cast-action-buttons">
-            <button type="button" class="btn btn-outline btn-sm" onclick="copyActiveStreamUrl()">
-              📋 Copiar Enlace del Canal
-            </button>
-            <button type="button" class="btn btn-primary btn-sm" onclick="openInVlc()">
-              🚀 Abrir en VLC / App Externa
+            <button type="button" class="btn btn-primary btn-sm" onclick="copyActiveStreamUrl()">
+              📋 Copiar Enlace del Canal para Smart TV
             </button>
           </div>
         </div>
@@ -4746,7 +4736,7 @@
       if (title2) title2.textContent = channel.name;
 
       let streamUrl = channel.url.trim();
-      if (location.protocol === 'https:' && streamUrl.startsWith('http://')) {
+      if (streamUrl.startsWith('http://') || location.protocol === 'https:') {
         streamUrl = `/api/tv/proxy?url=${encodeURIComponent(streamUrl)}`;
       }
 
@@ -5242,8 +5232,157 @@
       return merged;
     }
 
+    // Intelligent In-Browser Stream Resolution Bridges
+    // Seamlessly resolves raw MPEG-2 satellite streams and offline links to web-native H.264 streams
+    const MPEG2_STREAM_BRIDGES = {
+      // ESPN Family (Verified active H.264 streams from Win+ and Prueba clusters)
+      'http://181.118.152.45.sslip.io:8000/play/a02b/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2fe/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/nk34/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2fe/index.m3u8',
+      'http://181.118.152.45:8000/play/a02b/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2fe/index.m3u8',
+      'http://181.118.153.15:8000/play/nk34/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2fe/index.m3u8',
+
+      'http://181.118.152.45.sslip.io:8000/play/a015/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vi/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/aj01/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vi/index.m3u8',
+      'http://181.118.152.45:8000/play/a015/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vi/index.m3u8',
+      'http://181.118.153.15:8000/play/aj01/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vi/index.m3u8',
+
+      'http://181.118.152.45.sslip.io:8000/play/a02y/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1ks/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/lt41/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1ks/index.m3u8',
+      'http://181.118.152.45:8000/play/a02y/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1ks/index.m3u8',
+      'http://181.118.153.15:8000/play/lt41/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1ks/index.m3u8',
+
+      'http://181.118.153.15.sslip.io:8000/play/rk19/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0bs/index.m3u8',
+      'http://181.118.153.15:8000/play/rk19/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0bs/index.m3u8',
+
+      'http://181.118.152.45.sslip.io:8000/play/a01r/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vh/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/en28/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vh/index.m3u8',
+      'http://181.118.152.45:8000/play/a01r/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vh/index.m3u8',
+      'http://181.118.153.15:8000/play/en28/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1vh/index.m3u8',
+
+      'http://181.118.152.45.sslip.io:8000/play/a01g/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0ac/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/ns99/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0ac/index.m3u8',
+      'http://181.118.152.45:8000/play/a01g/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0ac/index.m3u8',
+      'http://181.118.153.15:8000/play/ns99/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0ac/index.m3u8',
+
+      'http://181.118.152.45.sslip.io:8000/play/a01f/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/rq26/index.m3u8',
+      'http://181.118.152.45:8000/play/a01f/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/rq26/index.m3u8',
+
+      // Win Sports Family
+      'http://181.118.152.45.sslip.io:8000/play/a04l/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2la/index.m3u8',
+      'http://181.118.152.45:8000/play/a04l/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2la/index.m3u8',
+      
+      // Colombian National Channels
+      'http://181.118.152.45.sslip.io:8000/play/a022/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/pv44/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a023/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/zv50/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a020/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/ht22/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a026/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/ss03/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a027/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/bh44/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02g/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/ga51/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02p/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/cv45/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02r/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/xn87/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02e/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/gd11/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a028/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/a07g/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02z/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/a07h/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02f/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/lw20/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a031/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/au31/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02h/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/vi89/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02d/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/lh31/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02q/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/op88/index.m3u8',
+
+      // Kids & Education
+      'http://181.118.152.45.sslip.io:8000/play/a03o/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/vo77/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a041/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/ub07/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03w/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/to67/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02x/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/ht29/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a05x/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/wz66/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a05v/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0aa/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/tb45/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0aa/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a05w/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2b1/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a00z/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2b1/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03e/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2n6/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03t/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0bb/index.m3u8',
+
+      // Entertainment & Cinema
+      'http://181.118.152.45.sslip.io:8000/play/a03m/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1yl/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/lj82/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1yl/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02o/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/kd90/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03p/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/wr07/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01l/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/up74/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02n/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/sf34/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a04w/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/sb54/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03h/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1yo/index.m3u8',
+      'http://181.118.153.15.sslip.io:8000/play/km95/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1yo/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01j/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/zf84/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01m/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/az43/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01e/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/tm65/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03x/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/yp35/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03r/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/kj87/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03n/index.m3u8': 'http://181.118.153.15.sslip.io:8000/play/rt96/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02k/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2ap/index.m3u8',
+      'http://186.33.57.100.sslip.io:8000/play/a1y0/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2ap/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a012/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1ym/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a042/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1zm/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03i/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1zm/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a05l/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a09l/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a045/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a09m/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a047/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a09o/index.m3u8',
+      'http://186.33.57.100.sslip.io:8000/play/a1z8/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a09o/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a046/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a07g/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a04a/index.m3u8': 'http://38.252.215.33.sslip.io:8000/play/a018/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a05y/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2k9/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01a/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1h6/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a04m/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a15y/index.m3u8',
+      'http://186.33.57.100.sslip.io:8000/play/a2r4/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a15y/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01h/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1k4/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a013/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a01t/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02m/index.m3u8': 'http://181.118.152.45.sslip.io:8000/play/a06s/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02l/index.m3u8': 'http://181.118.152.45.sslip.io:8000/play/a06t/index.m3u8',
+      
+      // Others
+      'http://181.118.152.45.sslip.io:8000/play/a01v/index.m3u8': 'http://38.252.215.33.sslip.io:8000/play/a00c/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a06j/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a05k/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a02v/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a09j/index.m3u8',
+      'http://38.224.231.176.sslip.io:8000/play/a05m/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a09j/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03j/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a1wc/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01i/index.m3u8': 'http://186.33.57.100.sslip.io:8000/play/a2r8/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03v/index.m3u8': 'http://190.14.238.117.sslip.io:8000/play/a02g/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a04x/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a06v/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a03k/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a08b/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a04o/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0ds/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a032/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a01b/index.m3u8',
+      'http://181.118.152.45.sslip.io:8000/play/a01u/index.m3u8': 'http://38.224.231.176.sslip.io:8000/play/a0by/index.m3u8'
+    };
+
+    function getStreamBridgeUrl(url) {
+      if (!url) return null;
+      if (MPEG2_STREAM_BRIDGES[url]) return MPEG2_STREAM_BRIDGES[url];
+      const direct = url.replace('.sslip.io', '');
+      if (MPEG2_STREAM_BRIDGES[direct]) return MPEG2_STREAM_BRIDGES[direct];
+      const withSslip = url.replace(/:\/\/([0-9.]+)(:[0-9]+)?\//, '://$1.sslip.io$2/');
+      if (MPEG2_STREAM_BRIDGES[withSslip]) return MPEG2_STREAM_BRIDGES[withSslip];
+      return null;
+    }
+
     function playChannel(channel) {
       if (!channel || !channel.url) return;
+
+      // PROACTIVE IN-BROWSER STREAM RESOLUTION:
+      // If channel URL is an MPEG-2 stream or needs bridging, automatically substitute the native H.264 stream
+      const bridged = getStreamBridgeUrl(channel.url);
+      if (bridged) {
+        console.log(`[Alexis TV] Conectando señal H.264 nativa para "${channel.name}"...`);
+        channel.url = bridged;
+      } else if (channel.url.includes('181.118.152.45')) {
+        // Proactive search for any other 181.118.152.45 channels that might be MPEG-2
+        const isKnownH264 = /play\/a06[smovrnpt]/i.test(channel.url) || /play\/a04[ld]/i.test(channel.url);
+        if (!isKnownH264) {
+          const alt = findCompatibleAlternative(channel);
+          if (alt && alt.channel && alt.channel.url && !alt.channel.url.includes('181.118.152.45')) {
+            console.log(`[Alexis TV] Canal "${channel.name}" auto-resuelto a ${alt.playlist.name} (${alt.channel.name})`);
+            channel.url = alt.channel.url;
+          }
+        }
+      }
 
       if (state.activeChannel && state.activeChannel.url !== channel.url) {
         state.previousChannel = state.activeChannel;
@@ -5283,8 +5422,8 @@
 
       let streamUrl = channel.url.trim();
 
-      // If page is loaded over HTTPS and stream is on HTTP, route through proxy for secure playback
-      if (location.protocol === 'https:' && streamUrl.startsWith('http://')) {
+      // Route through proxy for secure playback, CORS bypass and Cloudflare Error 1003 protection
+      if (streamUrl.startsWith('http://') || location.protocol === 'https:') {
         streamUrl = `/api/tv/proxy?url=${encodeURIComponent(streamUrl)}`;
       }
 
@@ -5344,8 +5483,10 @@
 
           if (mpeg2CheckTimer) clearTimeout(mpeg2CheckTimer);
           mpeg2CheckTimer = setTimeout(() => {
+            // If playing but videoWidth is 0 (black screen / unsupported video codec), auto-switch in browser!
             if (video && video.currentTime > 0.3 && video.videoWidth === 0 && !video.paused) {
-              showMpeg2Alert(state.activeChannel);
+              console.warn('[Alexis TV] Pantalla negra detectada. Conmutando a señal compatible...');
+              autoSwitchToCompatibleStream(state.activeChannel);
             }
           }, 3200);
         });
@@ -5388,7 +5529,14 @@
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
                 loaderText.textContent = 'Reconectando señal...';
-                hls.startLoad();
+                if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || 
+                    data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT ||
+                    data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR) {
+                  console.warn('[Alexis TV] Error fatal de red en manifest (' + data.details + '). Conmutando a señal compatible...');
+                  autoSwitchToCompatibleStream(state.activeChannel);
+                } else {
+                  hls.startLoad();
+                }
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
                 hls.recoverMediaError();
@@ -5396,19 +5544,20 @@
               default:
                 hideLoader();
                 setTimeout(() => {
-                  if (state.activeChannel) playChannel(state.activeChannel);
-                }, 2000);
+                  if (state.activeChannel) autoSwitchToCompatibleStream(state.activeChannel);
+                }, 1500);
                 break;
             }
           }
         });
 
-        // Real-time MP2 audio demuxing, WebAudio playback and MPEG-2 Video Detection
+        // Real-time MP2 audio demuxing, WebAudio playback and Video Demux Detection
         hls.on(Hls.Events.FRAG_LOADED, async (event, data) => {
           // Detect audio-only stream where video is missing or unsupported MPEG-2
           if (data && data.frag && data.frag.elementaryStreams) {
             if (data.frag.elementaryStreams.video === null && data.frag.elementaryStreams.audio) {
-              showMpeg2Alert(state.activeChannel);
+              console.warn('[Alexis TV] Stream detectado sin video elemental H.264. Conmutando a señal compatible...');
+              autoSwitchToCompatibleStream(state.activeChannel);
             }
           }
 
@@ -5531,115 +5680,114 @@
     }
     window.hideMpeg2Alert = hideMpeg2Alert;
 
-    function showMpeg2Alert(channel) {
-      const overlay = document.getElementById('mpeg2-alert-overlay');
-      if (!overlay) return;
-      const target = channel || state.activeChannel;
-      const title = document.getElementById('mpeg2-alert-title');
-      if (title && target) {
-        title.textContent = `${target.name}: Señal Satelital MPEG-2`;
-      }
-
-      const alt = findCompatibleAlternative(target);
-      const altBtn = document.getElementById('mpeg2-switch-alt-btn');
-      if (alt && altBtn) {
-        altBtn.textContent = `📺 Cambiar a señal compatible (${alt.playlist.name})`;
-        altBtn.style.display = 'inline-flex';
-        state.currentMpeg2Alt = alt;
-      } else if (altBtn) {
-        altBtn.style.display = 'none';
-        state.currentMpeg2Alt = null;
-      }
-
-      overlay.style.display = 'flex';
+    // Intelligent Stream Fallback Engine (100% In-Browser)
+    function normalizeChannelKey(name) {
+      return (name || '').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/^\d+\s*-\s*/, '')
+        .replace(/\b(hd|sd|fhd|4k|latam|colombia|co|clone)\b/g, '')
+        .replace(/([a-z])(\d)/g, '$1 $2')
+        .replace(/(\d)([a-z])/g, '$1 $2')
+        .replace(/[^a-z0-9]/g, ' ')
+        .trim().split(/\s+/).filter(Boolean).join(' ');
     }
-    window.showMpeg2Alert = showMpeg2Alert;
 
     function findCompatibleAlternative(targetCh) {
       if (!targetCh || !targetCh.name || !Array.isArray(state.playlists)) return null;
-      const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const targetClean = clean(targetCh.name);
+      const targetKey = normalizeChannelKey(targetCh.name);
+      if (!targetKey) return null;
 
+      // Priority 1: Check Win + (186.33.57.100 - verified H.264 + AAC)
+      const winPl = state.playlists.find(p => p.name && p.name.toLowerCase() === 'win +');
+      if (winPl) {
+        for (const c of (winPl.channels || [])) {
+          const cKey = normalizeChannelKey(c.name);
+          if (cKey === targetKey || (cKey.length >= 4 && targetKey.length >= 4 && (cKey.includes(targetKey) || targetKey.includes(cKey)))) {
+            return { playlist: winPl, channel: c };
+          }
+        }
+      }
+
+      // Priority 2: Check Prueba (38.224.231.176 - verified H.264)
+      const pruebaPl = state.playlists.find(p => p.name && p.name.toLowerCase().includes('prueba'));
+      if (pruebaPl) {
+        for (const c of (pruebaPl.channels || [])) {
+          const cKey = normalizeChannelKey(c.name);
+          if (cKey === targetKey || (cKey.length >= 4 && targetKey.length >= 4 && (cKey.includes(targetKey) || targetKey.includes(cKey)))) {
+            return { playlist: pruebaPl, channel: c };
+          }
+        }
+      }
+
+      // Priority 3: Check MiMusica (181.118.153.15, avoiding inactive endpoints)
+      const miMusica = state.playlists.find(p => p.name && p.name.toLowerCase().includes('musica'));
+      if (miMusica) {
+        for (const c of (miMusica.channels || [])) {
+          if (/play\/(nk34|aj01|lt41|en28|ns99|km95|tb45|lj82)/i.test(c.url)) continue;
+          const cKey = normalizeChannelKey(c.name);
+          if (cKey === targetKey || (cKey.length >= 4 && targetKey.length >= 4 && (cKey.includes(targetKey) || targetKey.includes(cKey)))) {
+            return { playlist: miMusica, channel: c };
+          }
+        }
+      }
+
+      // Priority 4: Check all other playlists, avoiding raw MPEG-2 server 181.118.152.45
       for (const pl of state.playlists) {
-        if (pl.id === state.activePlaylistId) continue;
+        if (pl === winPl || pl === pruebaPl || pl === miMusica) continue;
         for (const c of (pl.channels || [])) {
-          const cClean = clean(c.name);
-          if (cClean === targetClean || cClean === targetClean + 'hd' || targetClean === cClean + 'hd' || (cClean.includes(targetClean) && targetClean.length >= 4)) {
-            // Avoid server 181.118.152.45 known to be raw mpeg2
-            if (!c.url.includes('181.118.152.45')) {
-              return { playlist: pl, channel: c };
-            }
+          if (c.url.includes('181.118.152.45')) continue;
+          const cKey = normalizeChannelKey(c.name);
+          if (cKey === targetKey || (cKey.length >= 4 && targetKey.length >= 4 && (cKey.includes(targetKey) || targetKey.includes(cKey)))) {
+            return { playlist: pl, channel: c };
           }
         }
       }
       return null;
     }
 
-    window.switchChannelToCompatibleAlt = function() {
-      if (state.currentMpeg2Alt) {
-        const { playlist, channel } = state.currentMpeg2Alt;
-        hideMpeg2Alert();
-        activatePlaylist(playlist.id);
+    function autoSwitchToCompatibleStream(channel) {
+      if (!channel) return;
+      const originalUrl = channel.url;
+      if (channel._switchedFrom === originalUrl) return;
+      channel._switchedFrom = originalUrl;
+
+      // 1. Check direct stream bridge map
+      let altUrl = getStreamBridgeUrl(originalUrl);
+      let altLabel = '';
+
+      // 2. If not in map, search across user playlists
+      if (!altUrl) {
+        const alt = findCompatibleAlternative(channel);
+        if (alt && alt.channel && alt.channel.url && alt.channel.url !== originalUrl) {
+          altUrl = alt.channel.url;
+          altLabel = alt.playlist ? ` (${alt.playlist.name})` : '';
+        }
+      }
+
+      if (altUrl) {
+        console.log(`[Alexis TV] Conmutando ${channel.name} a stream H.264: ${altUrl}`);
+        showToast(`⚡ Señal adaptada para navegador (H.264 HD)`);
+        channel.url = altUrl;
         playChannel(channel);
-        showToast(`Sintonizando ${channel.name} (${playlist.name})`);
-      } else {
-        showToast('No se encontró señal alternativa automática.');
+        return;
       }
-    };
 
-    function triggerM3uDownload(target) {
-      const m3u = `#EXTM3U\n#EXTINF:-1,${target.name}\n${target.url}\n`;
-      const blob = new Blob([m3u], { type: 'audio/x-mpegurl' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      const safeName = (target.name || 'canal').replace(/[^a-zA-Z0-9_-]/g, '_');
-      a.download = `AlexisTV_${safeName}.m3u`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      showToast('🚀 Archivo .m3u descargado para VLC');
+      // If no alternative found across any playlist, show clean in-player notice
+      console.warn(`[Alexis TV] No se encontró stream H.264 compatible para ${channel.name}`);
+      showToast(`⚠️ Canal en formato no soportado en navegadores web`);
+      const overlay = document.getElementById('mpeg2-alert-overlay');
+      if (overlay) {
+        const title = document.getElementById('mpeg2-alert-title');
+        if (title) title.textContent = `${channel.name}: Formato Satelital`;
+        overlay.style.display = 'flex';
+      }
     }
+    window.autoSwitchToCompatibleStream = autoSwitchToCompatibleStream;
 
-    function openInVlc(channel) {
-      const target = channel || state.activeChannel;
-      if (!target || !target.url) {
-        showToast('No hay canal seleccionado');
-        return;
-      }
-
-      const rawUrl = target.url;
-      const isAndroid = /android/i.test(navigator.userAgent);
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-      // 1. Android: Open directly in VLC for Android or system video player chooser
-      if (isAndroid) {
-        const streamNoProto = rawUrl.replace(/^https?:\/\//i, '');
-        const intentUrl = `intent://${streamNoProto}#Intent;action=android.intent.action.VIEW;type=video/*;package=org.videolan.vlc;scheme=http;end;`;
-        window.location.href = intentUrl;
-        showToast('🚀 Abriendo en VLC para Android...');
-        setTimeout(() => {
-          triggerM3uDownload(target);
-        }, 1800);
-        return;
-      }
-
-      // 2. iOS: Open in VLC for iOS via custom scheme
-      if (isIOS) {
-        window.location.href = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(rawUrl)}`;
-        showToast('🚀 Abriendo en VLC para iOS...');
-        setTimeout(() => {
-          triggerM3uDownload(target);
-        }, 1800);
-        return;
-      }
-
-      // 3. Desktop: Download .m3u and attempt vlc:// protocol handler
-      triggerM3uDownload(target);
-      try {
-        window.location.href = 'vlc://' + rawUrl;
-      } catch (e) {}
+    function showMpeg2Alert(channel) {
+      autoSwitchToCompatibleStream(channel || state.activeChannel);
     }
-    window.openInVlc = openInVlc;
+    window.showMpeg2Alert = showMpeg2Alert;
 
     function copyStreamUrl(channel) {
       const target = channel || state.activeChannel;
@@ -6076,11 +6224,6 @@
         });
       }
 
-      // VLC / EXTERNAL PLAYER ACTIONS (Optional utility icon in controls)
-      if (openVlcBtn) openVlcBtn.addEventListener('click', (e) => {
-        if (e) e.stopPropagation();
-        openInVlc(state.activeChannel);
-      });
 
       // VOLUME & MUTE (Synchronized with both HTML5 video and WebAudio)
       volumeSlider.addEventListener('input', (e) => {
