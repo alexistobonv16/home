@@ -3466,6 +3466,9 @@
       channelSessionId: 0,
       selectedMp2Pid: null,
       availableMp2Tracks: [],
+      processedAudioFrags: new Set(),
+      hasH264Video: false,
+      isActualMpeg2Stream: false,
       mediaRecoveryAttempts: 0,
       lastMediaRecoveryTime: 0,
       isMuted: false,
@@ -5331,6 +5334,7 @@
       const vol = isMuted ? 0 : (state.volume !== undefined ? state.volume : 1);
       if (state.useWebAudio) {
         video.muted = true; // Always silence HTML5 video element when WebAudio is active to prevent echo / double audio
+        video.volume = 0;
         if (audioGain) {
           audioGain.gain.value = vol;
         }
@@ -5466,6 +5470,9 @@
       state.useWebAudio = false;
       state.selectedMp2Pid = null;
       state.availableMp2Tracks = [];
+      state.processedAudioFrags = new Set();
+      state.hasH264Video = false;
+      state.isActualMpeg2Stream = false;
       state.mediaRecoveryAttempts = 0;
       state.lastMediaRecoveryTime = 0;
       applyVolume();
@@ -5531,17 +5538,16 @@
       if (window.Hls && Hls.isSupported()) {
         const bCfg = BUFFER_CONFIGS[state.bufferMode] || BUFFER_CONFIGS.stable;
 
-        // Preprocesador de flujo TS: Aislamiento de pistas de audio MP2 + Emparejamiento de campos 1080i entrelazados (PAFF)
+        // Preprocesador de flujo TS: Aislamiento de pistas de audio MP2 preservando paquetes de video originales
         function preprocessTsChunk(buffer) {
           if (!buffer || buffer.byteLength < 188) return { data: buffer, isMp2: false };
           const u8 = new Uint8Array(buffer);
           let pmtPid = null;
           let audioPids = new Set();
           let parsedTracks = [];
-          let videoPid = null;
           let isMp2 = false;
 
-          // Paso 1: Explorar PAT y PMT para identificar todos los PIDs de audio y video
+          // Paso 1: Explorar PAT y PMT para identificar todos los PIDs de audio y el tipo de video
           for (let i = 0; i + 188 <= u8.length; i += 188) {
             if (u8[i] !== 0x47) continue;
             const pid = ((u8[i + 1] & 0x1f) << 8) | u8[i + 2];
@@ -5572,8 +5578,13 @@
                 const elemPid = ((u8[p + 1] & 0x1f) << 8) | u8[p + 2];
                 const esInfoLen = ((u8[p + 3] & 0x0f) << 8) | u8[p + 4];
 
-                if (streamType === 0x1B) { // Video H.264
-                  videoPid = elemPid;
+                if (streamType === 0x1B || streamType === 0x24) { // Video H.264 o H.265
+                  state.hasH264Video = true;
+                  state.isActualMpeg2Stream = false;
+                } else if (streamType === 0x02) { // Video MPEG-2
+                  if (!state.hasH264Video) {
+                    state.isActualMpeg2Stream = true;
+                  }
                 } else if (streamType === 0x03 || streamType === 0x04) { // Audio MP2 / MPEG
                   audioPids.add(elemPid);
                   isMp2 = true;
@@ -5609,58 +5620,28 @@
             renderQualityAudioMenu();
           }
 
-          // Paso 2: Crear copia y aplicar filtros (enmascarar MP2 + emparejar campos 1080i)
+          if (!isMp2 || audioPids.size === 0) return { data: buffer, isMp2: false };
+
+          // Paso 2: Solo enmascarar audio MP2 para WebAudio (NO alterar paquetes de video para preservar fluidez nativa total y 0 lag)
           const copy = new Uint8Array(u8.length);
           copy.set(u8);
 
-          let inFieldPair = false;
           for (let i = 0; i + 188 <= copy.length; i += 188) {
             if (copy[i] !== 0x47) continue;
             const pid = ((copy[i + 1] & 0x1f) << 8) | copy[i + 2];
 
-            // 1. Enmascarar paquetes de audio MP2 para que Hls.js no falle con error ADTS
             if (audioPids.has(pid)) {
               copy[i + 1] = 0x1f;
               copy[i + 2] = 0xff;
               copy[i + 3] = 0x10;
               copy.fill(0xff, i + 4, i + 188);
-              continue;
-            }
-
-            // 2. Filtro Field-Pairing para H.264 1080i entrelazado (PAFF)
-            // Convierte el AUD (NAL 9) del segundo campo complementario en Filler (NAL 12)
-            // para que Hls.js empaquete ambos campos en una muestra de cuadro completo de ~33.3ms
-            if (videoPid !== null && pid === videoPid) {
-              const afc = (copy[i + 3] >> 4) & 3;
-              let offset = i + 4;
-              if (afc === 2) continue;
-              if (afc === 3) offset += 1 + copy[i + 4];
-              if (offset >= i + 188) continue;
-
-              for (let p = offset; p < i + 185; p++) {
-                if (copy[p] === 0 && copy[p + 1] === 0 && copy[p + 2] === 1) {
-                  const nalType = copy[p + 3] & 0x1f;
-                  if (nalType === 9) { // AUD
-                    if (inFieldPair) {
-                      // Segundo campo complementario: convertir a Filler inofensivo
-                      copy[p + 3] = (copy[p + 3] & 0xe0) | 12;
-                      inFieldPair = false;
-                    } else {
-                      inFieldPair = true;
-                    }
-                  } else if (nalType === 7 || nalType === 8 || nalType === 5) {
-                    // Reiniciar sincronización en SPS/PPS o cuadros clave IDR
-                    inFieldPair = false;
-                  }
-                }
-              }
             }
           }
 
           return { data: copy.buffer, isMp2: isMp2 };
         }
 
-        // Custom fragment loader to intercept raw MPEG-2 TS chunk bytes, pair 1080i fields and isolate MP2 audio
+        // Custom fragment loader to intercept raw MPEG-2 TS chunk bytes and isolate MP2 audio
         class CustomFragLoader extends Hls.DefaultConfig.loader {
           constructor(config) {
             super(config);
@@ -5674,7 +5655,8 @@
                   const processed = preprocessTsChunk(response.data);
                   if (processed.isMp2) {
                     state.useWebAudio = true;
-                    video.muted = true; // Silenciar elemento HTML5 de inmediato para evitar eco
+                    video.muted = true;
+                    video.volume = 0; // Silenciar elemento HTML5 tanto con muted como volume 0 para evitar fugas en móviles
                   }
                   response.data = processed.data;
                 }
@@ -5696,12 +5678,12 @@
           maxBufferLength: bCfg.maxBufferLength,
           maxMaxBufferLength: bCfg.maxMaxBufferLength,
           maxBufferSize: bCfg.maxBufferSize,
-          maxBufferHole: 0.5,
+          maxBufferHole: 0.8,
           backBufferLength: 20,
           liveDurationInfinity: true,
           highBufferWatchdogPeriod: bCfg.highBufferWatchdogPeriod,
-          nudgeOffset: bCfg.nudgeOffset,
-          nudgeMaxRetry: bCfg.nudgeMaxRetry,
+          nudgeOffset: 0.2,
+          nudgeMaxRetry: 5,
           fragLoadingTimeOut: 20000,
           fragLoadingMaxRetry: 6,
           fragLoadingRetryDelay: 500,
@@ -5724,12 +5706,12 @@
 
           if (mpeg2CheckTimer) clearTimeout(mpeg2CheckTimer);
           mpeg2CheckTimer = setTimeout(() => {
-            // If playing but videoWidth is 0 and software MPEG-2 decoder is not active, activate audio notice
-            if (!state.isMpeg2Decoding && video && video.currentTime > 0.3 && video.videoWidth === 0 && !video.paused) {
-              console.log('[Alexis TV] Señal original conectada en modo audio en vivo');
+            // Solo activar aviso si realmente es señal MPEG-2 sin video H.264
+            if (state.isActualMpeg2Stream && !state.hasH264Video && !state.isMpeg2Decoding && video && video.currentTime > 0.3 && video.videoWidth === 0 && !video.paused) {
+              console.log('[Alexis TV] Señal MPEG-2 detectada en vivo');
               showMpeg2Notice(state.activeChannel);
             }
-          }, 3200);
+          }, 5000);
         });
 
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
@@ -5802,13 +5784,24 @@
           if (currentSessionId !== state.channelSessionId) return;
           if (video.paused) return;
 
-          // Detect audio-only stream where video is missing or raw MPEG-2
+          // Deduplicación estricta de fragmentos en WebAudio para eliminar completamente cualquier audio doble
+          const fragId = (data && data.frag) ? (data.frag.sn !== undefined ? data.frag.sn : (data.frag.start !== undefined ? data.frag.start : null)) : null;
+          if (fragId !== null && state.processedAudioFrags.has(fragId)) {
+            return;
+          }
+          if (fragId !== null) {
+            state.processedAudioFrags.add(fragId);
+          }
+
+          // Detect audio-only stream where video is missing or raw MPEG-2 (solo si se confirmó MPEG-2 en PMT)
           const lacksMseVideo = data && data.frag && data.frag.elementaryStreams &&
                                 data.frag.elementaryStreams.video === null;
 
+          const isTrueMpeg2 = state.isActualMpeg2Stream === true && !state.hasH264Video;
+
           const rawTsBuffer = (data && data.frag && data.frag._rawChunkBuffer) ? data.frag._rawChunkBuffer : (data ? data.payload : null);
 
-          if (lacksMseVideo) {
+          if (isTrueMpeg2 && lacksMseVideo) {
             state.useWebAudio = true;
             hideMpeg2Alert();
             if (!state.isMpeg2Decoding && state.mpeg2Player) {
@@ -5866,7 +5859,7 @@
             }
           }
 
-          if (state.isMpeg2Decoding && state.mpeg2Player && rawTsBuffer) {
+          if (isTrueMpeg2 && state.isMpeg2Decoding && state.mpeg2Player && rawTsBuffer) {
             state.mpeg2Player.pushChunk(rawTsBuffer);
             hideMpeg2Alert();
           }
