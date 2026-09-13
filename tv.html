@@ -4320,8 +4320,9 @@
         // Click to play channel
         item.addEventListener('click', (e) => {
           if (e.target.closest('.channel-fav-btn')) return;
-          // Prime video element inside synchronous user gesture
-          video.play().catch(() => {});
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+          }
           if (state.isMultiView && state.multiviewFocus === 2) {
             playMultiViewChannel(channel);
           } else {
@@ -5477,11 +5478,15 @@
       state.lastMediaRecoveryTime = 0;
       applyVolume();
 
-      // Drenar y vaciar el búfer multimedia del canal previo para evitar eco de audio
+      // Limpiar y detener instancia HLS y reproducción anterior de forma limpia sin corromper el elemento video
+      if (state.hls) {
+        try {
+          state.hls.destroy();
+        } catch (e) {}
+        state.hls = null;
+      }
       try {
         video.pause();
-        video.removeAttribute('src');
-        video.load();
       } catch (e) {}
 
       // Add to recent channels
@@ -5519,13 +5524,6 @@
         streamUrl = `/api/tv/proxy?url=${encodeURIComponent(streamUrl)}`;
       }
 
-      // Clean up previous HLS instance
-      if (state.hls) {
-        try {
-          state.hls.destroy();
-        } catch (e) {}
-        state.hls = null;
-      }
 
       // Reset quality & audio levels
       state.availableLevels = [];
@@ -5651,12 +5649,14 @@
               callbacks.onSuccess = (response, stats, context, networkDetails) => {
                 if (currentSessionId !== state.channelSessionId) return;
                 if (context.frag && response.data) {
-                  context.frag._rawChunkBuffer = response.data.slice(0);
                   const processed = preprocessTsChunk(response.data);
                   if (processed.isMp2) {
                     state.useWebAudio = true;
                     video.muted = true;
-                    video.volume = 0; // Silenciar elemento HTML5 tanto con muted como volume 0 para evitar fugas en móviles
+                    video.volume = 0;
+                    context.frag._rawChunkBuffer = response.data.slice(0);
+                  } else if (state.isActualMpeg2Stream) {
+                    context.frag._rawChunkBuffer = response.data.slice(0);
                   }
                   response.data = processed.data;
                 }
@@ -5782,16 +5782,6 @@
         // Real-time MP2 audio demuxing, WebAudio playback and MPEG-2 Video Software Decoding
         hls.on(Hls.Events.FRAG_PARSED, async (event, data) => {
           if (currentSessionId !== state.channelSessionId) return;
-          if (video.paused) return;
-
-          // Deduplicación estricta de fragmentos en WebAudio para eliminar completamente cualquier audio doble
-          const fragId = (data && data.frag) ? (data.frag.sn !== undefined ? data.frag.sn : (data.frag.start !== undefined ? data.frag.start : null)) : null;
-          if (fragId !== null && state.processedAudioFrags.has(fragId)) {
-            return;
-          }
-          if (fragId !== null) {
-            state.processedAudioFrags.add(fragId);
-          }
 
           // Detect audio-only stream where video is missing or raw MPEG-2 (solo si se confirmó MPEG-2 en PMT)
           const lacksMseVideo = data && data.frag && data.frag.elementaryStreams &&
@@ -5811,12 +5801,21 @@
           }
 
           if (state.useWebAudio && rawTsBuffer) {
+            // Deduplicación estricta de fragmentos en WebAudio para eliminar completamente cualquier audio doble
+            const fragId = (data && data.frag) ? (data.frag.sn !== undefined ? data.frag.sn : (data.frag.start !== undefined ? data.frag.start : null)) : null;
+            if (fragId !== null && state.processedAudioFrags.has(fragId)) {
+              return;
+            }
+            if (fragId !== null) {
+              state.processedAudioFrags.add(fragId);
+            }
+
             try {
               const rawAudio = extractMp2FromTs(rawTsBuffer, state.selectedMp2Pid);
               if (rawAudio && rawAudio.length) {
                 await initWebAudio();
                 applyVolume();
-                if (currentSessionId !== state.channelSessionId || video.paused) return;
+                if (currentSessionId !== state.channelSessionId) return;
                 if (audioDecoder && audioDecoder.ready) {
                   try { await audioDecoder.ready; } catch (e) {}
                 }
@@ -5834,8 +5833,8 @@
                     }
 
                     const now = audioCtx.currentTime;
-                    // Avance lineal ordenado de la cola de audio: sin retrocesos ni saltos que generen eco
-                    if (nextAudioTime < now || (nextAudioTime - now) > 6.0) {
+                    // Avance lineal estricto sin rebobinar la cola sobre sí misma
+                    if (nextAudioTime < now) {
                       nextAudioTime = now + 0.03;
                     }
 
@@ -5892,8 +5891,17 @@
           playerStage.classList.remove('paused');
           hideLoader();
         }).catch((err) => {
-          // Si la reproducción fue cancelada por un cambio rápido de canal, ignorar AbortError para no silenciar
+          // Si la reproducción fue interrumpida mientras se preparaban búferes, reintentar al recibir datos
           if (err && (err.name === 'AbortError' || err.message?.includes('interrupted'))) {
+            const currentSession = state.channelSessionId;
+            video.addEventListener('canplay', () => {
+              if (video.paused && state.channelSessionId === currentSession) {
+                video.play().then(() => {
+                  playerStage.classList.remove('paused');
+                  hideLoader();
+                }).catch(() => {});
+              }
+            }, { once: true });
             return;
           }
           if (err && err.name === 'NotAllowedError') {
@@ -6135,20 +6143,18 @@
         playerStage.classList.remove('paused');
         bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
         showPlayerControls(2500);
-        if (audioCtx && audioCtx.state === 'suspended' && !state.isMuted) {
+        if (state.useWebAudio && audioCtx && audioCtx.state === 'suspended' && !state.isMuted) {
           try { audioCtx.resume(); } catch (e) {}
         }
-        nextAudioTime = (audioCtx ? audioCtx.currentTime : 0) + 0.03;
       });
 
       video.addEventListener('pause', () => {
         playerStage.classList.add('paused');
         bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
         showPlayerControls(5000);
-        if (audioCtx && audioCtx.state === 'running') {
+        if (state.useWebAudio && audioCtx && audioCtx.state === 'running') {
           try { audioCtx.suspend(); } catch (e) {}
         }
-        stopWebAudio();
       });
 
       // PICTURE-IN-PICTURE (PiP)
