@@ -3392,6 +3392,8 @@
       hls: null,
       deferredPrompt: null,
       useWebAudio: false,
+      isMuted: false,
+      volume: parseFloat(localStorage.getItem('at_tv_vol') || '1.0'),
       mpeg2Player: null,
       isMpeg2Decoding: false,
       isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent),
@@ -5163,10 +5165,10 @@
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioCtx = new AudioContext();
         audioGain = audioCtx.createGain();
-        audioGain.gain.value = video.muted ? 0 : video.volume;
+        audioGain.gain.value = (state.isMuted || !state.useWebAudio) ? 0 : state.volume;
         audioGain.connect(audioCtx.destination);
       }
-      if (audioCtx.state === 'suspended') {
+      if (audioCtx.state === 'suspended' && !state.isMuted) {
         await audioCtx.resume();
       }
       if (!audioDecoder && window['mpg123-decoder'] && window['mpg123-decoder'].MPEGDecoder) {
@@ -5192,6 +5194,37 @@
       nextAudioTime = 0;
       if (audioDecoder) {
         try { audioDecoder.reset(); } catch (e) {}
+      }
+    }
+
+    function applyVolume() {
+      const isMuted = state.isMuted;
+      const vol = isMuted ? 0 : (state.volume !== undefined ? state.volume : 1);
+      if (state.useWebAudio) {
+        video.muted = true; // Always silence HTML5 video element when WebAudio is active to prevent echo / double audio
+        if (audioGain) {
+          audioGain.gain.value = vol;
+        }
+      } else {
+        video.muted = isMuted;
+        video.volume = vol;
+        if (audioGain) {
+          audioGain.gain.value = 0;
+        }
+      }
+      if (volumeSlider) {
+        volumeSlider.value = isMuted ? 0 : state.volume;
+      }
+      updateVolumeIcon();
+    }
+
+    function updateVolumeIcon() {
+      const icon = document.getElementById('volume-icon');
+      if (!icon) return;
+      if (state.isMuted || state.volume === 0) {
+        icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
+      } else {
+        icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
       }
     }
 
@@ -5297,6 +5330,7 @@
       state.activeChannel = channel;
       stopWebAudio();
       state.useWebAudio = false;
+      applyVolume();
 
       // Add to recent channels
       addToRecentChannels(channel);
@@ -5350,7 +5384,70 @@
       if (window.Hls && Hls.isSupported()) {
         const bCfg = BUFFER_CONFIGS[state.bufferMode] || BUFFER_CONFIGS.stable;
 
-        // Custom fragment loader to intercept raw MPEG-2 TS chunk bytes before worker detachment
+        function filterMp2FromTs(buffer) {
+          if (!buffer || buffer.byteLength < 188) return { data: buffer, isMp2: false };
+          const u8 = new Uint8Array(buffer);
+          let pmtPid = null;
+          let audioPid = null;
+          let isMp2 = false;
+
+          for (let i = 0; i + 188 <= u8.length; i += 188) {
+            if (u8[i] !== 0x47) continue;
+            const pid = ((u8[i + 1] & 0x1f) << 8) | u8[i + 2];
+            const payloadStart = (u8[i + 1] & 0x40) !== 0;
+            const afc = (u8[i + 3] >> 4) & 3;
+            let offset = i + 4;
+            if (afc === 2 || afc === 3) offset += 1 + u8[i + 4];
+            if (offset >= i + 188) continue;
+            if (payloadStart) offset += 1 + u8[offset];
+            if (offset >= i + 188) continue;
+
+            if (pid === 0 && pmtPid === null) {
+              const sectionLen = ((u8[offset + 1] & 0x0f) << 8) | u8[offset + 2];
+              for (let p = offset + 8; p < offset + 3 + sectionLen - 4; p += 4) {
+                const progNum = (u8[p] << 8) | u8[p + 1];
+                if (progNum !== 0) {
+                  pmtPid = ((u8[p + 2] & 0x1f) << 8) | u8[p + 3];
+                  break;
+                }
+              }
+            } else if (pmtPid !== null && pid === pmtPid) {
+              const sectionLen = ((u8[offset + 1] & 0x0f) << 8) | u8[offset + 2];
+              const progInfoLen = ((u8[offset + 10] & 0x0f) << 8) | u8[offset + 11];
+              let p = offset + 12 + progInfoLen;
+              const end = offset + 3 + sectionLen - 4;
+              while (p < end) {
+                const streamType = u8[p];
+                const elemPid = ((u8[p + 1] & 0x1f) << 8) | u8[p + 2];
+                const esInfoLen = ((u8[p + 3] & 0x0f) << 8) | u8[p + 4];
+                if (streamType === 0x03 || streamType === 0x04) {
+                  audioPid = elemPid;
+                  isMp2 = true;
+                }
+                p += 5 + esInfoLen;
+              }
+              break;
+            }
+          }
+
+          if (!isMp2 || audioPid === null) return { data: buffer, isMp2: false };
+
+          const copy = new Uint8Array(u8.length);
+          copy.set(u8);
+          for (let i = 0; i + 188 <= copy.length; i += 188) {
+            if (copy[i] !== 0x47) continue;
+            const pid = ((copy[i + 1] & 0x1f) << 8) | copy[i + 2];
+            if (pid === audioPid) {
+              copy[i + 1] = 0x1f;
+              copy[i + 2] = 0xff;
+              copy[i + 3] = 0x10;
+              copy.fill(0xff, i + 4, i + 188);
+            }
+          }
+          return { data: copy.buffer, isMp2: true };
+        }
+
+        // Custom fragment loader to intercept raw MPEG-2 TS chunk bytes and isolate MP2 audio
         class CustomFragLoader extends Hls.DefaultConfig.loader {
           constructor(config) {
             super(config);
@@ -5360,6 +5457,11 @@
               callbacks.onSuccess = (response, stats, context, networkDetails) => {
                 if (context.frag && response.data) {
                   context.frag._rawChunkBuffer = response.data.slice(0);
+                  const filterRes = filterMp2FromTs(response.data);
+                  if (filterRes.isMp2) {
+                    state.useWebAudio = true;
+                    response.data = filterRes.data;
+                  }
                 }
                 origSuccess(response, stats, context, networkDetails);
               };
@@ -5478,14 +5580,12 @@
         hls.on(Hls.Events.FRAG_PARSED, async (event, data) => {
           // Detect audio-only stream where video is missing or raw MPEG-2
           const lacksMseVideo = data && data.frag && data.frag.elementaryStreams &&
-                                data.frag.elementaryStreams.video === null &&
-                                data.frag.elementaryStreams.audio;
+                                data.frag.elementaryStreams.video === null;
 
           const rawTsBuffer = (data && data.frag && data.frag._rawChunkBuffer) ? data.frag._rawChunkBuffer : (data ? data.payload : null);
 
           if (lacksMseVideo) {
             state.useWebAudio = true;
-            initWebAudio();
             hideMpeg2Alert();
             if (!state.isMpeg2Decoding && state.mpeg2Player) {
               state.isMpeg2Decoding = true;
@@ -5498,6 +5598,7 @@
               const rawAudio = extractMp2FromTs(rawTsBuffer);
               if (rawAudio && rawAudio.length) {
                 await initWebAudio();
+                applyVolume();
                 if (audioDecoder && audioDecoder.ready) {
                   try { await audioDecoder.ready; } catch (e) {}
                 }
@@ -5540,9 +5641,10 @@
 
           if (state.isMpeg2Decoding && state.mpeg2Player && rawTsBuffer) {
             state.mpeg2Player.pushChunk(rawTsBuffer);
-            hideLoader();
             hideMpeg2Alert();
           }
+
+          hideLoader();
         });
 
         state.hls = hls;
@@ -5563,6 +5665,7 @@
     }
 
     function triggerAutoPlay() {
+      applyVolume();
       const p = video.play();
       if (p !== undefined) {
         p.then(() => {
@@ -5571,8 +5674,8 @@
         }).catch((err) => {
           console.warn('Reproducción con audio bloqueada por el navegador, reintentando silenciado:', err);
           // Fallback a reproducción silenciada (permitida al 100% por navegadores sin interacción previa)
-          video.muted = true;
-          updateVolumeIcon();
+          state.isMuted = true;
+          applyVolume();
           const pMuted = video.play();
           if (pMuted !== undefined) {
             pMuted.then(() => {
@@ -5594,16 +5697,28 @@
     function enableSoundOnFirstInteraction() {
       if (soundUnlockAttached) return;
       soundUnlockAttached = true;
-      const unmuteOnTap = () => {
-        if (video.muted && !video.paused) {
-          video.muted = false;
-          updateVolumeIcon();
+      const stage = document.getElementById('player-stage') || video;
+      const unmuteOnTap = (e) => {
+        // Do not intercept if tapping on player controls or buttons
+        if (e && e.target && e.target.closest('#mute-btn, .player-control-btn, .player-controls, button, input')) {
+          return;
+        }
+        if (state.isMuted && !video.paused) {
+          state.isMuted = false;
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+          applyVolume();
           showToast('🔊 Sonido activado');
         }
-        ['click', 'touchstart', 'keydown'].forEach(ev => document.removeEventListener(ev, unmuteOnTap));
+        if (stage) {
+          ['click', 'touchstart'].forEach(ev => stage.removeEventListener(ev, unmuteOnTap));
+        }
         soundUnlockAttached = false;
       };
-      ['click', 'touchstart', 'keydown'].forEach(ev => document.addEventListener(ev, unmuteOnTap, { once: true }));
+      if (stage) {
+        ['click', 'touchstart'].forEach(ev => stage.addEventListener(ev, unmuteOnTap));
+      }
     }
 
     function showControlsPrompt() {
@@ -6066,6 +6181,16 @@
         }
       });
 
+      video.addEventListener('loadeddata', () => {
+        hideLoader();
+      });
+
+      video.addEventListener('timeupdate', () => {
+        if (video.currentTime > 0) {
+          hideLoader();
+        }
+      });
+
       // PLAYLIST FILTER DROPDOWN IN SIDEBAR HEADER
       const plSelect = document.getElementById('playlist-filter-select');
       if (plSelect) {
@@ -6082,37 +6207,31 @@
         });
       }
 
-
       // VOLUME & MUTE (Synchronized with both HTML5 video and WebAudio)
       volumeSlider.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
-        video.volume = val;
-        video.muted = val === 0;
-        if (audioGain) {
-          audioGain.gain.value = video.muted ? 0 : val;
-        }
-        updateVolumeIcon();
+        state.volume = val;
+        state.isMuted = val === 0;
+        localStorage.setItem('at_tv_vol', val.toString());
+        applyVolume();
       });
 
       muteBtn.addEventListener('click', (e) => {
-        if (e) e.stopPropagation();
-        showPlayerControls(4500);
-        video.muted = !video.muted;
-        if (audioGain) {
-          audioGain.gain.value = video.muted ? 0 : video.volume;
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
         }
-        updateVolumeIcon();
-        showToast(video.muted ? 'Silenciado' : 'Sonido activado');
+        showPlayerControls(4500);
+        state.isMuted = !state.isMuted;
+        if (!state.isMuted && audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        applyVolume();
+        showToast(state.isMuted ? 'Silenciado' : 'Sonido activado');
       });
 
-      function updateVolumeIcon() {
-        const icon = document.getElementById('volume-icon');
-        if (video.muted || video.volume === 0) {
-          icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
-        } else {
-          icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
-        }
-      }
+      // Initialize volume and mute display
+      applyVolume();
 
       // RELOAD STREAM
       reloadStreamBtn.addEventListener('click', (e) => {
