@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alexis-radio-v1';
+const CACHE_NAME = 'alexis-radio-v3';
 const STATIC_ASSETS = [
   '/radio.html',
   '/radio.css',
@@ -11,7 +11,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[Radio SW] Error caching initial assets:', err);
+        console.warn('[Radio SW] Error caching assets:', err);
       });
     })
   );
@@ -22,7 +22,12 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME && key.startsWith('alexis-radio-')).map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log('[Radio SW] Deleting legacy cache:', key);
+            return caches.delete(key);
+          }
+        })
       );
     })
   );
@@ -32,30 +37,30 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache live audio streams or the proxy endpoint
-  if (url.pathname.startsWith('/api/radio-proxy') || url.pathname.includes('/stream') || event.request.destination === 'audio') {
+  // Never intercept or cache live audio streams or API proxy
+  if (url.pathname.startsWith('/api/') || url.pathname.includes('/stream') || event.request.destination === 'audio') {
     return;
   }
 
-  // Network first for HTML, Cache first for static assets
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/radio.html'))
-    );
-    return;
-  }
-
+  // Network-First for HTML, JS and CSS to ensure instant updates
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((res) => {
-        if (res.ok && event.request.method === 'GET') {
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
         }
-        return res;
-      });
-    }).catch(() => {
-      // Offline fallback
-    })
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') {
+            return caches.match('/radio.html');
+          }
+        });
+      })
   );
 });

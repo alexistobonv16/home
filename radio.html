@@ -32,7 +32,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css">
+  <link rel="stylesheet" href="radio.css?v=3.0">
 </head>
 <body>
 
@@ -75,20 +75,26 @@
       </div>
     </header>
 
-    <!-- Main Tuner Deck (Player & Spectrum) -->
+    <!-- Main Tuner Stage (Spectrum & Telemetry) -->
     <section class="tuner-deck">
-      <div class="tuner-left">
+      <div class="tuner-stage-content">
         <div class="tuner-top-telemetry">
           <div class="now-playing-badge" id="now-playing-status">
             LISTO PARA SINTONIZAR
           </div>
 
-          <!-- Live Telemetry: Real Bitrate, Speed & Network Data -->
+          <!-- Live Telemetry: Format, Real Bitrate, Speed & Network Data -->
           <div class="stream-telemetry-cluster">
-            <div class="telemetry-pill" title="Bitrate real del stream de audio">
+            <div class="telemetry-pill" title="Extensión y códec del stream de audio">
+              <span class="telemetry-dot dot-violet"></span>
+              <span class="telemetry-label">FORMATO:</span>
+              <span id="telemetry-format-val" class="telemetry-val format-tag">AUTO</span>
+            </div>
+
+            <div class="telemetry-pill" title="Bitrate real detectado en el stream">
               <span class="telemetry-dot dot-cyan"></span>
               <span class="telemetry-label">BITRATE:</span>
-              <span id="telemetry-bitrate-val" class="telemetry-val">-- kbps</span>
+              <span id="telemetry-bitrate-val" class="telemetry-val highlight-cyan">-- kbps</span>
             </div>
 
             <div class="telemetry-pill" title="Velocidad de descarga en tiempo real">
@@ -98,7 +104,7 @@
             </div>
 
             <div class="telemetry-pill" title="Datos totales transferidos en esta sesión de audio">
-              <span class="telemetry-dot dot-violet"></span>
+              <span class="telemetry-dot dot-amber"></span>
               <span class="telemetry-label">RED:</span>
               <span id="telemetry-data-val" class="telemetry-val">0.00 MB</span>
             </div>
@@ -111,8 +117,8 @@
             <span id="active-station-freq" class="active-station-freq"><span>●</span> FM 104.9 MHz</span>
             <h2 id="active-station-name" class="active-station-name">Selecciona una Emisora</h2>
             <div id="active-station-genre" class="active-station-genre-tag">
-              <span>General</span>
-              <span id="active-station-codec-badge">STEREO</span>
+              <span id="active-station-genre-text">General</span>
+              <span id="active-station-codec-badge" class="format-badge badge-mp3">MP3</span>
               <span id="active-station-bitrate-badge" class="highlight-bitrate">-- kbps</span>
             </div>
           </div>
@@ -128,48 +134,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Controls & Transport -->
-      <div class="tuner-right">
-        <div class="playback-controls-row">
-          <button id="prev-station-btn" class="play-nav-btn" title="Emisora anterior">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
-          </button>
-
-          <button id="play-main-btn" class="play-main-btn" title="Reproducir / Pausar">
-            <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
-            <svg id="pause-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-          </button>
-
-          <button id="next-station-btn" class="play-nav-btn" title="Siguiente emisora">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-          </button>
-        </div>
-
-        <div class="tuner-aux-row">
-          <!-- Volume -->
-          <div class="volume-wrapper">
-            <button id="mute-btn" class="mute-btn" title="Silenciar / Activar sonido">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-            </button>
-            <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.01" value="0.85">
-          </div>
-
-          <!-- Extra Tools: Sleep Timer & Proxy -->
-          <div class="tuner-options-group">
-            <button id="sleep-timer-btn" class="sleep-btn" title="Temporizador de apagado">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              <span>Sleep</span>
-              <span id="sleep-badge" style="color: var(--accent-amber); font-weight: bold;"></span>
-            </button>
-
-            <button id="proxy-toggle-btn" class="proxy-toggle-btn" title="Activar/Desactivar Proxy Cloudflare contra bloqueos de audio">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-              <span>Proxy</span>
-            </button>
-          </div>
-        </div>
-      </div>
     </section>
 
     <!-- Filters and Search -->
@@ -179,8 +143,14 @@
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input type="text" id="search-input" class="search-input" placeholder="Buscar emisora por nombre, género o frecuencia...">
         </div>
-        <div class="station-count-info" id="station-count-display">
-          12 emisoras
+        <div class="search-actions-wrap">
+          <button id="reset-defaults-btn" class="btn btn-secondary btn-sm" title="Restaurar las emisoras predeterminadas recomendadas">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            <span>Restaurar Emisoras</span>
+          </button>
+          <div class="station-count-info" id="station-count-display">
+            12 emisoras
+          </div>
         </div>
       </div>
 
@@ -207,6 +177,69 @@
       <!-- Generated dynamically by radio.js -->
     </main>
   </div>
+
+  <!-- Modern Fixed Bottom Player Bar (Barra Inferior Estilizada) -->
+  <footer class="bottom-player-bar" id="bottom-player-bar">
+    <div class="bottom-bar-container">
+      <!-- Left: Active Station Meta & Extension / Bitrate Badges -->
+      <div class="bottom-bar-left">
+        <img id="bottom-bar-logo" class="bottom-bar-logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23080f24' stroke='%2300f0ff' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='%2300f0ff' text-anchor='middle'%3ERA%3C/text%3E%3C/svg%3E" alt="Emisora">
+        <div class="bottom-bar-meta">
+          <div class="bottom-bar-title-row">
+            <span id="bottom-bar-name" class="bottom-bar-name">Selecciona una Emisora</span>
+            <span id="bottom-bar-format-badge" class="format-badge badge-mp3">MP3</span>
+            <span id="bottom-bar-bitrate-badge" class="highlight-bitrate">-- kbps</span>
+          </div>
+          <div class="bottom-bar-sub-row">
+            <span id="bottom-bar-freq" class="bottom-bar-freq">WEB STREAM</span>
+            <span class="telemetry-dot-divider">•</span>
+            <span id="bottom-bar-telemetry" class="bottom-bar-telemetry">VEL: 0.0 KB/s • RED: 0.00 MB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: High-Tech Transport Controls -->
+      <div class="bottom-bar-center">
+        <div class="playback-controls-row">
+          <button id="prev-station-btn" class="play-nav-btn" title="Emisora anterior">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+          </button>
+
+          <button id="play-main-btn" class="play-main-btn" title="Reproducir / Pausar">
+            <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+            <svg id="pause-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </button>
+
+          <button id="next-station-btn" class="play-nav-btn" title="Siguiente emisora">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Volume, Sleep & Proxy -->
+      <div class="bottom-bar-right">
+        <div class="volume-wrapper">
+          <button id="mute-btn" class="mute-btn" title="Silenciar / Activar sonido">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </button>
+          <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.01" value="0.85">
+        </div>
+
+        <div class="bottom-tools-group">
+          <button id="sleep-timer-btn" class="sleep-btn" title="Temporizador de apagado">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Sleep</span>
+            <span id="sleep-badge" style="color: var(--accent-amber); font-weight: bold;"></span>
+          </button>
+
+          <button id="proxy-toggle-btn" class="proxy-toggle-btn" title="Activar/Desactivar Proxy Cloudflare contra bloqueos de audio">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+            <span>Proxy</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </footer>
 
   <!-- MODAL 1: Add/Edit Station -->
   <div id="add-station-modal" class="modal-backdrop">
@@ -346,6 +379,6 @@
   </div>
 
   <!-- Scripts -->
-  <script src="radio.js"></script>
+  <script src="radio.js?v=3.0"></script>
 </body>
 </html>

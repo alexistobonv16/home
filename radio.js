@@ -144,6 +144,7 @@
 
   // Real-Time Telemetry & Bitrate State
   let currentBitrateKbps = null;
+  let currentFormat = 'MP3';
   let currentCodec = 'MP3';
   let sessionTotalBytes = 0;
   let networkSpeedBytesPerSec = 0;
@@ -179,13 +180,15 @@
   const stationsGrid = document.getElementById('stations-grid');
   const searchInput = document.getElementById('search-input');
   const stationCountDisplay = document.getElementById('station-count-display');
+  const resetDefaultsBtn = document.getElementById('reset-defaults-btn');
   const sleepTimerBtn = document.getElementById('sleep-timer-btn');
   const sleepBadge = document.getElementById('sleep-badge');
   const proxyToggleBtn = document.getElementById('proxy-toggle-btn');
   const canvas = document.getElementById('visualizer-canvas');
   const canvasCtx = canvas ? canvas.getContext('2d') : null;
 
-  // Telemetry HUD Elements
+  // Top Stage Telemetry Elements
+  const telemetryFormatVal = document.getElementById('telemetry-format-val');
   const telemetryBitrateVal = document.getElementById('telemetry-bitrate-val');
   const telemetrySpeedVal = document.getElementById('telemetry-speed-val');
   const telemetryDataVal = document.getElementById('telemetry-data-val');
@@ -193,22 +196,22 @@
   const activeStationBitrateBadge = document.getElementById('active-station-bitrate-badge');
   const visualizerStatsText = document.getElementById('visualizer-stats-text');
 
+  // Bottom Player Bar Elements
+  const bottomBarLogo = document.getElementById('bottom-bar-logo');
+  const bottomBarName = document.getElementById('bottom-bar-name');
+  const bottomBarFreq = document.getElementById('bottom-bar-freq');
+  const bottomBarFormatBadge = document.getElementById('bottom-bar-format-badge');
+  const bottomBarBitrateBadge = document.getElementById('bottom-bar-bitrate-badge');
+  const bottomBarTelemetry = document.getElementById('bottom-bar-telemetry');
+
   // =========================================================================
   // STORAGE & INITIALIZATION
   // =========================================================================
   function initStorage() {
     try {
       const saved = localStorage.getItem('at_radio_stations');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Refresh default stations logos if updated
-        stations = parsed.map(s => {
-          if (s.isDefault) {
-            const def = DEFAULT_STATIONS.find(d => d.id === s.id);
-            if (def) return { ...def, isStarred: s.isStarred };
-          }
-          return s;
-        });
+      if (saved !== null) {
+        stations = JSON.parse(saved);
       } else {
         stations = [...DEFAULT_STATIONS];
         saveStations();
@@ -228,8 +231,28 @@
   }
 
   // =========================================================================
-  // REAL-TIME TELEMETRY & NETWORK USAGE MONITOR
+  // FORMAT DETECTION & TELEMETRY MONITOR
   // =========================================================================
+  function detectStreamFormat(rawUrl, contentType = '') {
+    const url = (rawUrl || '').toLowerCase();
+    const type = (contentType || '').toLowerCase();
+
+    if (url.includes('.m3u8') || type.includes('mpegurl') || type.includes('application/x-mpegurl')) {
+      return { ext: 'M3U8', codec: 'HLS', badgeClass: 'badge-hls', defaultBitrate: 128 };
+    }
+    if (url.includes('.aac') || url.includes('aac') || type.includes('aac')) {
+      return { ext: 'AAC', codec: 'AAC+', badgeClass: 'badge-aac', defaultBitrate: 64 };
+    }
+    if (url.includes('.ogg') || url.includes('.opus') || type.includes('ogg') || type.includes('opus')) {
+      return { ext: 'OGG', codec: 'OGG', badgeClass: 'badge-ogg', defaultBitrate: 128 };
+    }
+    if (url.includes('.mp3') || type.includes('mpeg') || type.includes('audio/mp3') || url.includes('_sc') || url.includes('streamtheworld')) {
+      return { ext: 'MP3', codec: 'MP3', badgeClass: 'badge-mp3', defaultBitrate: 128 };
+    }
+
+    return { ext: 'MP3', codec: 'MP3', badgeClass: 'badge-mp3', defaultBitrate: 128 };
+  }
+
   function formatBytes(bytes) {
     if (!bytes || bytes <= 0) return '0.00 MB';
     if (bytes < 1024 * 1024) {
@@ -252,54 +275,68 @@
   }
 
   function updateTelemetryDisplay() {
-    // 1. Bitrate value in Top Telemetry cluster
+    const fmt = detectStreamFormat(currentStation ? currentStation.url : '');
+    const activeBitrate = currentBitrateKbps || (isPlaying ? fmt.defaultBitrate : null);
+    const activeBitrateText = activeBitrate ? `${activeBitrate} kbps` : (isPlaying ? 'Detectando...' : '-- kbps');
+    const activeSpeedText = isPlaying ? formatSpeed(networkSpeedBytesPerSec) : '0.0 KB/s';
+    const activeDataText = formatBytes(sessionTotalBytes);
+
+    // 1. Format tag in Top Stage
+    if (telemetryFormatVal) {
+      telemetryFormatVal.textContent = fmt.ext;
+      telemetryFormatVal.className = `telemetry-val format-tag ${fmt.badgeClass}`;
+    }
+
+    // 2. Bitrate value in Top Stage
     if (telemetryBitrateVal) {
-      if (currentBitrateKbps) {
-        telemetryBitrateVal.textContent = `${currentBitrateKbps} kbps`;
-      } else if (isPlaying || isBuffering) {
-        telemetryBitrateVal.textContent = 'Detectando...';
-      } else {
-        telemetryBitrateVal.textContent = '-- kbps';
-      }
+      telemetryBitrateVal.textContent = activeBitrateText;
     }
 
-    // 2. Real-time network speed
+    // 3. Real-time network speed in Top Stage
     if (telemetrySpeedVal) {
-      telemetrySpeedVal.textContent = isPlaying ? formatSpeed(networkSpeedBytesPerSec) : '0.0 KB/s';
+      telemetrySpeedVal.textContent = activeSpeedText;
     }
 
-    // 3. Accumulated session network data
+    // 4. Accumulated session data in Top Stage
     if (telemetryDataVal) {
-      telemetryDataVal.textContent = formatBytes(sessionTotalBytes);
+      telemetryDataVal.textContent = activeDataText;
     }
 
-    // 4. Codec Badge in Tuner Deck
+    // 5. Codec Badge in Top Stage
     const codecEl = document.getElementById('active-station-codec-badge');
     if (codecEl) {
-      codecEl.textContent = currentCodec || 'STEREO';
+      codecEl.textContent = currentCodec || fmt.codec;
+      codecEl.className = `format-badge ${fmt.badgeClass}`;
     }
 
-    // 5. Active Station Bitrate Badge
+    // 6. Active Station Bitrate Badge in Top Stage
     const bitrateBadgeEl = document.getElementById('active-station-bitrate-badge');
     if (bitrateBadgeEl) {
-      if (currentBitrateKbps) {
-        bitrateBadgeEl.textContent = `${currentBitrateKbps} kbps`;
-      } else if (isPlaying || isBuffering) {
-        bitrateBadgeEl.textContent = 'DETECTANDO...';
-      } else {
-        bitrateBadgeEl.textContent = '-- kbps';
-      }
+      bitrateBadgeEl.textContent = activeBitrateText;
     }
 
-    // 6. Visualizer Stats overlay
+    // 7. Visualizer Stats overlay
     if (visualizerStatsText) {
-      const br = currentBitrateKbps ? `${currentBitrateKbps} kbps` : (isPlaying ? 'DETECTANDO...' : '--');
-      const spd = isPlaying ? formatSpeed(networkSpeedBytesPerSec) : '0.0 KB/s';
-      visualizerStatsText.textContent = `SPECTRUM ANALYZER • BITRATE: ${br} • RED: ${spd}`;
+      visualizerStatsText.textContent = `SPECTRUM ANALYZER • ${fmt.ext} ${activeBitrateText} • RED: ${activeSpeedText}`;
+    }
+
+    // 8. Bottom Player Bar elements
+    if (bottomBarFormatBadge) {
+      bottomBarFormatBadge.textContent = fmt.ext;
+      bottomBarFormatBadge.className = `format-badge ${fmt.badgeClass}`;
+    }
+
+    if (bottomBarBitrateBadge) {
+      bottomBarBitrateBadge.textContent = activeBitrateText;
+    }
+
+    if (bottomBarTelemetry) {
+      bottomBarTelemetry.textContent = `VEL: ${activeSpeedText} • RED: ${activeDataText}`;
     }
   }
 
   async function probeStreamTelemetry(targetUrl) {
+    if (!targetUrl) return;
     if (probeAbortController) {
       probeAbortController.abort();
       probeAbortController = null;
@@ -334,8 +371,9 @@
 
     telemetryTimer = setInterval(() => {
       if (isPlaying) {
-        // Calculate bytes transferred per second based on detected bitrate
-        const bytesThisSec = currentBitrateKbps ? Math.round((currentBitrateKbps * 1000) / 8) : 16000;
+        const fmt = detectStreamFormat(currentStation ? currentStation.url : '');
+        const br = currentBitrateKbps || fmt.defaultBitrate;
+        const bytesThisSec = Math.round((br * 1000) / 8);
         sessionTotalBytes += bytesThisSec;
         networkSpeedBytesPerSec = bytesThisSec;
         updateTelemetryDisplay();
@@ -372,12 +410,13 @@
     audio.removeAttribute('src');
     audio.load();
 
-    const isM3U8 = (station.url || '').includes('.m3u8');
-
-    // Reset telemetry metrics for newly sintonized station
+    const fmt = detectStreamFormat(station.url);
+    currentFormat = fmt.ext;
+    currentCodec = fmt.codec;
     currentBitrateKbps = null;
-    currentCodec = isM3U8 ? 'HLS' : 'MP3';
-    updateTelemetryDisplay();
+    networkSpeedBytesPerSec = Math.round((fmt.defaultBitrate * 1000) / 8);
+
+    const isM3U8 = fmt.ext === 'M3U8';
 
     updateTunerDisplay(station);
     setBufferingState(true);
@@ -494,7 +533,11 @@
     if (nowPlayingStatus) {
       nowPlayingStatus.innerHTML = playing ? '<span class="pulse-led"></span> EN VIVO' : 'PAUSADO';
     }
-    if (!playing) {
+    if (playing) {
+      const fmt = detectStreamFormat(currentStation ? currentStation.url : '');
+      const br = currentBitrateKbps || fmt.defaultBitrate;
+      networkSpeedBytesPerSec = Math.round((br * 1000) / 8);
+    } else {
       networkSpeedBytesPerSec = 0;
     }
     updateTelemetryDisplay();
@@ -686,17 +729,35 @@
   // =========================================================================
   function updateTunerDisplay(station) {
     if (!station) return;
+    const fallback = getStationFallbackSvg(station.name, station.genre);
+
+    // Top Stage Updates
     if (activeStationName) activeStationName.textContent = station.name;
     if (activeStationFreq) activeStationFreq.innerHTML = `<span>●</span> ${station.freq || 'WEB STREAM'}`;
-    if (activeStationGenre) {
-      activeStationGenre.innerHTML = `<span>${station.genre || 'General'}</span><span id="active-station-codec-badge">${currentCodec || 'STEREO'}</span><span id="active-station-bitrate-badge" class="highlight-bitrate">${currentBitrateKbps ? currentBitrateKbps + ' kbps' : '-- kbps'}</span>`;
+    const genreTextEl = document.getElementById('active-station-genre-text');
+    if (genreTextEl) {
+      genreTextEl.textContent = station.genre || 'General';
     }
     if (activeStationLogo) {
-      const fallback = getStationFallbackSvg(station.name, station.genre);
       activeStationLogo.src = station.logo || fallback;
       activeStationLogo.onerror = () => { activeStationLogo.src = fallback; };
       activeStationLogo.alt = station.name;
     }
+
+    // Bottom Player Bar Updates
+    if (bottomBarLogo) {
+      bottomBarLogo.src = station.logo || fallback;
+      bottomBarLogo.onerror = () => { bottomBarLogo.src = fallback; };
+      bottomBarLogo.alt = station.name;
+    }
+    if (bottomBarName) {
+      bottomBarName.textContent = station.name;
+    }
+    if (bottomBarFreq) {
+      bottomBarFreq.textContent = station.freq || station.genre || 'WEB STREAM';
+    }
+
+    updateTelemetryDisplay();
   }
 
   // =========================================================================
@@ -745,6 +806,7 @@
       const isCurrent = currentStation && currentStation.id === s.id;
       const isCardPlaying = isCurrent && isPlaying;
       const fallbackLogo = getStationFallbackSvg(s.name, s.genre);
+      const sFmt = detectStreamFormat(s.url);
 
       return `
         <div class="station-card ${isCardPlaying ? 'playing' : ''}" data-station-id="${s.id}">
@@ -762,6 +824,7 @@
             <div class="station-card-meta">
               <span class="badge-tag">${s.freq || 'WEB'}</span>
               <span class="badge-tag">${s.genre || 'Música'}</span>
+              <span class="badge-tag ${sFmt.badgeClass}">${sFmt.ext}</span>
               ${isCurrent && currentBitrateKbps ? `<span class="badge-tag highlight-bitrate">${currentBitrateKbps} kbps</span>` : ''}
             </div>
           </div>
@@ -773,11 +836,9 @@
             <button class="card-action-btn edit-btn" data-action="edit" title="Editar emisora">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
             </button>
-            ${!s.isDefault ? `
             <button class="card-action-btn delete-btn" data-action="delete" title="Eliminar emisora">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
-            ` : ''}
           </div>
         </div>
       `;
@@ -856,6 +917,23 @@
     searchInput.addEventListener('input', (e) => {
       searchQuery = (e.target.value || '').trim().toLowerCase();
       renderStations();
+    });
+  }
+
+  if (resetDefaultsBtn) {
+    resetDefaultsBtn.addEventListener('click', () => {
+      if (confirm('¿Deseas restaurar las emisoras predeterminadas? Se volverán a añadir las emisoras originales sin borrar las que hayas creado.')) {
+        let addedCount = 0;
+        DEFAULT_STATIONS.forEach(defStation => {
+          if (!stations.some(s => s.id === defStation.id || s.name.toLowerCase() === defStation.name.toLowerCase())) {
+            stations.push({ ...defStation });
+            addedCount++;
+          }
+        });
+        saveStations();
+        renderStations();
+        showToast(addedCount > 0 ? `Se restauraron ${addedCount} emisoras predeterminadas.` : 'Todas las emisoras predeterminadas ya están presentes.');
+      }
     });
   }
 
