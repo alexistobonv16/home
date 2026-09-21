@@ -31,23 +31,41 @@
   --radius-full: 9999px;
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Dark Theme Mobile Element Tokens */
+  --header-bg-mobile: rgba(11, 19, 43, 0.98);
+  --card-bg-mobile: rgba(13, 22, 44, 0.95);
+  --bar-bg-mobile: rgba(5, 10, 24, 0.98);
+  --card-border-mobile: rgba(56, 189, 248, 0.22);
+  --card-shadow-mobile: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="light"] {
   --bg-primary: #f8fafc;
   --bg-secondary: #f1f5f9;
-  --bg-card: rgba(255, 255, 255, 0.88);
-  --bg-card-hover: rgba(255, 255, 255, 0.98);
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
   --bg-input: #ffffff;
-  --border-color: rgba(0, 0, 0, 0.1);
-  --border-hover: rgba(2, 132, 199, 0.4);
-  --border-active: rgba(16, 185, 129, 0.6);
+  --border-color: #e2e8f0;
+  --border-hover: #0284c7;
+  --border-active: #0284c7;
   --text-primary: #0f172a;
-  --text-secondary: #475569;
+  --text-secondary: #334155;
   --text-muted: #64748b;
   --accent-cyan: #0284c7;
-  --accent-cyan-light: #0369a1;
-  --accent-cyan-glow: rgba(2, 132, 199, 0.2);
+  --accent-cyan-light: #0ea5e9;
+  --accent-cyan-glow: rgba(2, 132, 199, 0.18);
+  --accent-violet: #7c3aed;
+  --accent-amber: #d97706;
+  --accent-emerald: #059669;
+  --accent-red: #dc2626;
+
+  /* Light Theme Mobile & Elevated Tokens */
+  --header-bg-mobile: #ffffff;
+  --card-bg-mobile: #ffffff;
+  --bar-bg-mobile: rgba(255, 255, 255, 0.97);
+  --card-border-mobile: #e2e8f0;
+  --card-shadow-mobile: 0 2px 8px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
 * {
@@ -1438,6 +1456,309 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ==========================================================================
+   COMPREHENSIVE LIGHT THEME SUITE
+   ========================================================================== */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Header & Brand */
+[data-theme="light"] .radio-header {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+[data-theme="light"] .brand-title {
+  color: #0f172a;
+}
+[data-theme="light"] .brand-icon-box {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(124, 58, 237, 0.12));
+  border-color: #bae6fd;
+  color: #0284c7;
+  box-shadow: 0 0 15px rgba(2, 132, 199, 0.15);
+}
+[data-theme="light"] .brand-subtitle {
+  color: #64748b;
+}
+[data-theme="light"] .header-actions .btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+[data-theme="light"] .header-actions .btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3) !important;
+}
+[data-theme="light"] .btn-install {
+  background: linear-gradient(135deg, #0284c7, #7c3aed) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25) !important;
+}
+
+/* Master Tuner Deck (Desktop) */
+[data-theme="light"] .master-tuner-card,
+[data-theme="light"] .tuner-deck {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06) !important;
+}
+[data-theme="light"] .active-station-title {
+  color: #0f172a !important;
+}
+[data-theme="light"] .telemetry-pill {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+[data-theme="light"] .telemetry-label {
+  color: #64748b !important;
+}
+[data-theme="light"] .telemetry-val {
+  color: #0f172a !important;
+}
+[data-theme="light"] .station-dial-display {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+[data-theme="light"] .dial-track {
+  background: #e2e8f0 !important;
+}
+
+/* Search and Controls */
+[data-theme="light"] .search-input {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+[data-theme="light"] .search-input::placeholder {
+  color: #94a3b8;
+}
+[data-theme="light"] .search-icon {
+  color: #64748b;
+}
+[data-theme="light"] .sort-select {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+[data-theme="light"] .sort-select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+[data-theme="light"] #reset-defaults-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+[data-theme="light"] #reset-defaults-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+[data-theme="light"] .station-count-info {
+  color: #64748b;
+}
+[data-theme="light"] .cat-pill {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #475569;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+[data-theme="light"] .cat-pill:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+[data-theme="light"] .cat-pill.active {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+}
+
+/* Station Cards */
+[data-theme="light"] .station-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+}
+[data-theme="light"] .station-card:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+[data-theme="light"] .station-card.playing {
+  background: #f0f9ff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 1.5px #0284c7, 0 4px 16px rgba(2, 132, 199, 0.15) !important;
+}
+[data-theme="light"] .station-card-name {
+  color: #0f172a !important;
+}
+[data-theme="light"] .station-card-logo-wrap,
+[data-theme="light"] .station-card-img {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+[data-theme="light"] .card-action-btn {
+  color: #64748b;
+}
+[data-theme="light"] .card-action-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+[data-theme="light"] .star-btn.starred {
+  color: #d97706;
+}
+[data-theme="light"] .badge-tag {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+[data-theme="light"] .badge-mp3,
+[data-theme="light"] .format-mp3 {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+[data-theme="light"] .badge-aac,
+[data-theme="light"] .format-aac {
+  background: #f5f3ff !important;
+  color: #6d28d9 !important;
+  border-color: #ddd6fe !important;
+}
+[data-theme="light"] .badge-hls,
+[data-theme="light"] .format-hls {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+}
+[data-theme="light"] .highlight-bitrate {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #bae6fd !important;
+}
+
+/* Bottom Player Bar */
+[data-theme="light"] .bottom-player-bar {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-top: 1px solid #e2e8f0 !important;
+  box-shadow: 0 -4px 25px rgba(15, 23, 42, 0.08) !important;
+}
+[data-theme="light"] .bottom-bar-name {
+  color: #0f172a !important;
+}
+[data-theme="light"] .bottom-bar-sub-row {
+  color: #64748b !important;
+}
+[data-theme="light"] .bottom-bar-freq {
+  color: #64748b !important;
+}
+[data-theme="light"] .bottom-bar-telemetry {
+  color: #0284c7 !important;
+  font-weight: 600;
+}
+[data-theme="light"] #sleep-timer-btn,
+[data-theme="light"] #proxy-toggle-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+[data-theme="light"] #sleep-timer-btn:hover,
+[data-theme="light"] #proxy-toggle-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .play-nav-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+[data-theme="light"] .play-nav-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .play-main-btn {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35) !important;
+}
+[data-theme="light"] .mute-btn {
+  color: #475569 !important;
+}
+[data-theme="light"] .mute-btn:hover {
+  color: #0f172a !important;
+}
+[data-theme="light"] .volume-slider {
+  background: #e2e8f0;
+}
+[data-theme="light"] .mini-visualizer-container {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+/* Ambient Glow & HUD in Light Mode */
+[data-theme="light"] .ambient-glow {
+  opacity: 0.2 !important;
+}
+[data-theme="light"] .glow-cyan {
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.16) 0%, rgba(14, 165, 233, 0.02) 50%, transparent 70%) !important;
+}
+[data-theme="light"] .glow-violet {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.14) 0%, rgba(168, 85, 247, 0.02) 50%, transparent 70%) !important;
+}
+[data-theme="light"] .hud-grid-pattern {
+  background-image: linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px) !important;
+}
+
+/* Modals & Toasts */
+[data-theme="light"] .modal-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15) !important;
+}
+[data-theme="light"] .modal-header h3 {
+  color: #0f172a !important;
+}
+[data-theme="light"] .modal-close-btn {
+  color: #64748b !important;
+}
+[data-theme="light"] .modal-close-btn:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .input-label {
+  color: #334155 !important;
+}
+[data-theme="light"] .input-control {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+[data-theme="light"] .modal-footer {
+  background: #f8fafc !important;
+  border-top-color: #e2e8f0 !important;
+}
+[data-theme="light"] .modal-cancel-btn {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+[data-theme="light"] .toast {
+  background: #ffffff;
+  border-color: #0284c7;
+  color: #0f172a;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+}
+
 /* Responsive Media Queries */
 @media (max-width: 900px) {
   .stations-grid {
@@ -1489,7 +1810,8 @@ html, body {
     flex-wrap: wrap;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background: rgba(11, 19, 43, 0.98);
+    background: var(--header-bg-mobile);
+    border: 1px solid var(--border-color);
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
@@ -1572,11 +1894,11 @@ html, body {
 
   .station-card {
     position: relative;
-    background: rgba(13, 22, 44, 0.95);
+    background: var(--card-bg-mobile) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    border: 1px solid rgba(56, 189, 248, 0.22);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--card-border-mobile) !important;
+    box-shadow: var(--card-shadow-mobile) !important;
     padding: 0.75rem 0.85rem;
     gap: 0.75rem;
     border-radius: var(--radius-sm);
@@ -1586,13 +1908,13 @@ html, body {
 
   .station-card:hover {
     transform: none !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
-    background: rgba(13, 22, 44, 0.95) !important;
-    border-color: rgba(56, 189, 248, 0.22) !important;
+    box-shadow: var(--card-shadow-mobile) !important;
+    background: var(--card-bg-mobile) !important;
+    border-color: var(--card-border-mobile) !important;
   }
 
   .station-card:active {
-    background: rgba(20, 32, 60, 0.98) !important;
+    opacity: 0.85;
   }
 
   .station-card-logo-wrap,
@@ -1637,7 +1959,8 @@ html, body {
 
   /* Modern Fixed Bottom Player Bar */
   .bottom-player-bar {
-    background: rgba(5, 10, 24, 0.98) !important;
+    background: var(--bar-bg-mobile) !important;
+    border-top: 1px solid var(--border-color) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     transition: none !important;

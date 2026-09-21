@@ -8,15 +8,18 @@
 
   // Default Curated Stations
   function getStationFallbackSvg(name, genre) {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const initials = (name || 'RA').split(' ').filter(Boolean).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'RA';
-    let color = '#00f0ff';
-    if (genre === 'Noticias') color = '#38bdf8';
-    else if (genre === 'Rock') color = '#ef4444';
-    else if (genre === 'Electrónica') color = '#a855f7';
-    else if (genre === 'Lofi / Chill') color = '#10b981';
-    else if (genre === 'Cultura') color = '#f59e0b';
+    let color = isLight ? '#0284c7' : '#00f0ff';
+    if (genre === 'Noticias') color = isLight ? '#0284c7' : '#38bdf8';
+    else if (genre === 'Rock') color = isLight ? '#dc2626' : '#ef4444';
+    else if (genre === 'Electrónica') color = isLight ? '#7c3aed' : '#a855f7';
+    else if (genre === 'Lofi / Chill') color = isLight ? '#059669' : '#10b981';
+    else if (genre === 'Cultura') color = isLight ? '#d97706' : '#f59e0b';
 
-    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23080f24' stroke='${encodeURIComponent(color)}' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='${encodeURIComponent(color)}' text-anchor='middle'%3E${initials}%3C/text%3E%3C/svg%3E`;
+    const bgFill = isLight ? '%23f1f5f9' : '%23080f24';
+    const strokeColor = encodeURIComponent(color);
+    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='${bgFill}' stroke='${strokeColor}' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='${strokeColor}' text-anchor='middle'%3E${initials}%3C/text%3E%3C/svg%3E`;
   }
 
   // Default Curated Stations
@@ -1745,6 +1748,10 @@
       localStorage.setItem('at_theme', next);
       if (typeof updateVolumeVisual === 'function' && volumeSlider) {
         updateVolumeVisual(volumeSlider.value);
+      }
+      renderStations();
+      if (currentStation) {
+        updateTunerDisplay(currentStation);
       }
     });
   }
