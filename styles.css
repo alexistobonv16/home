@@ -1191,29 +1191,36 @@ body {
 }
 
 .browser-window[data-view="mobile"] .browser-header {
-  display: grid;
-  grid-template-columns: auto auto;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  row-gap: 0.55rem;
-  padding: 0.65rem 0.85rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .browser-window[data-view="mobile"] .window-dots {
-  grid-column: 1;
-}
-
-.browser-window[data-view="mobile"] .browser-controls {
-  grid-column: 2;
-  justify-self: end;
   flex-shrink: 0;
+  gap: 0.35rem;
 }
 
 .browser-window[data-view="mobile"] .browser-address-bar {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
+  max-width: none;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  gap: 0.35rem;
+}
+
+.browser-window[data-view="mobile"] .browser-controls {
+  flex-shrink: 0;
+  gap: 0.35rem;
+}
+
+.browser-window[data-view="mobile"] .device-btn,
+.browser-window[data-view="mobile"] .control-btn {
+  width: 1.6rem;
+  height: 1.6rem;
 }
 
 .browser-window[data-view="mobile"] .browser-viewport {
@@ -2404,30 +2411,38 @@ body {
     width: 100%;
   }
 
-  /* 2-Row Header for Browser Mockups on Small Screens */
+  /* Slim 1-Row Header for Browser Mockups on Small Screens */
   .browser-header {
-    display: grid;
-    grid-template-columns: auto auto;
+    display: flex;
+    align-items: center;
     justify-content: space-between;
-    row-gap: 0.55rem;
-    padding: 0.65rem 0.85rem;
+    gap: 0.45rem;
+    padding: 0.5rem 0.65rem;
   }
 
   .window-dots {
-    grid-column: 1;
+    flex-shrink: 0;
+    gap: 0.35rem;
   }
 
   .browser-controls {
-    grid-column: 2;
-    justify-self: end;
     flex-shrink: 0;
+    gap: 0.35rem;
   }
 
   .browser-address-bar {
-    grid-column: 1 / -1;
-    width: 100%;
-    max-width: 100%;
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
     min-width: 0;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .device-btn,
+  .control-btn {
+    width: 1.6rem;
+    height: 1.6rem;
   }
 
   .articles-grid {
