@@ -163,6 +163,11 @@
   audio.crossOrigin = 'anonymous';
   let hls = null;
 
+  // Playback Request Lifecycle State (prevents infinite error loops & frozen buffering)
+  let currentPlaybackToken = 0;
+  let hasAttemptedProxyForCurrent = false;
+  let connectionTimeoutTimer = null;
+
   // Web Audio Visualizer
   let audioCtx = null;
   let analyser = null;
@@ -415,13 +420,109 @@
     return trimmed;
   }
 
-  function playStation(station, forceProxy = false) {
+  function updatePlayerStatus(state) {
+    if (!nowPlayingStatus) return;
+    if (state === 'playing') {
+      nowPlayingStatus.className = 'bottom-bar-status status-playing';
+      nowPlayingStatus.style.background = 'rgba(16, 185, 129, 0.12)';
+      nowPlayingStatus.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+      nowPlayingStatus.style.color = 'var(--accent-emerald)';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#10b981;box-shadow:0 0 10px #10b981;"></span> EN VIVO';
+    } else if (state === 'buffering') {
+      nowPlayingStatus.className = 'bottom-bar-status status-buffering';
+      nowPlayingStatus.style.background = 'rgba(245, 158, 11, 0.14)';
+      nowPlayingStatus.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+      nowPlayingStatus.style.color = 'var(--accent-amber)';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#f59e0b;box-shadow:0 0 10px #f59e0b;"></span> CONECTANDO...';
+    } else if (state === 'error') {
+      nowPlayingStatus.className = 'bottom-bar-status status-error';
+      nowPlayingStatus.style.background = 'rgba(239, 68, 68, 0.16)';
+      nowPlayingStatus.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+      nowPlayingStatus.style.color = '#ef4444';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#ef4444;box-shadow:0 0 10px #ef4444;"></span> NO DISPONIBLE';
+    } else if (state === 'paused') {
+      nowPlayingStatus.className = 'bottom-bar-status status-paused';
+      nowPlayingStatus.style.background = 'rgba(255, 255, 255, 0.06)';
+      nowPlayingStatus.style.borderColor = 'var(--border-color)';
+      nowPlayingStatus.style.color = 'var(--text-muted)';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#64748b;box-shadow:none;"></span> PAUSADO';
+    } else {
+      // ready / idle
+      nowPlayingStatus.className = 'bottom-bar-status status-ready';
+      nowPlayingStatus.style.background = 'rgba(255, 255, 255, 0.06)';
+      nowPlayingStatus.style.borderColor = 'var(--border-color)';
+      nowPlayingStatus.style.color = 'var(--text-muted)';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#64748b;box-shadow:none;"></span> LISTO';
+    }
+  }
+
+  function handleStreamError(station, reason, token) {
+    if (!station) return;
+    // Discard stale errors from previous stations or cancelled tokens
+    if (token !== undefined && token !== currentPlaybackToken) {
+      return;
+    }
+
+    if (connectionTimeoutTimer) {
+      clearTimeout(connectionTimeoutTimer);
+      connectionTimeoutTimer = null;
+    }
+
+    // If direct stream failed and proxy was not attempted yet for this station:
+    if (!hasAttemptedProxyForCurrent && !useProxyForced) {
+      console.log(`[Auto-Proxy] Direct stream failed for "${station.name}". Retrying via Cloudflare Radio Proxy...`);
+      hasAttemptedProxyForCurrent = true;
+      showToast(`Reintentando "${station.name}" a través de Proxy...`);
+      playStation(station, true);
+      return;
+    }
+
+    // HARD STOP: Proxy also failed, or direct failed when useProxyForced was on
+    console.warn(`[Stream Unavailable] Emisora "${station.name}" no responde:`, reason);
+
+    if (hls) {
+      try { hls.destroy(); } catch (e) {}
+      hls = null;
+    }
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+
+    isPlaying = false;
+    isBuffering = false;
+
+    if (playIcon && pauseIcon) {
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+    }
+    updatePlayerStatus('error');
+
+    networkSpeedBytesPerSec = 0;
+    updateTelemetryDisplay();
+    renderStations();
+
+    showToast(`"${station.name}" no está disponible o el stream está fuera del aire.`);
+  }
+
+  function playStation(station, isProxyRetry = false) {
     if (!station) return;
     currentStation = station;
 
-    // Reset current audio/HLS
+    // Increment token for fresh user requests, keep token for internal proxy retry
+    if (!isProxyRetry) {
+      currentPlaybackToken++;
+      hasAttemptedProxyForCurrent = false;
+    }
+    const token = currentPlaybackToken;
+
+    if (connectionTimeoutTimer) {
+      clearTimeout(connectionTimeoutTimer);
+      connectionTimeoutTimer = null;
+    }
+
+    // Reset audio and HLS instances safely
     if (hls) {
-      hls.destroy();
+      try { hls.destroy(); } catch (e) {}
       hls = null;
     }
     audio.pause();
@@ -440,26 +541,43 @@
     setBufferingState(true);
 
     let streamUrl = getPlayableUrl(station.url);
-    if (forceProxy && !streamUrl.startsWith('/api/radio-proxy')) {
+    if ((isProxyRetry || useProxyForced) && !streamUrl.startsWith('/api/radio-proxy')) {
       streamUrl = `/api/radio-proxy?url=${encodeURIComponent(station.url)}`;
     }
+
+    // Connection timeout: 9.5s max to establish audio stream, otherwise fail cleanly
+    connectionTimeoutTimer = setTimeout(() => {
+      if (token === currentPlaybackToken && (isBuffering || !isPlaying)) {
+        console.warn(`[Timeout] Connection timed out for "${station.name}"`);
+        handleStreamError(station, 'Tiempo de espera agotado (servidor no responde)', token);
+      }
+    }, 9500);
 
     if (isM3U8 && window.Hls && Hls.isSupported()) {
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 30
+        backBufferLength: 30,
+        manifestLoadingTimeOut: 8000,
+        fragLoadingTimeOut: 8000
       });
 
       hls.loadSource(streamUrl);
       hls.attachMedia(audio);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (token !== currentPlaybackToken) return;
         setupAudioContext();
-        audio.play().catch(handlePlayError);
+        audio.play().catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.warn('HLS audio.play() rejected:', err);
+            handleStreamError(station, err.message, token);
+          }
+        });
       });
 
       hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+        if (token !== currentPlaybackToken) return;
         if (hls && hls.levels && hls.levels[hls.currentLevel]) {
           const lvl = hls.levels[hls.currentLevel];
           if (lvl.bitrate) {
@@ -473,6 +591,7 @@
       });
 
       hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+        if (token !== currentPlaybackToken) return;
         if (data && data.frag && data.frag.loaded) {
           sessionTotalBytes += data.frag.loaded;
           if (data.stats && data.stats.bwEstimate) {
@@ -483,15 +602,10 @@
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
+        if (token !== currentPlaybackToken) return;
         if (data.fatal) {
           console.warn('[Hls.js Fatal Error]', data);
-          if (!forceProxy) {
-            console.log('[Hls.js] Retrying with Cloudflare Radio Proxy...');
-            playStation(station, true);
-          } else {
-            setBufferingState(false);
-            showToast('Error cargando stream HLS. Servidor no disponible.');
-          }
+          handleStreamError(station, `Error HLS: ${data.details || 'stream no disponible'}`, token);
         }
       });
     } else {
@@ -499,13 +613,10 @@
       audio.src = streamUrl;
       setupAudioContext();
       audio.play().catch((err) => {
-        console.warn('Direct play error:', err);
-        if (!forceProxy) {
-          console.log('Retrying stream with Radio Proxy...');
-          playStation(station, true);
-        } else {
-          handlePlayError(err);
-        }
+        if (token !== currentPlaybackToken) return;
+        if (err.name === 'AbortError') return;
+        console.warn('Standard audio.play() rejected:', err);
+        handleStreamError(station, err.message, token);
       });
 
       // Probe stream telemetry (real bitrate, server icy headers, audio codec)
@@ -529,29 +640,19 @@
       if (hls) hls.stopLoad();
       setPlayingState(false);
     } else {
-      setBufferingState(true);
-      if (hls) hls.startLoad();
-      audio.play().catch(handlePlayError);
+      // If was paused, stopped, or errored, re-start current station
+      playStation(currentStation);
     }
-  }
-
-  function handlePlayError(err) {
-    setBufferingState(false);
-    setPlayingState(false);
-    console.error('Audio playback failed:', err);
-    showToast('No se pudo reproducir el stream. Intenta activando el Proxy.');
   }
 
   function setPlayingState(playing) {
     isPlaying = playing;
-    isBuffering = false;
+    if (playing) isBuffering = false;
     if (playIcon && pauseIcon) {
       playIcon.style.display = playing ? 'none' : 'block';
       pauseIcon.style.display = playing ? 'block' : 'none';
     }
-    if (nowPlayingStatus) {
-      nowPlayingStatus.innerHTML = playing ? '<span class="pulse-led"></span> EN VIVO' : 'PAUSADO';
-    }
+    updatePlayerStatus(playing ? 'playing' : 'paused');
     if (playing) {
       const fmt = detectStreamFormat(currentStation ? currentStation.url : '');
       const br = currentBitrateKbps || fmt.defaultBitrate;
@@ -565,33 +666,38 @@
 
   function setBufferingState(buffering) {
     isBuffering = buffering;
-    if (buffering && nowPlayingStatus) {
-      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#f59e0b;box-shadow:0 0 10px #f59e0b;"></span> CONECTANDO...';
+    if (buffering) {
+      updatePlayerStatus('buffering');
     }
   }
 
   // Audio Element Events
   audio.addEventListener('playing', () => {
+    if (connectionTimeoutTimer) {
+      clearTimeout(connectionTimeoutTimer);
+      connectionTimeoutTimer = null;
+    }
     setPlayingState(true);
   });
 
   audio.addEventListener('pause', () => {
-    setPlayingState(false);
+    if (!isBuffering && isPlaying) {
+      setPlayingState(false);
+    }
   });
 
   audio.addEventListener('waiting', () => {
-    setBufferingState(true);
+    if (isPlaying) {
+      setBufferingState(true);
+    }
   });
 
   audio.addEventListener('error', (e) => {
-    console.warn('HTML5 Audio Error:', e);
-    if (currentStation && !useProxyForced) {
-      console.log('Switching to proxy after audio error...');
-      playStation(currentStation, true);
-    } else {
-      setBufferingState(false);
-      setPlayingState(false);
-      showToast('Error de conexión con la emisora.');
+    // Ignore error if audio src is empty (which happens during cleanup)
+    if (!audio.getAttribute('src') && !audio.src) return;
+    if (currentStation) {
+      console.warn('HTML5 Audio Error event:', e);
+      handleStreamError(currentStation, 'Error de red o decodificación', currentPlaybackToken);
     }
   });
 
@@ -1544,14 +1650,31 @@
   }
 
   // =========================================================================
-  // TOAST NOTIFICATIONS
+  // TOAST NOTIFICATIONS (Rate-limited & De-duplicated)
   // =========================================================================
+  let lastToastMsg = '';
+  let lastToastTime = 0;
+
   function showToast(msg) {
+    if (!msg) return;
+    const now = Date.now();
+    // Do not repeat the exact same message within 2.5 seconds
+    if (msg === lastToastMsg && now - lastToastTime < 2500) {
+      return;
+    }
+    lastToastMsg = msg;
+    lastToastTime = now;
+
     let container = document.querySelector('.toast-container');
     if (!container) {
       container = document.createElement('div');
       container.className = 'toast-container';
       document.body.appendChild(container);
+    }
+
+    // Limit visible toasts to 2 at most to prevent screen flooding
+    while (container.children.length >= 2) {
+      container.removeChild(container.firstChild);
     }
 
     const toast = document.createElement('div');
@@ -1564,9 +1687,10 @@
     container.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transition = 'opacity 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, 2800);
+      toast.style.transform = 'translateY(6px)';
+      toast.style.transition = 'all 0.25s ease';
+      setTimeout(() => toast.remove(), 250);
+    }, 3000);
   }
 
   // Service Worker Register

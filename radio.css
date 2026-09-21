@@ -584,6 +584,32 @@ html, body {
   color: var(--accent-emerald);
   flex-shrink: 0;
   line-height: 1.2;
+  transition: all var(--transition-fast);
+}
+
+.bottom-bar-status.status-error {
+  background: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #ef4444 !important;
+}
+
+.bottom-bar-status.status-buffering {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  color: var(--accent-amber) !important;
+}
+
+.bottom-bar-status.status-playing {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: var(--accent-emerald) !important;
+}
+
+.bottom-bar-status.status-paused,
+.bottom-bar-status.status-ready {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-muted) !important;
 }
 
 .bottom-bar-sub-row {
@@ -1359,6 +1385,11 @@ html, body {
   right: 2rem;
   z-index: 1000;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+  max-width: calc(100vw - 3rem);
 }
 
 .toast {
