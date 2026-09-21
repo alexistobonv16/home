@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Alexis Radio | Sintonizador & Streaming Online M3U</title>
+  <meta name="description" content="Sintonizador de radio web moderno con soporte para streams de audio directos (MP3, AAC, HLS M3U8), listas M3U personalizadas y visualizador de espectro en tiempo real.">
+  
+  <!-- PWA & Mobile Icons -->
+  <link rel="manifest" href="/radio.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/tv-icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23030712' stroke='%2300f0ff' stroke-width='2'/%3E%3Cpath d='M10 22l6-12 6 12h-3.5l-2.5-5.5L13.5 22z' fill='%2300f0ff'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#030712">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Alexis Radio">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- HLS.js for .m3u8 Audio Streaming -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+
+  <!-- Theme Bootstrapper -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('at_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+
+  <link rel="stylesheet" href="radio.css">
+</head>
+<body>
+
+  <!-- Ambient Glow & HUD Grid -->
+  <div class="ambient-glow glow-cyan"></div>
+  <div class="ambient-glow glow-violet"></div>
+  <div class="hud-grid-pattern"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="radio-header">
+      <a href="/radio" class="brand-section">
+        <div class="brand-icon-box">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"></path><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path></svg>
+        </div>
+        <div class="brand-title-wrap">
+          <h1 class="brand-title">ALEXIS <span>RADIO</span></h1>
+          <span class="brand-subtitle">// CYBER-TUNER PRO V1.0</span>
+        </div>
+      </a>
+
+      <div class="header-actions">
+        <button id="add-station-btn" class="btn btn-primary" title="Añadir Emisora">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Nueva Emisora</span>
+        </button>
+
+        <button id="m3u-manager-btn" class="btn" title="Importar o Exportar listas M3U">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Listas M3U</span>
+        </button>
+
+        <button id="theme-toggle-btn" class="btn btn-icon" title="Cambiar tema">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+
+        <a href="/" class="btn btn-icon" title="Volver a alexistobon.com">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Tuner Deck (Player & Spectrum) -->
+    <section class="tuner-deck">
+      <div class="tuner-left">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="now-playing-badge" id="now-playing-status">
+            LISTO PARA SINTONIZAR
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted);">AUDIO ENGINE • 48 kHz</span>
+        </div>
+
+        <div class="station-meta-display">
+          <img id="active-station-logo" class="active-station-logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 24 24' fill='none' stroke='%2300f0ff' stroke-width='2'%3E%3Cpath d='M4.9 19.1C1 15.2 1 8.8 4.9 4.9'/%3E%3Cpath d='M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Cpath d='M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5'/%3E%3Cpath d='M19.1 4.9C23 8.8 23 15.1 19.1 19'/%3E%3C/svg%3E" alt="Emisora">
+          <div class="active-station-details">
+            <span id="active-station-freq" class="active-station-freq"><span>●</span> FM 104.9 MHz</span>
+            <h2 id="active-station-name" class="active-station-name">Selecciona una Emisora</h2>
+            <div id="active-station-genre" class="active-station-genre-tag">
+              <span>General</span>
+              <span>STEREO</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Realtime Spectrum Visualizer Canvas -->
+        <div class="visualizer-container">
+          <canvas id="visualizer-canvas"></canvas>
+          <div class="visualizer-hud-overlay">
+            <span>20 Hz</span>
+            <span>REALTIME SPECTRUM ANALYZER</span>
+            <span>20 kHz</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Transport -->
+      <div class="tuner-right">
+        <div class="playback-controls-row">
+          <button id="prev-station-btn" class="play-nav-btn" title="Emisora anterior">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+          </button>
+
+          <button id="play-main-btn" class="play-main-btn" title="Reproducir / Pausar">
+            <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+            <svg id="pause-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </button>
+
+          <button id="next-station-btn" class="play-nav-btn" title="Siguiente emisora">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+          </button>
+        </div>
+
+        <div class="tuner-aux-row">
+          <!-- Volume -->
+          <div class="volume-wrapper">
+            <button id="mute-btn" class="mute-btn" title="Silenciar / Activar sonido">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </button>
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="1" step="0.01" value="0.85">
+          </div>
+
+          <!-- Extra Tools: Sleep Timer & Proxy -->
+          <div class="tuner-options-group">
+            <button id="sleep-timer-btn" class="sleep-btn" title="Temporizador de apagado">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Sleep</span>
+              <span id="sleep-badge" style="color: var(--accent-amber); font-weight: bold;"></span>
+            </button>
+
+            <button id="proxy-toggle-btn" class="proxy-toggle-btn" title="Activar/Desactivar Proxy Cloudflare contra bloqueos de audio">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+              <span>Proxy</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters and Search -->
+    <div class="controls-bar">
+      <div class="search-row">
+        <div class="search-box-wrap">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="search-input" class="search-input" placeholder="Buscar emisora por nombre, género o frecuencia...">
+        </div>
+        <div class="station-count-info" id="station-count-display">
+          12 emisoras
+        </div>
+      </div>
+
+      <div class="category-pills-row">
+        <button class="cat-pill active" data-category="all">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          Todas
+        </button>
+        <button class="cat-pill" data-category="starred">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          Favoritas
+        </button>
+        <button class="cat-pill" data-category="Noticias">Noticias</button>
+        <button class="cat-pill" data-category="Música">Música</button>
+        <button class="cat-pill" data-category="Rock">Rock</button>
+        <button class="cat-pill" data-category="Electrónica">Electrónica</button>
+        <button class="cat-pill" data-category="Lofi / Chill">Lofi & Chill</button>
+        <button class="cat-pill" data-category="Cultura">Cultura</button>
+      </div>
+    </div>
+
+    <!-- Stations Grid -->
+    <main id="stations-grid" class="stations-grid">
+      <!-- Generated dynamically by radio.js -->
+    </main>
+  </div>
+
+  <!-- MODAL 1: Add/Edit Station -->
+  <div id="add-station-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="station-modal-title">Añadir Nueva Emisora</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="add-station-form">
+        <div class="modal-body">
+          <input type="hidden" id="station-modal-id" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="station-input-name">Nombre de la Emisora *</label>
+            <input type="text" id="station-input-name" class="form-input" placeholder="Ej: La Mega Medellín" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="station-input-url">URL del Stream (MP3, AAC, M3U8 o Icecast) *</label>
+            <input type="url" id="station-input-url" class="form-input" placeholder="https://stream.server.com/live.mp3" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="station-input-genre">Género / Categoría</label>
+              <select id="station-input-genre" class="form-select">
+                <option value="Noticias">Noticias</option>
+                <option value="Música" selected>Música</option>
+                <option value="Rock">Rock</option>
+                <option value="Electrónica">Electrónica</option>
+                <option value="Lofi / Chill">Lofi / Chill</option>
+                <option value="Cultura">Cultura</option>
+                <option value="Deportes">Deportes</option>
+                <option value="Personalizada">Personalizada</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="station-input-freq">Frecuencia / Dial (Opcional)</label>
+              <input type="text" id="station-input-freq" class="form-input" placeholder="Ej: 90.9 FM">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="station-input-logo">URL del Logotipo o Icono (Opcional)</label>
+            <input type="url" id="station-input-logo" class="form-input" placeholder="https://ejemplo.com/logo.png">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn modal-cancel-btn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Emisora</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: M3U Playlists Manager -->
+  <div id="m3u-modal" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Gestor de Listas M3U</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-tab="import-text">Pegar / URL M3U</button>
+          <button class="tab-btn" data-tab="import-file">Subir Archivo .m3u</button>
+          <button class="tab-btn" data-tab="export-tab">Exportar</button>
+        </div>
+
+        <!-- Tab 1: Paste Text / URL -->
+        <div class="tab-pane" data-pane="import-text">
+          <div class="form-group">
+            <label class="form-label">Introduce la URL de una lista .m3u remota o pega el texto M3U completo:</label>
+            <textarea id="m3u-text-input" class="form-textarea" rows="7" placeholder="#EXTM3U&#10;#EXTINF:-1 tvg-logo=&quot;url&quot; group-title=&quot;Noticias&quot;,Mi Emisora&#10;https://stream.server.com/live.mp3&#10;&#10;o pega un enlace https://mis-emisoras.com/lista.m3u"></textarea>
+          </div>
+          <button type="button" id="parse-m3u-text-btn" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 0.5rem;">
+            Procesar e Importar Emisoras
+          </button>
+        </div>
+
+        <!-- Tab 2: Upload File -->
+        <div class="tab-pane" data-pane="import-file" style="display: none;">
+          <div class="form-group" style="text-align: center; padding: 2rem 1rem; border: 2px dashed var(--border-color); border-radius: var(--radius-md);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5" style="margin: 0 auto 0.75rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <p style="font-size: 0.9rem; margin-bottom: 0.75rem;">Selecciona un archivo .m3u o .m3u8 de tu equipo:</p>
+            <input type="file" id="m3u-file-input" accept=".m3u,.m3u8,text/plain" style="font-size: 0.85rem; color: var(--text-muted);">
+          </div>
+        </div>
+
+        <!-- Tab 3: Export -->
+        <div class="tab-pane" data-pane="export-tab" style="display: none;">
+          <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+            Exporta tus emisoras guardadas para usarlas en reproductores multimedia (VLC, IPTV, Kodi) o guarda una copia de seguridad:
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-direction: column;">
+            <button id="export-m3u-btn" class="btn btn-primary" style="justify-content: center;">
+              Descargar Lista en formato M3U (.m3u)
+            </button>
+            <button id="export-json-btn" class="btn" style="justify-content: center;">
+              Descargar Copia de Seguridad JSON (.json)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn modal-cancel-btn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Sleep Timer Options -->
+  <div id="sleep-modal" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Temporizador de Apagado</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+          El audio se apagará suavemente al completarse el tiempo seleccionado:
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;">
+          <button class="btn sleep-opt-btn" data-minutes="15">15 minutos</button>
+          <button class="btn sleep-opt-btn" data-minutes="30">30 minutos</button>
+          <button class="btn sleep-opt-btn" data-minutes="45">45 minutos</button>
+          <button class="btn sleep-opt-btn" data-minutes="60">60 minutos</button>
+        </div>
+        <button class="btn sleep-opt-btn" data-minutes="0" style="width: 100%; justify-content: center; margin-top: 0.75rem; border-color: var(--accent-red); color: #f87171;">
+          Desactivar Temporizador
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="radio.js"></script>
+</body>
+</html>

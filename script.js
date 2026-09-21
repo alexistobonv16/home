@@ -36,12 +36,9 @@ function toggleTheme() {
 function initTheme() {
   const themeToggleBtn = document.getElementById('theme-toggle');
   const storedTheme = localStorage.getItem('at_theme');
-
-  if (storedTheme) {
-    document.documentElement.setAttribute('data-theme', storedTheme);
-  } else {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
+  const initialTheme = storedTheme || document.documentElement.getAttribute('data-theme') || 'dark';
+  
+  document.documentElement.setAttribute('data-theme', initialTheme);
 
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', toggleTheme);
@@ -88,9 +85,16 @@ function initIframeScaling() {
 
       const viewportWidth = viewport.clientWidth;
       
-      // Desktop scaling: baseline is 1280px wide
+      // Desktop scaling: baseline is 1280x800 iframe
       const desktopScale = Math.min(1, viewportWidth / 1280);
       bw.style.setProperty('--scale', desktopScale.toFixed(4));
+
+      // Ajustar la altura del viewport al alto real escalado para eliminar la barra negra
+      if (bw.getAttribute('data-view') === 'desktop' || !bw.getAttribute('data-view')) {
+        viewport.style.height = Math.round(800 * desktopScale) + 'px';
+      } else {
+        viewport.style.height = '';
+      }
     });
   }
 
@@ -464,6 +468,14 @@ function initCommandPalette() {
   ];
 
   const staticCommands = [
+    {
+      id: 'nav-radio',
+      group: 'Proyectos en Directo',
+      title: 'Alexis Radio // Sintonizador Online',
+      desc: 'Reproductor de emisoras en vivo y listas M3U (/radio)',
+      icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"></path><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path></svg>',
+      action: () => window.location.href = '/radio'
+    },
     {
       id: 'nav-admin',
       group: 'Administración',

@@ -1,0 +1,25 @@
+{
+  "name": "Alexis Radio | Sintonizador & Streaming Online",
+  "short_name": "Alexis Radio",
+  "description": "Sintonizador de radio web moderno con soporte para streams MP3, AAC, M3U8 HLS y listas M3U personalizadas.",
+  "start_url": "/radio.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "/tv-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/tv-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
