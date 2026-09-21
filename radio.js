@@ -623,8 +623,8 @@
 
       canvasCtx.clearRect(0, 0, width, height);
 
-      // Grid background line
-      canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      // Subtle horizontal centerline
+      canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.1)';
       canvasCtx.lineWidth = 1;
       canvasCtx.beginPath();
       canvasCtx.moveTo(0, height / 2);
@@ -644,44 +644,45 @@
           }
         }
 
-        // Draw frequency bars
-        const barCount = 42;
-        const barWidth = (width / barCount) - 2;
-        let x = 0;
+        // Draw compact frequency bars for mini canvas
+        const barCount = 18;
+        const barWidth = Math.max(2, Math.floor((width - barCount * 2) / barCount));
+        const usableHeight = height - 4;
+        let x = 2;
 
         for (let i = 0; i < barCount; i++) {
           let barHeight = 0;
 
           if (hasData) {
             const dataIndex = Math.floor(i * (bufferLength / barCount));
-            barHeight = (dataArray[dataIndex] / 255) * (height - 15);
+            barHeight = Math.max(2, (dataArray[dataIndex] / 255) * usableHeight);
           } else {
             // Synthetic wave animation when stream has no CORS permissions for raw PCM
-            const time = Date.now() * 0.003;
-            const wave = Math.sin(time + i * 0.25) * 0.5 + 0.5;
-            const wave2 = Math.cos(time * 0.7 + i * 0.15) * 0.5 + 0.5;
-            barHeight = ((wave * 0.6 + wave2 * 0.4)) * (height - 20) + 4;
+            const time = Date.now() * 0.0035;
+            const wave = Math.sin(time + i * 0.35) * 0.5 + 0.5;
+            const wave2 = Math.cos(time * 0.8 + i * 0.25) * 0.5 + 0.5;
+            barHeight = Math.max(3, (wave * 0.65 + wave2 * 0.35) * usableHeight);
           }
 
-          // Gradient for bars (Cyan -> Violet)
+          // Gradient for bars (Cyan -> Sky Blue -> Violet)
           const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
           grad.addColorStop(0, '#00f0ff');
-          grad.addColorStop(0.7, '#38bdf8');
+          grad.addColorStop(0.5, '#38bdf8');
           grad.addColorStop(1, '#a855f7');
 
           canvasCtx.fillStyle = grad;
-          canvasCtx.fillRect(x, height - barHeight, barWidth, barHeight);
+          canvasCtx.fillRect(x, height - barHeight - 1, barWidth, barHeight);
 
           // Glowing cap dot
           canvasCtx.fillStyle = '#ffffff';
-          canvasCtx.fillRect(x, height - barHeight - 2, barWidth, 2);
+          canvasCtx.fillRect(x, height - barHeight - 2, barWidth, 1.5);
 
           x += barWidth + 2;
         }
       } else {
         // Idle flat baseline
-        canvasCtx.fillStyle = 'rgba(56, 189, 248, 0.2)';
-        canvasCtx.fillRect(0, height - 3, width, 2);
+        canvasCtx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+        canvasCtx.fillRect(0, height / 2, width, 1.5);
       }
     }
 
@@ -1360,9 +1361,9 @@
 
   // Window Resize Visualizer Fix
   function resizeCanvas() {
-    if (canvas) {
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
+    if (canvas && canvas.parentElement) {
+      canvas.width = canvas.parentElement.clientWidth || 140;
+      canvas.height = canvas.parentElement.clientHeight || 34;
     }
   }
   window.addEventListener('resize', resizeCanvas);
