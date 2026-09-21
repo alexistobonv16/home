@@ -901,6 +901,67 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Sort Selector */
+.sort-control-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sort-icon {
+  position: absolute;
+  left: 0.65rem;
+  color: var(--accent-cyan);
+  pointer-events: none;
+  width: 14px;
+  height: 14px;
+}
+
+.sort-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.42rem 1.85rem 0.42rem 2rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+}
+
+.sort-select:hover {
+  border-color: var(--border-hover);
+  background-color: var(--bg-card-hover);
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan-glow);
+}
+
+.sort-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .sort-select {
+  background-color: #ffffff;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #0f172a;
+}
+
+[data-theme="light"] .sort-select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
 .btn-secondary {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-color);
@@ -1374,6 +1435,18 @@ html, body {
   .search-actions-wrap {
     width: 100%;
     justify-content: space-between;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+  .sort-control-wrap {
+    flex: 1 1 auto;
+    min-width: 135px;
+  }
+  .sort-select {
+    width: 100%;
+    font-size: 0.74rem;
+    padding: 0.38rem 1.6rem 0.38rem 1.85rem;
   }
   .bottom-player-bar {
     padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 8px));

@@ -142,6 +142,12 @@
   let sleepTimerId = null;
   let sleepTimerEnd = null;
 
+  // Station Sorting State ('added', 'alpha-asc', 'alpha-desc')
+  let currentSortOrder = localStorage.getItem('at_radio_sort_order') || 'added';
+  if (!['added', 'alpha-asc', 'alpha-desc'].includes(currentSortOrder)) {
+    currentSortOrder = 'added';
+  }
+
   // Real-Time Telemetry & Bitrate State
   let currentBitrateKbps = null;
   let currentFormat = 'MP3';
@@ -179,6 +185,7 @@
   const nowPlayingStatus = document.getElementById('now-playing-status');
   const stationsGrid = document.getElementById('stations-grid');
   const searchInput = document.getElementById('search-input');
+  const sortOrderSelect = document.getElementById('sort-order-select');
   const stationCountDisplay = document.getElementById('station-count-display');
   const resetDefaultsBtn = document.getElementById('reset-defaults-btn');
   const sleepTimerBtn = document.getElementById('sleep-timer-btn');
@@ -511,7 +518,8 @@
 
   function togglePlayPause() {
     if (!currentStation) {
-      const first = stations[0];
+      const list = getFilteredAndSortedStations();
+      const first = list.length ? list[0] : stations[0];
       if (first) playStation(first);
       return;
     }
@@ -722,18 +730,46 @@
     }
   }
 
+  // =========================================================================
+  // STATION FILTERING & SORTING HELPER
+  // =========================================================================
+  function getFilteredAndSortedStations() {
+    let list = stations.filter(s => {
+      const matchSearch = (s.name && s.name.toLowerCase().includes(searchQuery)) ||
+                          (s.genre && s.genre.toLowerCase().includes(searchQuery)) ||
+                          (s.freq && s.freq.toLowerCase().includes(searchQuery));
+      if (!matchSearch) return false;
+
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'starred') return s.isStarred;
+      return (s.genre || '').toLowerCase().includes(activeFilter.toLowerCase());
+    });
+
+    if (currentSortOrder === 'alpha-asc') {
+      return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
+    } else if (currentSortOrder === 'alpha-desc') {
+      return [...list].sort((a, b) => (b.name || '').localeCompare(a.name || '', 'es', { sensitivity: 'base' }));
+    }
+    // 'added' preserves natural insertion/creation order
+    return list;
+  }
+
   function playNextStation() {
-    if (!stations.length) return;
-    const currentIndex = stations.findIndex(s => s.id === (currentStation ? currentStation.id : ''));
-    const nextIndex = (currentIndex + 1) % stations.length;
-    playStation(stations[nextIndex]);
+    const list = getFilteredAndSortedStations();
+    const sourceList = list.length ? list : stations;
+    if (!sourceList.length) return;
+    const currentIndex = sourceList.findIndex(s => s.id === (currentStation ? currentStation.id : ''));
+    const nextIndex = (currentIndex + 1) % sourceList.length;
+    playStation(sourceList[nextIndex]);
   }
 
   function playPrevStation() {
-    if (!stations.length) return;
-    const currentIndex = stations.findIndex(s => s.id === (currentStation ? currentStation.id : ''));
-    const prevIndex = (currentIndex - 1 + stations.length) % stations.length;
-    playStation(stations[prevIndex]);
+    const list = getFilteredAndSortedStations();
+    const sourceList = list.length ? list : stations;
+    if (!sourceList.length) return;
+    const currentIndex = sourceList.findIndex(s => s.id === (currentStation ? currentStation.id : ''));
+    const prevIndex = (currentIndex - 1 + sourceList.length) % sourceList.length;
+    playStation(sourceList[prevIndex]);
   }
 
   // =========================================================================
@@ -778,16 +814,7 @@
   function renderStations() {
     if (!stationsGrid) return;
 
-    let filtered = stations.filter(s => {
-      const matchSearch = s.name.toLowerCase().includes(searchQuery) ||
-                          (s.genre && s.genre.toLowerCase().includes(searchQuery)) ||
-                          (s.freq && s.freq.toLowerCase().includes(searchQuery));
-      if (!matchSearch) return false;
-
-      if (activeFilter === 'all') return true;
-      if (activeFilter === 'starred') return s.isStarred;
-      return (s.genre || '').toLowerCase().includes(activeFilter.toLowerCase());
-    });
+    const filtered = getFilteredAndSortedStations();
 
     if (stationCountDisplay) {
       stationCountDisplay.textContent = `${filtered.length} de ${stations.length} emisoras`;
@@ -929,6 +956,17 @@
     searchInput.addEventListener('input', (e) => {
       searchQuery = (e.target.value || '').trim().toLowerCase();
       renderStations();
+    });
+  }
+
+  if (sortOrderSelect) {
+    sortOrderSelect.value = currentSortOrder;
+    sortOrderSelect.addEventListener('change', (e) => {
+      currentSortOrder = e.target.value;
+      localStorage.setItem('at_radio_sort_order', currentSortOrder);
+      renderStations();
+      const sortLabel = e.target.options[e.target.selectedIndex].text;
+      showToast(`Orden: ${sortLabel}`);
     });
   }
 

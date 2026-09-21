@@ -32,7 +32,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=4.2">
+  <link rel="stylesheet" href="radio.css?v=4.3">
 </head>
 <body>
 
@@ -88,9 +88,18 @@
           <input type="text" id="search-input" class="search-input" placeholder="Buscar emisora por nombre, género o frecuencia...">
         </div>
         <div class="search-actions-wrap">
+          <div class="sort-control-wrap" title="Ordenar lista de emisoras">
+            <svg class="sort-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
+            <select id="sort-order-select" class="sort-select" aria-label="Ordenar emisoras">
+              <option value="added" selected>Orden de Agregación</option>
+              <option value="alpha-asc">Alfabético (A → Z)</option>
+              <option value="alpha-desc">Alfabético (Z → A)</option>
+            </select>
+          </div>
+
           <button id="reset-defaults-btn" class="btn btn-secondary btn-sm" title="Restaurar las emisoras predeterminadas recomendadas">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-            <span>Restaurar Emisoras</span>
+            <span>Restaurar</span>
           </button>
           <div class="station-count-info" id="station-count-display">
             12 emisoras
@@ -393,6 +402,6 @@
   </div>
 
   <!-- Scripts -->
-  <script src="radio.js?v=4.2"></script>
+  <script src="radio.js?v=4.3"></script>
 </body>
 </html>
