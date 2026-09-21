@@ -500,6 +500,7 @@
     networkSpeedBytesPerSec = 0;
     updateTelemetryDisplay();
     renderStations();
+    updateDocumentTitle();
 
     showToast(`"${station.name}" no está disponible o el stream está fuera del aire.`);
   }
@@ -625,6 +626,7 @@
 
     updateMediaSession(station);
     renderStations();
+    updateDocumentTitle();
   }
 
   function togglePlayPause() {
@@ -662,6 +664,7 @@
     }
     updateTelemetryDisplay();
     renderStations();
+    updateDocumentTitle();
   }
 
   function setBufferingState(buffering) {
@@ -669,6 +672,7 @@
     if (buffering) {
       updatePlayerStatus('buffering');
     }
+    updateDocumentTitle();
   }
 
   // Audio Element Events
@@ -700,6 +704,33 @@
       handleStreamError(currentStation, 'Error de red o decodificación', currentPlaybackToken);
     }
   });
+
+  // =========================================================================
+  // DYNAMIC TAB TITLE ON TAB SWITCH (Page Visibility API)
+  // =========================================================================
+  const DEFAULT_DOCUMENT_TITLE = document.title || 'Alexis Radio | Sintonizador & Streaming Online M3U';
+
+  function updateDocumentTitle() {
+    if (document.hidden) {
+      // User switched to another tab: prioritize station name so it is immediately visible in narrow tabs
+      if (currentStation && isPlaying) {
+        document.title = `▶ ${currentStation.name} • Alexis Radio`;
+      } else if (currentStation && isBuffering) {
+        document.title = `⏳ ${currentStation.name} • Alexis Radio`;
+      } else if (currentStation) {
+        document.title = `⏸ ${currentStation.name} • Alexis Radio`;
+      } else {
+        document.title = DEFAULT_DOCUMENT_TITLE;
+      }
+    } else {
+      // User returned inside the window/tab: restore normal full title
+      document.title = DEFAULT_DOCUMENT_TITLE;
+    }
+  }
+
+  document.addEventListener('visibilitychange', updateDocumentTitle);
+  window.addEventListener('pagehide', updateDocumentTitle);
+  window.addEventListener('pageshow', updateDocumentTitle);
 
   // =========================================================================
   // WEB AUDIO API & REALTIME SPECTRUM VISUALIZER
