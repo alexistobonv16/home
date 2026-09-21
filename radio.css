@@ -1311,7 +1311,7 @@ html, body {
 
 @media (max-width: 680px) {
   .app-container {
-    padding: 0.85rem 1rem 8rem;
+    padding: 0.85rem 0.85rem calc(13.5rem + env(safe-area-inset-bottom, 24px));
   }
   .radio-header {
     flex-wrap: wrap;
@@ -1320,37 +1320,132 @@ html, body {
   .header-actions {
     width: 100%;
     justify-content: space-between;
+    gap: 0.35rem;
+  }
+  .header-actions .btn {
+    padding: 0.45rem 0.65rem;
   }
   .header-actions .btn span {
     display: none;
   }
   .stations-grid {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
   }
   .search-row {
     flex-wrap: wrap;
+    gap: 0.6rem;
   }
   .search-actions-wrap {
     width: 100%;
     justify-content: space-between;
   }
   .bottom-player-bar {
-    padding: 0.6rem 0.85rem;
+    padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 8px));
   }
   .bottom-bar-container {
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-areas:
+      "info info"
+      "controls tools";
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    row-gap: 0.45rem;
+    column-gap: 0.5rem;
   }
   .bottom-bar-left {
-    max-width: calc(100% - 130px);
+    grid-area: info;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 0.65rem;
+  }
+  .bottom-bar-logo {
+    width: 2.65rem;
+    height: 2.65rem;
+    border-radius: var(--radius-sm);
+  }
+  .bottom-bar-meta {
+    flex: 1;
+    min-width: 0;
+    gap: 0.15rem;
+  }
+  .bottom-bar-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+  }
+  .bottom-bar-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+  }
+  .bottom-bar-status {
+    display: none;
+  }
+  .format-badge, .highlight-bitrate {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+    flex-shrink: 0;
+  }
+  .bottom-bar-sub-row {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.65rem;
+    gap: 0.35rem;
+  }
+  .bottom-bar-freq {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .bottom-bar-telemetry {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bottom-bar-center {
+    grid-area: controls;
+    justify-content: flex-start;
+  }
+  .playback-controls-row {
+    gap: 0.75rem;
+  }
+  .play-main-btn {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+  .play-main-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  .play-nav-btn {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+  .play-nav-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+  .bottom-bar-right {
+    grid-area: tools;
+    justify-content: flex-end;
+    min-width: 0;
+    gap: 0.35rem;
   }
   .bottom-bar-right .volume-wrapper,
   .bottom-bar-right .mini-visualizer-container {
     display: none;
   }
-  .bottom-bar-right {
-    min-width: 0;
-    gap: 0.4rem;
+  .bottom-tools-group {
+    gap: 0.35rem;
+  }
+  .sleep-btn, .proxy-toggle-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.72rem;
   }
 }

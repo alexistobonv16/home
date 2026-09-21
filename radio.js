@@ -222,12 +222,23 @@
     }
   }
 
+  let autoSyncDebounceTimer = null;
+  function scheduleAutoSync() {
+    if (typeof uploadStationsToCloud === 'function' && localStorage.getItem('at_radio_autosync') === 'true') {
+      clearTimeout(autoSyncDebounceTimer);
+      autoSyncDebounceTimer = setTimeout(() => {
+        uploadStationsToCloud(true);
+      }, 1200);
+    }
+  }
+
   function saveStations() {
     try {
       localStorage.setItem('at_radio_stations', JSON.stringify(stations));
     } catch (e) {
       console.error('Failed to save stations to localStorage:', e);
     }
+    scheduleAutoSync();
   }
 
   // =========================================================================
@@ -1285,6 +1296,161 @@
     });
   });
 
+  // =========================================================================
+  // CLOUD SYNCHRONIZATION (Cloudflare KV)
+  // =========================================================================
+  const cloudSyncBtn = document.getElementById('cloud-sync-btn');
+  const cloudSyncModal = document.getElementById('cloud-sync-modal');
+  const syncKeyInput = document.getElementById('sync-key-input');
+  const generateCodeBtn = document.getElementById('generate-code-btn');
+  const syncCodeDisplay = document.getElementById('sync-code-display');
+  const syncCodeVal = document.getElementById('sync-code-val');
+  const cloudUploadBtn = document.getElementById('cloud-upload-btn');
+  const cloudDownloadBtn = document.getElementById('cloud-download-btn');
+  const autoSyncCheckbox = document.getElementById('auto-sync-checkbox');
+  const syncStatusMsg = document.getElementById('sync-status-msg');
+
+  function getSyncKey() {
+    const raw = (syncKeyInput && syncKeyInput.value ? syncKeyInput.value.trim() : '') || localStorage.getItem('at_radio_sync_key') || 'alexis2026';
+    localStorage.setItem('at_radio_sync_key', raw);
+    return raw;
+  }
+
+  async function uploadStationsToCloud(silent = false) {
+    const key = getSyncKey();
+    if (syncStatusMsg) syncStatusMsg.textContent = 'Estado: Subiendo a la nube...';
+    try {
+      const res = await fetch('/api/radio-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Sync-Key': key
+        },
+        body: JSON.stringify({ key, stations })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (syncStatusMsg) syncStatusMsg.textContent = `✓ Sincronizado en nube (${data.count} emisoras - ${timeStr})`;
+        if (!silent) showToast(`¡${data.count} emisoras respaldadas en la nube!`);
+      } else {
+        if (syncStatusMsg) syncStatusMsg.textContent = `Error: ${data.error || 'Fallo de sincronización'}`;
+        if (!silent) showToast('Error al sincronizar con la nube');
+      }
+    } catch (err) {
+      console.error('Cloud sync upload failed:', err);
+      if (syncStatusMsg) syncStatusMsg.textContent = 'Error de conexión con la nube';
+      if (!silent) showToast('No se pudo conectar con el servidor');
+    }
+  }
+
+  async function downloadStationsFromCloud() {
+    const key = getSyncKey();
+    if (syncStatusMsg) syncStatusMsg.textContent = 'Estado: Descargando de la nube...';
+    try {
+      const res = await fetch(`/api/radio-sync?key=${encodeURIComponent(key)}`, {
+        headers: { 'X-Sync-Key': key }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.stations)) {
+        if (data.stations.length === 0) {
+          showToast('La lista en la nube está vacía');
+          if (syncStatusMsg) syncStatusMsg.textContent = 'La lista en la nube está vacía';
+          return;
+        }
+        stations = data.stations;
+        try {
+          localStorage.setItem('at_radio_stations', JSON.stringify(stations));
+        } catch (e) {
+          console.error('Failed to save stations to localStorage:', e);
+        }
+        renderStations();
+        if (!currentStation || !stations.find(s => s.id === currentStation.id)) {
+          currentStation = stations[0];
+          updateTunerDisplay(currentStation);
+        }
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (syncStatusMsg) syncStatusMsg.textContent = `✓ Descargado (${stations.length} emisoras - ${timeStr})`;
+        showToast(`¡${stations.length} emisoras sincronizadas desde la nube!`);
+      } else {
+        const msg = data.message || data.error || 'No se encontraron emisoras';
+        if (syncStatusMsg) syncStatusMsg.textContent = msg;
+        showToast(msg);
+      }
+    } catch (err) {
+      console.error('Cloud sync download failed:', err);
+      if (syncStatusMsg) syncStatusMsg.textContent = 'Error de conexión';
+      showToast('Error al descargar emisoras de la nube');
+    }
+  }
+
+  async function generateMobileSyncCode() {
+    const key = getSyncKey();
+    if (syncStatusMsg) syncStatusMsg.textContent = 'Generando código de enlace...';
+    try {
+      const res = await fetch('/api/radio-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Sync-Key': key
+        },
+        body: JSON.stringify({ key, stations, generateCode: true })
+      });
+      const data = await res.json();
+      if (data.success && data.shareCode) {
+        if (syncCodeDisplay) syncCodeDisplay.style.display = 'block';
+        if (syncCodeVal) syncCodeVal.textContent = data.shareCode;
+        if (syncStatusMsg) syncStatusMsg.textContent = `Código listo: ${data.shareCode}`;
+        showToast(`Código generado: ${data.shareCode}`);
+      } else {
+        showToast('No se pudo generar el código');
+      }
+    } catch (err) {
+      console.error('Generate code failed:', err);
+      showToast('Error de conexión al generar código');
+    }
+  }
+
+  if (cloudSyncBtn && cloudSyncModal) {
+    cloudSyncBtn.addEventListener('click', () => {
+      const savedKey = localStorage.getItem('at_radio_sync_key') || 'alexis2026';
+      if (syncKeyInput) syncKeyInput.value = savedKey;
+      if (autoSyncCheckbox) autoSyncCheckbox.checked = localStorage.getItem('at_radio_autosync') === 'true';
+      cloudSyncModal.classList.add('open');
+    });
+  }
+
+  if (cloudUploadBtn) {
+    cloudUploadBtn.addEventListener('click', () => uploadStationsToCloud(false));
+  }
+
+  if (cloudDownloadBtn) {
+    cloudDownloadBtn.addEventListener('click', downloadStationsFromCloud);
+  }
+
+  if (generateCodeBtn) {
+    generateCodeBtn.addEventListener('click', generateMobileSyncCode);
+  }
+
+  if (autoSyncCheckbox) {
+    autoSyncCheckbox.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      localStorage.setItem('at_radio_autosync', isChecked ? 'true' : 'false');
+      if (isChecked) {
+        showToast('Sincronización automática activada');
+        uploadStationsToCloud(true);
+      } else {
+        showToast('Sincronización automática desactivada');
+      }
+    });
+  }
+
+  if (syncKeyInput) {
+    syncKeyInput.addEventListener('change', () => {
+      localStorage.setItem('at_radio_sync_key', syncKeyInput.value.trim() || 'alexis2026');
+    });
+  }
+
   // Close modals on Backdrop or X click
   document.querySelectorAll('.modal-close-btn, .modal-cancel-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1380,6 +1546,11 @@
     startVisualizer();
     startTelemetryLoop();
     updateTelemetryDisplay();
+
+    // If auto-sync is enabled, download updates from cloud
+    if (localStorage.getItem('at_radio_autosync') === 'true') {
+      downloadStationsFromCloud();
+    }
   });
 
 })();
