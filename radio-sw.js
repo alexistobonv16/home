@@ -1,9 +1,11 @@
-const CACHE_NAME = 'alexis-radio-v4';
+const CACHE_NAME = 'alexis-radio-v5';
 const STATIC_ASSETS = [
   '/radio.html',
   '/radio.css',
   '/radio.js',
   '/radio.webmanifest',
+  '/radio-icon-192.png',
+  '/radio-icon-512.png',
   'https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js'
 ];
 

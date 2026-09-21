@@ -1724,10 +1724,80 @@
     }, 3000);
   }
 
-  // Service Worker Register
+  // PWA Install Manager & Service Worker Registration
+  let deferredInstallPrompt = null;
+  const pwaInstallBtn = document.getElementById('pwa-install-btn');
+  const pwaInstallModal = document.getElementById('pwa-install-modal');
+  const pwaPromptInstallBtn = document.getElementById('pwa-prompt-install-btn');
+  const pwaNativePromptWrap = document.getElementById('pwa-native-prompt-wrap');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  if (isStandalone && pwaInstallBtn) {
+    pwaInstallBtn.style.display = 'none';
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (pwaInstallBtn && !isStandalone) {
+      pwaInstallBtn.style.display = 'inline-flex';
+    }
+    if (pwaNativePromptWrap) {
+      pwaNativePromptWrap.style.display = 'block';
+    }
+  });
+
+  if (pwaInstallBtn) {
+    pwaInstallBtn.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          showToast('¡Instalando Alexis Radio!');
+          pwaInstallBtn.style.display = 'none';
+        }
+        deferredInstallPrompt = null;
+      } else {
+        if (pwaInstallModal) pwaInstallModal.classList.add('open');
+      }
+    });
+  }
+
+  if (pwaPromptInstallBtn) {
+    pwaPromptInstallBtn.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          showToast('¡Instalando Alexis Radio!');
+          if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+          if (pwaInstallModal) pwaInstallModal.classList.remove('open');
+        }
+        deferredInstallPrompt = null;
+      }
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+    if (pwaInstallModal) pwaInstallModal.classList.remove('open');
+    showToast('¡Alexis Radio instalada con éxito!');
+  });
+
+  if (pwaInstallModal) {
+    pwaInstallModal.querySelectorAll('.modal-close-btn, .modal-cancel-btn').forEach(btn => {
+      btn.addEventListener('click', () => pwaInstallModal.classList.remove('open'));
+    });
+    pwaInstallModal.addEventListener('click', (e) => {
+      if (e.target === pwaInstallModal) pwaInstallModal.classList.remove('open');
+    });
+  }
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/radio-sw.js').catch(err => {
+      navigator.serviceWorker.register('/radio-sw.js').then(reg => {
+        try { reg.update(); } catch(e) {}
+      }).catch(err => {
         console.warn('Radio SW registration failed:', err);
       });
     });
