@@ -956,11 +956,20 @@
   if (nextBtn) nextBtn.addEventListener('click', playNextStation);
   if (prevBtn) prevBtn.addEventListener('click', playPrevStation);
 
+  function updateVolumeVisual(val) {
+    if (!volumeSlider) return;
+    const pct = Math.round((parseFloat(val) || 0) * 100);
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const trackColor = isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.22)';
+    volumeSlider.style.background = `linear-gradient(to right, var(--accent-cyan) 0%, var(--accent-cyan) ${pct}%, ${trackColor} ${pct}%, ${trackColor} 100%)`;
+  }
+
   if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
       const vol = parseFloat(e.target.value);
       audio.volume = vol;
       localStorage.setItem('at_radio_volume', vol);
+      updateVolumeVisual(vol);
       if (vol === 0) {
         audio.muted = true;
       } else {
@@ -972,6 +981,9 @@
     if (savedVol !== null) {
       audio.volume = parseFloat(savedVol);
       volumeSlider.value = savedVol;
+      updateVolumeVisual(savedVol);
+    } else {
+      updateVolumeVisual(volumeSlider.value);
     }
   }
 
@@ -1487,6 +1499,9 @@
       const next = current === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('at_theme', next);
+      if (typeof updateVolumeVisual === 'function' && volumeSlider) {
+        updateVolumeVisual(volumeSlider.value);
+      }
     });
   }
 

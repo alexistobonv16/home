@@ -127,6 +127,9 @@ html {
   scroll-behavior: smooth;
   scroll-padding-top: 5.5rem;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
@@ -2261,8 +2264,16 @@ body {
 
   .project-showcase,
   .project-showcase.reversed {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2.25rem;
+  }
+
+  .project-info,
+  .browser-mockup-wrapper,
+  .browser-window {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
   }
 
   .project-showcase.reversed .project-info {
@@ -2289,11 +2300,29 @@ body {
   }
 
   .hero-section {
-    padding: 3.5rem 0 4rem;
+    padding: 2.5rem 0 3rem;
   }
 
   .hero-stats {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .stat-card {
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    border-radius: var(--radius-md);
+  }
+
+  .stat-number {
+    font-size: 1.35rem;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    line-height: 1.25;
   }
 
   .form-row {
@@ -2317,7 +2346,8 @@ body {
   }
 
   .container {
-    padding: 0 1rem;
+    padding: 0 0.85rem;
+    max-width: 100%;
   }
 
   .site-header {
@@ -2359,13 +2389,14 @@ body {
   }
 
   .hero-eyebrow {
-    font-size: 0.7rem;
-    display: flex;
-    flex-wrap: wrap;
+    font-size: 0.68rem;
+    display: inline-flex;
+    width: fit-content;
     max-width: 100%;
-    white-space: normal;
+    flex-wrap: wrap;
     line-height: 1.35;
     gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
   }
 
   .hero-title {
@@ -2379,11 +2410,6 @@ body {
     overflow-wrap: break-word;
   }
 
-  .project-meta-top {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
   .hero-cta-group {
     flex-direction: column;
     width: 100%;
@@ -2391,15 +2417,53 @@ body {
 
   .hero-cta-group .btn {
     width: 100%;
+    justify-content: center;
   }
 
   .project-showcase {
-    padding: 1.25rem 0.85rem;
+    padding: 1.15rem 0.75rem;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    max-width: 100%;
   }
 
-  .browser-window[data-view="mobile"] .browser-viewport {
-    height: 500px;
-    padding: 0.5rem 0.25rem;
+  .project-info {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .project-meta-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .meta-left-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .ping-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .project-tech-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .project-tech-tags .tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
   }
 
   .project-links {
@@ -2409,40 +2473,89 @@ body {
 
   .project-links .btn {
     width: 100%;
+    justify-content: center;
   }
 
-  /* Slim 1-Row Header for Browser Mockups on Small Screens */
+  .browser-mockup-wrapper {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .browser-window {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .browser-window[data-view="mobile"] {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .browser-window[data-view="mobile"] .iframe-scaler {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .browser-window[data-view="mobile"] .browser-viewport {
+    height: 480px;
+    padding: 0.4rem 0.25rem;
+  }
+
+  /* Ultra Clean 1-Row Header for Browser Mockups on Small Screens */
   .browser-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.45rem;
-    padding: 0.5rem 0.65rem;
+    gap: 0.35rem;
+    padding: 0.45rem 0.55rem;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .window-dots {
-    flex-shrink: 0;
-    gap: 0.35rem;
-  }
-
-  .browser-controls {
-    flex-shrink: 0;
-    gap: 0.35rem;
+    display: none;
   }
 
   .browser-address-bar {
     flex: 1 1 auto;
     width: auto;
     max-width: none;
-    min-width: 0;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.72rem;
+    min-width: 60px;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .browser-address-bar .url-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    max-width: calc(100% - 24px);
+  }
+
+  .browser-controls {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .browser-controls .open-fullscreen-btn {
+    display: none;
   }
 
   .device-btn,
   .control-btn {
-    width: 1.6rem;
-    height: 1.6rem;
+    width: 1.55rem;
+    height: 1.55rem;
   }
 
   .articles-grid {
@@ -2451,7 +2564,8 @@ body {
 
   .about-card,
   .contact-box-wrapper {
-    padding: 1.75rem 1.25rem;
+    padding: 1.5rem 1rem;
+    overflow: hidden;
   }
 
   .form-submit-row {
@@ -2476,46 +2590,64 @@ body {
 }
 
 @media (max-width: 420px) {
+  .container {
+    padding: 0 0.65rem;
+  }
+
+  .project-showcase {
+    padding: 1rem 0.6rem;
+  }
+
+  .hero-stats {
+    gap: 0.4rem;
+  }
+
+  .stat-card {
+    padding: 0.6rem 0.35rem;
+  }
+
+  .stat-number {
+    font-size: 1.2rem;
+  }
+
+  .stat-label {
+    font-size: 0.58rem;
+  }
+
   .hero-title {
-    font-size: clamp(1.7rem, 7.5vw, 2.15rem);
+    font-size: clamp(1.6rem, 7vw, 2rem);
     word-break: break-word;
     letter-spacing: -0.02em;
   }
 
   .section-title {
-    font-size: clamp(1.55rem, 7vw, 1.95rem);
+    font-size: clamp(1.45rem, 6.5vw, 1.85rem);
     word-break: break-word;
     letter-spacing: -0.02em;
   }
 
   .hero-eyebrow {
-    font-size: 0.68rem;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    padding: 0.3rem 0.65rem;
+    font-size: 0.65rem;
+    gap: 0.25rem;
+    padding: 0.25rem 0.55rem;
   }
 
   .header-actions {
-    gap: 0.35rem;
-  }
-
-  .status-badge {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.68rem;
+    gap: 0.25rem;
   }
 
   .btn-icon {
-    width: 2rem;
-    height: 2rem;
+    width: 1.85rem;
+    height: 1.85rem;
   }
 
   .browser-window[data-view="mobile"] .browser-viewport {
-    height: 520px;
-    padding: 0.35rem;
+    height: 440px;
+    padding: 0.25rem;
   }
 
   .skills-chips .skill-chip {
-    font-size: 0.72rem;
-    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
   }
 }
