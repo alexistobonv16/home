@@ -2820,6 +2820,9 @@
               La señal original está conectada y reproduciéndose en vivo. Este enlace satelital emite video en formato MPEG-2 antiguo (sin decodificador nativo en navegadores web), por lo que el reproductor reproduce el audio original en tiempo real con controles completos.
             </p>
             <div class="mpeg2-alert-actions">
+              <button type="button" class="btn btn-outline btn-sm" onclick="copyStreamUrl()" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2);">
+                📋 Copiar enlace (VLC)
+              </button>
               <button type="button" class="btn btn-outline btn-sm" onclick="hideMpeg2Alert()">
                 Entendido
               </button>
@@ -3970,6 +3973,14 @@
         url = 'http://' + url;
       }
 
+      // Check for duplicate URL
+      const normalizeUrl = (u) => u.toLowerCase().replace(/\/+$/, '');
+      const existingPl = state.playlists.find(pl => pl.sourceUrl && normalizeUrl(pl.sourceUrl) === normalizeUrl(url));
+      if (existingPl) {
+        showToast(`⚠️ Esta lista ya existe: "${existingPl.name}"`);
+        return;
+      }
+
       showToast('Descargando lista M3U...');
       showLoader('Descargando y procesando lista...');
 
@@ -4108,6 +4119,13 @@
       const name = (nameInput ? nameInput.value.trim() : '') || 'Lista Local';
       if (!fileInput || !fileInput.files.length) {
         alert('Por favor selecciona un archivo .m3u o .m3u8 primero.');
+        return;
+      }
+
+      // Check for duplicate name
+      const existingPl = state.playlists.find(pl => pl.name.toLowerCase() === name.toLowerCase());
+      if (existingPl) {
+        showToast(`⚠️ Ya existe una lista con ese nombre: "${existingPl.name}"`);
         return;
       }
 
@@ -5288,6 +5306,7 @@
     let audioDecoder = null;
     let nextAudioTime = 0;
     let activeAudioSources = [];
+    let pendingAudioQueue = [];
 
     let audioDecoderReadyPromise = null;
 
@@ -5328,6 +5347,56 @@
       nextAudioTime = 0;
       if (audioDecoder) {
         try { audioDecoder.reset(); } catch (e) {}
+      }
+    }
+
+    function flushAudioQueue() {
+      if (!state.useWebAudio || !audioCtx || !video || video.paused || video.readyState < 2) return;
+      const vTime = video.currentTime;
+      const aNow = audioCtx.currentTime;
+      if (vTime <= 0) return;
+
+      while (pendingAudioQueue.length > 0) {
+        const item = pendingAudioQueue.shift();
+        const duration = item.duration;
+        const timeDelta = (typeof item.fragStart === 'number' && !isNaN(item.fragStart)) ? (item.fragStart - vTime) : null;
+
+        if (timeDelta !== null && timeDelta + duration <= 0.05) {
+          // Fragmento en el pasado respecto al fotograma visible, ignorar
+          continue;
+        }
+
+        const source = audioCtx.createBufferSource();
+        source.buffer = item.buffer;
+        source.connect(audioGain);
+        activeAudioSources.push(source);
+        source.onended = () => {
+          try { source.disconnect(); } catch (e) {}
+          const idx = activeAudioSources.indexOf(source);
+          if (idx !== -1) activeAudioSources.splice(idx, 1);
+        };
+
+        if (timeDelta === null || isNaN(timeDelta)) {
+          const startTime = Math.max(aNow + 0.03, nextAudioTime);
+          source.start(startTime, 0);
+          nextAudioTime = startTime + duration;
+        } else if (timeDelta < 0) {
+          const offset = Math.min(-timeDelta, duration - 0.05);
+          const playDur = duration - offset;
+          const startTime = aNow + 0.02;
+          source.start(startTime, offset);
+          nextAudioTime = startTime + playDur;
+        } else {
+          const targetTime = aNow + timeDelta;
+          let startTime = targetTime;
+          if (nextAudioTime > aNow && Math.abs(nextAudioTime - targetTime) < 0.12) {
+            startTime = nextAudioTime;
+          } else {
+            startTime = Math.max(aNow + 0.02, targetTime);
+          }
+          source.start(startTime, 0);
+          nextAudioTime = startTime + duration;
+        }
       }
     }
 
@@ -5469,6 +5538,7 @@
       const currentSessionId = state.channelSessionId;
 
       stopWebAudio();
+      pendingAudioQueue = [];
       state.useWebAudio = false;
       state.selectedMp2Pid = null;
       state.availableMp2Tracks = [];
@@ -5547,6 +5617,7 @@
           let isMp2 = false;
 
           // Paso 1: Explorar PAT y PMT para identificar todos los PIDs de audio y el tipo de video
+          let detectedVideoPid = null;
           for (let i = 0; i + 188 <= u8.length; i += 188) {
             if (u8[i] !== 0x47) continue;
             const pid = ((u8[i + 1] & 0x1f) << 8) | u8[i + 2];
@@ -5580,6 +5651,7 @@
                 if (streamType === 0x1B || streamType === 0x24) { // Video H.264 o H.265
                   state.hasH264Video = true;
                   state.isActualMpeg2Stream = false;
+                  detectedVideoPid = elemPid;
                 } else if (streamType === 0x02) { // Video MPEG-2
                   if (!state.hasH264Video) {
                     state.isActualMpeg2Stream = true;
@@ -5619,9 +5691,76 @@
             renderQualityAudioMenu();
           }
 
-          if (!isMp2 || audioPids.size === 0) return { data: buffer, isMp2: false };
+          function cleanOrphanBottomField(targetBuf, vPid) {
+            let firstPusiIdx = -1;
+            let secondPusiIdx = -1;
+            let firstFieldType = 'unknown';
 
-          // Paso 2: Solo enmascarar audio MP2 para WebAudio (NO alterar paquetes de video para preservar fluidez nativa total y 0 lag)
+            for (let i = 0; i + 188 <= targetBuf.length; i += 188) {
+              if (targetBuf[i] !== 0x47) continue;
+              const pid = ((targetBuf[i + 1] & 0x1f) << 8) | targetBuf[i + 2];
+              if (pid !== vPid) continue;
+              if ((targetBuf[i + 1] & 0x40) === 0) continue;
+
+              if (firstPusiIdx === -1) {
+                firstPusiIdx = i;
+                const pesBytes = [];
+                for (let k = i; k + 188 <= targetBuf.length && pesBytes.length < 120; k += 188) {
+                  if (targetBuf[k] !== 0x47) continue;
+                  if ((((targetBuf[k + 1] & 0x1f) << 8) | targetBuf[k + 2]) !== vPid) continue;
+                  if (k > i && (targetBuf[k + 1] & 0x40) !== 0) break;
+                  const afc = (targetBuf[k + 3] >> 4) & 3;
+                  let off = k + 4;
+                  if (afc === 2) continue;
+                  if (afc === 3) off += 1 + targetBuf[k + 4];
+                  if (off < k + 188) {
+                    for (let b = off; b < k + 188 && pesBytes.length < 120; b++) pesBytes.push(targetBuf[b]);
+                  }
+                }
+                if (pesBytes.length >= 14 && pesBytes[0] === 0 && pesBytes[1] === 0 && pesBytes[2] === 1) {
+                  const hdrLen = pesBytes[8] || 0;
+                  const pStart = 9 + hdrLen;
+                  for (let j = pStart; j < Math.min(pStart + 60, pesBytes.length - 5); j++) {
+                    if (pesBytes[j] === 0 && pesBytes[j+1] === 0 && pesBytes[j+2] === 1 && (pesBytes[j+3] & 0x1f) === 6 && pesBytes[j+4] === 1) {
+                      if (pesBytes[j+6] === 0x24 || (pesBytes[j+6] & 0xf0) === 0x20) {
+                        firstFieldType = 'BOT';
+                      } else if (pesBytes[j+6] === 0x14 || (pesBytes[j+6] & 0xf0) === 0x10) {
+                        firstFieldType = 'TOP';
+                      }
+                      break;
+                    }
+                  }
+                }
+              } else {
+                secondPusiIdx = i;
+                break;
+              }
+            }
+
+            if (firstFieldType === 'BOT' && firstPusiIdx !== -1 && secondPusiIdx !== -1) {
+              for (let i = firstPusiIdx; i < secondPusiIdx; i += 188) {
+                if (targetBuf[i] === 0x47 && (((targetBuf[i+1] & 0x1f) << 8) | targetBuf[i+2]) === vPid) {
+                  targetBuf[i+1] = 0x1f; targetBuf[i+2] = 0xff; targetBuf[i+3] = 0x10;
+                  targetBuf.fill(0xff, i + 4, i + 188);
+                }
+              }
+              return true;
+            }
+            return false;
+          }
+
+          if (!isMp2 || audioPids.size === 0) {
+            if (detectedVideoPid !== null) {
+              const copy = new Uint8Array(u8.length);
+              copy.set(u8);
+              if (cleanOrphanBottomField(copy, detectedVideoPid)) {
+                return { data: copy.buffer, isMp2: false };
+              }
+            }
+            return { data: buffer, isMp2: false };
+          }
+
+          // Paso 2: Solo enmascarar audio MP2 para WebAudio y normalizar campos entrelazados en inicio de segmento
           const copy = new Uint8Array(u8.length);
           copy.set(u8);
 
@@ -5635,6 +5774,10 @@
               copy[i + 3] = 0x10;
               copy.fill(0xff, i + 4, i + 188);
             }
+          }
+
+          if (detectedVideoPid !== null) {
+            cleanOrphanBottomField(copy, detectedVideoPid);
           }
 
           return { data: copy.buffer, isMp2: isMp2 };
@@ -5672,19 +5815,19 @@
           fLoader: CustomFragLoader,
           enableWorker: true,
           lowLatencyMode: false,
-          forceKeyFrameOnDiscontinuity: true,
-          stretchShortVideoTrack: true,
+          forceKeyFrameOnDiscontinuity: false,
+          stretchShortVideoTrack: false,
           liveSyncDurationCount: bCfg.liveSyncDurationCount,
           liveMaxLatencyDurationCount: bCfg.liveMaxLatencyDurationCount,
           maxBufferLength: bCfg.maxBufferLength,
           maxMaxBufferLength: bCfg.maxMaxBufferLength,
           maxBufferSize: bCfg.maxBufferSize,
-          maxBufferHole: 0.8,
+          maxBufferHole: 1.8,
           backBufferLength: 20,
           liveDurationInfinity: true,
           highBufferWatchdogPeriod: bCfg.highBufferWatchdogPeriod,
           nudgeOffset: 0.2,
-          nudgeMaxRetry: 5,
+          nudgeMaxRetry: 6,
           fragLoadingTimeOut: 20000,
           fragLoadingMaxRetry: 6,
           fragLoadingRetryDelay: 500,
@@ -5751,25 +5894,36 @@
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
                 const now = Date.now();
-                if (now - state.lastMediaRecoveryTime < 3500) {
+                if (now - state.lastMediaRecoveryTime < 4000) {
                   state.mediaRecoveryAttempts++;
                 } else {
                   state.mediaRecoveryAttempts = 1;
                 }
                 state.lastMediaRecoveryTime = now;
 
-                if (state.mediaRecoveryAttempts <= 3) {
+                if (state.mediaRecoveryAttempts <= 2) {
                   console.log(`[Alexis TV] Recuperación multimedia (intento ${state.mediaRecoveryAttempts})...`);
-                  if (state.mediaRecoveryAttempts === 2) {
-                    try { hls.swapAudioCodec(); } catch (e) {}
-                  }
-                  hls.recoverMediaError();
-                } else {
-                  console.warn('[Alexis TV] Micro-salto para resincronización de señal entrelazada...');
-                  state.mediaRecoveryAttempts = 0;
-                  if (video && video.currentTime > 0) {
-                    video.currentTime += 0.2;
+                  if (video && video.error) {
+                    try {
+                      hls.detachMedia();
+                      hls.attachMedia(video);
+                      hls.startLoad();
+                      triggerAutoPlay();
+                    } catch (e) {
+                      console.error('Error al re-adjuntar media:', e);
+                    }
+                  } else {
                     hls.recoverMediaError();
+                  }
+                } else {
+                  console.warn('[Alexis TV] Formato de video no decodificable por el navegador. Manteniendo reproducción limpia...');
+                  state.mediaRecoveryAttempts = 0;
+                  hideLoader();
+                  if (state.useWebAudio) {
+                    // El audio WebAudio sigue funcionando en vivo de forma ininterrumpida
+                    showMpeg2Notice(state.activeChannel, 'Esta señal emite video en formato 1080i entrelazado (PAFF) que no puede ser procesado por el decodificador de este navegador en PC. El audio original en vivo se reproduce de manera continua y puedes copiar el enlace para abrirlo en VLC.');
+                  } else {
+                    showToast('⚠️ Señal de video no compatible con este navegador en PC');
                   }
                 }
                 break;
@@ -5833,24 +5987,54 @@
                       buffer.copyToChannel(decoded.channelData[c], c);
                     }
 
-                    const now = audioCtx.currentTime;
-                    // Avance lineal estricto sin rebobinar la cola sobre sí misma
-                    if (nextAudioTime < now) {
-                      nextAudioTime = now + 0.03;
+                    const fragStart = (data && data.frag && typeof data.frag.start === 'number') ? data.frag.start : null;
+
+                    // Si el video aún no está reproduciendo activamente o está en buffer inicial, encolar para sincronización perfecta
+                    if (video.paused || video.readyState < 2 || video.currentTime <= 0) {
+                      pendingAudioQueue.push({ fragStart, duration, buffer });
+                    } else {
+                      // Video reproduciendo activamente: programar sincronizado a la línea de tiempo del video
+                      const vTime = video.currentTime;
+                      const aNow = audioCtx.currentTime;
+                      const timeDelta = (fragStart !== null && !isNaN(fragStart)) ? (fragStart - vTime) : null;
+
+                      if (timeDelta !== null && timeDelta + duration <= 0.05) {
+                        // Fragmento en el pasado respecto al fotograma visible, ignorar
+                        return;
+                      }
+
+                      const source = audioCtx.createBufferSource();
+                      source.buffer = buffer;
+                      source.connect(audioGain);
+                      activeAudioSources.push(source);
+                      source.onended = () => {
+                        try { source.disconnect(); } catch (e) {}
+                        const idx = activeAudioSources.indexOf(source);
+                        if (idx !== -1) activeAudioSources.splice(idx, 1);
+                      };
+
+                      if (timeDelta === null || isNaN(timeDelta)) {
+                        const startTime = Math.max(aNow + 0.03, nextAudioTime);
+                        source.start(startTime, 0);
+                        nextAudioTime = startTime + duration;
+                      } else if (timeDelta < 0) {
+                        const offset = Math.min(-timeDelta, duration - 0.05);
+                        const playDur = duration - offset;
+                        const startTime = aNow + 0.02;
+                        source.start(startTime, offset);
+                        nextAudioTime = startTime + playDur;
+                      } else {
+                        const targetTime = aNow + timeDelta;
+                        let startTime = targetTime;
+                        if (nextAudioTime > aNow && Math.abs(nextAudioTime - targetTime) < 0.12) {
+                          startTime = nextAudioTime;
+                        } else {
+                          startTime = Math.max(aNow + 0.02, targetTime);
+                        }
+                        source.start(startTime, 0);
+                        nextAudioTime = startTime + duration;
+                      }
                     }
-
-                    const source = audioCtx.createBufferSource();
-                    source.buffer = buffer;
-                    source.connect(audioGain);
-                    source.start(nextAudioTime);
-                    activeAudioSources.push(source);
-                    source.onended = () => {
-                      try { source.disconnect(); } catch (e) {}
-                      const idx = activeAudioSources.indexOf(source);
-                      if (idx !== -1) activeAudioSources.splice(idx, 1);
-                    };
-
-                    nextAudioTime += duration;
                   }
                 }
               }
@@ -5974,7 +6158,7 @@
     }
     window.hideMpeg2Alert = hideMpeg2Alert;
 
-    function showMpeg2Notice(channel) {
+    function showMpeg2Notice(channel, customReason) {
       if (state.isMpeg2Decoding) return;
       const target = channel || state.activeChannel;
       if (!target) return;
@@ -5984,7 +6168,11 @@
         const text = document.getElementById('mpeg2-alert-text');
         if (title) title.textContent = `${target.name || 'Canal'}: Audio Original en Directo`;
         if (text) {
-          text.textContent = `La señal original está activa y reproduciéndose en vivo desde el servidor de origen. Esta transmisión emite video en estándar satelital MPEG-2 (sin decodificador nativo en navegadores web), por lo que el reproductor emite el audio original en tiempo real con controles completos.`;
+          if (customReason) {
+            text.textContent = customReason;
+          } else {
+            text.textContent = `La señal original está activa y reproduciéndose en vivo desde el servidor de origen. Esta transmisión emite video en estándar satelital entrelazado / MPEG-2 (sin decodificador nativo en navegadores de escritorio), por lo que el reproductor emite el audio original en tiempo real con controles completos.`;
+          }
         }
         overlay.style.display = 'flex';
       }
@@ -6153,8 +6341,25 @@
         playerStage.classList.add('paused');
         bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
         showPlayerControls(5000);
-        if (state.useWebAudio && audioCtx && audioCtx.state === 'running') {
-          try { audioCtx.suspend(); } catch (e) {}
+        if (state.useWebAudio) {
+          stopWebAudio();
+          pendingAudioQueue = [];
+          if (audioCtx && audioCtx.state === 'running') {
+            try { audioCtx.suspend(); } catch (e) {}
+          }
+        }
+      });
+
+      video.addEventListener('seeking', () => {
+        if (state.useWebAudio) {
+          stopWebAudio();
+          pendingAudioQueue = [];
+        }
+      });
+
+      video.addEventListener('seeked', () => {
+        if (state.useWebAudio) {
+          flushAudioQueue();
         }
       });
 
@@ -6394,6 +6599,9 @@
       // ANTI-FREEZE WATCHDOG: auto-nudges past micro PTS drops or stuck buffer frames
       let stallWatchdog = null;
       video.addEventListener('waiting', () => {
+        if (state.useWebAudio) {
+          stopWebAudio();
+        }
         clearTimeout(stallWatchdog);
         stallWatchdog = setTimeout(() => {
           if (video.paused || video.readyState > 2) return;
@@ -6421,6 +6629,12 @@
         hideLoader();
         if (video.videoWidth > 0) {
           hideMpeg2Alert();
+        }
+        if (state.useWebAudio) {
+          if (audioCtx && audioCtx.state === 'suspended' && !state.isMuted) {
+            try { audioCtx.resume(); } catch (e) {}
+          }
+          flushAudioQueue();
         }
         setTimeout(() => {
           if (!video.paused && video.currentTime > 1.5) {

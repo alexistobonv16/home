@@ -23,13 +23,49 @@ function jsonError(message, status = 400) {
   });
 }
 
+function parseAudioBufferBitrate(buffer) {
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length - 4; i++) {
+    // Check MPEG audio syncword (0xFF followed by 3 bits set)
+    if (bytes[i] === 0xFF && (bytes[i + 1] & 0xE0) === 0xE0) {
+      const b1 = bytes[i + 1];
+      const b2 = bytes[i + 2];
+
+      const versionBits = (b1 >> 3) & 0x03; // 3 = MPEG1, 2 = MPEG2, 0 = MPEG2.5
+      const layerBits = (b1 >> 1) & 0x03;   // 1 = Layer3, 2 = Layer2, 3 = Layer1
+      const bitrateIdx = (b2 >> 4) & 0x0F;
+
+      if (bitrateIdx > 0 && bitrateIdx < 15) {
+        if (versionBits === 3 && layerBits === 1) {
+          const mpeg1L3 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+          return { bitrate: mpeg1L3[bitrateIdx], codec: 'MP3' };
+        }
+        if ((versionBits === 2 || versionBits === 0) && layerBits === 1) {
+          const mpeg2L3 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+          return { bitrate: mpeg2L3[bitrateIdx], codec: 'MP3' };
+        }
+        if (versionBits === 3 && layerBits === 2) {
+          const mpeg1L2 = [0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384];
+          return { bitrate: mpeg1L2[bitrateIdx], codec: 'MP2' };
+        }
+      }
+    }
+    // Check AAC ADTS syncword (0xFFF)
+    if (bytes[i] === 0xFF && (bytes[i + 1] & 0xF0) === 0xF0) {
+      return { bitrate: 128, codec: 'AAC' };
+    }
+  }
+  return null;
+}
+
 export async function onRequestOptions() {
   return new Response(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Range, Content-Type, Accept, User-Agent, Origin',
+      'Access-Control-Allow-Headers': 'Range, Content-Type, Accept, User-Agent, Origin, Icy-MetaData',
+      'Access-Control-Expose-Headers': '*',
       'Access-Control-Max-Age': '86400'
     }
   });
@@ -39,6 +75,7 @@ export async function onRequestGet(context) {
   try {
     const { searchParams } = new URL(context.request.url);
     let targetUrl = (searchParams.get('url') || '').trim();
+    const isProbe = searchParams.get('probe') === '1';
 
     if (!targetUrl) {
       return jsonError('Falta el parámetro url.');
@@ -82,7 +119,7 @@ export async function onRequestGet(context) {
     let lastResponse = null;
     let lastError = null;
 
-    const incomingRange = context.request.headers.get('Range');
+    const incomingRange = isProbe ? 'bytes=0-8192' : context.request.headers.get('Range');
 
     for (const candidateUrl of candidateUrls) {
       for (const ua of USER_AGENTS) {
@@ -115,6 +152,52 @@ export async function onRequestGet(context) {
                           contentType.includes('m3u') ||
                           targetUrl.includes('.m3u8') ||
                           targetUrl.includes('.m3u');
+
+            // Probe Request: return JSON with bitrate, codec and stream info
+            if (isProbe) {
+              let detectedBitrate = null;
+              let detectedCodec = contentType.includes('aac') ? 'AAC' : 'MP3';
+
+              const icyBr = res.headers.get('icy-br') || res.headers.get('ice-bitrate') || res.headers.get('x-bitrate');
+              if (icyBr) {
+                detectedBitrate = parseInt(icyBr, 10);
+              }
+
+              const icyName = res.headers.get('icy-name');
+              const icyGenre = res.headers.get('icy-genre');
+
+              if (!detectedBitrate && !isHls) {
+                try {
+                  const chunk = await res.arrayBuffer();
+                  const parsedAudio = parseAudioBufferBitrate(chunk);
+                  if (parsedAudio) {
+                    detectedBitrate = parsedAudio.bitrate;
+                    detectedCodec = parsedAudio.codec;
+                  }
+                } catch (e) {}
+              }
+
+              if (isHls) {
+                detectedCodec = 'HLS';
+              }
+
+              return new Response(JSON.stringify({
+                success: true,
+                bitrate: detectedBitrate || (isHls ? 128 : 128),
+                codec: detectedCodec,
+                contentType,
+                icyName: icyName || null,
+                icyGenre: icyGenre || null
+              }), {
+                status: 200,
+                headers: {
+                  'Content-Type': 'application/json; charset=utf-8',
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                  'Cache-Control': 'public, max-age=1800'
+                }
+              });
+            }
 
             // If it is an M3U/M3U8 playlist or manifest, rewrite URLs
             if (isHls && (contentType.includes('text') || contentType.includes('mpegurl') || targetUrl.includes('.m3u'))) {

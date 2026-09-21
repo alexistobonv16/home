@@ -261,6 +261,68 @@ html, body {
   gap: 1.25rem;
 }
 
+.tuner-top-telemetry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.stream-telemetry-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.telemetry-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+[data-theme="light"] .telemetry-pill {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.telemetry-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.telemetry-val {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.telemetry-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.dot-cyan { background-color: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+.dot-emerald { background-color: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
+.dot-violet { background-color: var(--accent-violet); box-shadow: 0 0 6px var(--accent-violet); }
+
+.highlight-bitrate {
+  background: rgba(0, 240, 255, 0.12) !important;
+  border-color: rgba(0, 240, 255, 0.35) !important;
+  color: var(--accent-cyan) !important;
+  font-weight: 700;
+}
+
 .now-playing-badge {
   display: inline-flex;
   align-items: center;

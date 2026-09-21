@@ -78,11 +78,31 @@
     <!-- Main Tuner Deck (Player & Spectrum) -->
     <section class="tuner-deck">
       <div class="tuner-left">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="tuner-top-telemetry">
           <div class="now-playing-badge" id="now-playing-status">
             LISTO PARA SINTONIZAR
           </div>
-          <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted);">AUDIO ENGINE • 48 kHz</span>
+
+          <!-- Live Telemetry: Real Bitrate, Speed & Network Data -->
+          <div class="stream-telemetry-cluster">
+            <div class="telemetry-pill" title="Bitrate real del stream de audio">
+              <span class="telemetry-dot dot-cyan"></span>
+              <span class="telemetry-label">BITRATE:</span>
+              <span id="telemetry-bitrate-val" class="telemetry-val">-- kbps</span>
+            </div>
+
+            <div class="telemetry-pill" title="Velocidad de descarga en tiempo real">
+              <span class="telemetry-dot dot-emerald"></span>
+              <span class="telemetry-label">VEL:</span>
+              <span id="telemetry-speed-val" class="telemetry-val">0.0 KB/s</span>
+            </div>
+
+            <div class="telemetry-pill" title="Datos totales transferidos en esta sesión de audio">
+              <span class="telemetry-dot dot-violet"></span>
+              <span class="telemetry-label">RED:</span>
+              <span id="telemetry-data-val" class="telemetry-val">0.00 MB</span>
+            </div>
+          </div>
         </div>
 
         <div class="station-meta-display">
@@ -92,7 +112,8 @@
             <h2 id="active-station-name" class="active-station-name">Selecciona una Emisora</h2>
             <div id="active-station-genre" class="active-station-genre-tag">
               <span>General</span>
-              <span>STEREO</span>
+              <span id="active-station-codec-badge">STEREO</span>
+              <span id="active-station-bitrate-badge" class="highlight-bitrate">-- kbps</span>
             </div>
           </div>
         </div>
@@ -102,7 +123,7 @@
           <canvas id="visualizer-canvas"></canvas>
           <div class="visualizer-hud-overlay">
             <span>20 Hz</span>
-            <span>REALTIME SPECTRUM ANALYZER</span>
+            <span id="visualizer-stats-text">SPECTRUM ANALYZER • BITRATE: -- • RED: 0.0 KB/s</span>
             <span>20 kHz</span>
           </div>
         </div>

@@ -24,7 +24,7 @@
     {
       id: 'caracol-radio',
       name: 'Caracol Radio',
-      url: 'https://caracol.streamguys1.com/live',
+      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CARACOL_RADIO_SC',
       genre: 'Noticias',
       freq: '100.9 FM',
       logo: getStationFallbackSvg('Caracol Radio', 'Noticias'),
@@ -33,7 +33,7 @@
     {
       id: 'w-radio',
       name: 'W Radio Colombia',
-      url: 'https://wradio.streamguys1.com/live',
+      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WRADIO_SC',
       genre: 'Noticias',
       freq: '99.9 FM',
       logo: getStationFallbackSvg('W Radio', 'Noticias'),
@@ -51,7 +51,7 @@
     {
       id: 'la-mega',
       name: 'La Mega',
-      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/LAMEGA_BOG_SC',
+      url: 'https://mdstrm.com/audio/632c9ae6660fef03fe3855fe/live.m3u8',
       genre: 'Música',
       freq: '90.9 FM',
       logo: getStationFallbackSvg('La Mega', 'Música'),
@@ -114,7 +114,7 @@
     {
       id: 'radioacktiva',
       name: 'Radioacktiva',
-      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_ACKTIVA_SC',
+      url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_ACTIVA.mp3',
       genre: 'Rock',
       freq: '97.9 FM',
       logo: getStationFallbackSvg('Radioacktiva', 'Rock'),
@@ -141,6 +141,14 @@
   let searchQuery = '';
   let sleepTimerId = null;
   let sleepTimerEnd = null;
+
+  // Real-Time Telemetry & Bitrate State
+  let currentBitrateKbps = null;
+  let currentCodec = 'MP3';
+  let sessionTotalBytes = 0;
+  let networkSpeedBytesPerSec = 0;
+  let telemetryTimer = null;
+  let probeAbortController = null;
 
   // Audio & HLS
   const audio = new Audio();
@@ -177,6 +185,14 @@
   const canvas = document.getElementById('visualizer-canvas');
   const canvasCtx = canvas ? canvas.getContext('2d') : null;
 
+  // Telemetry HUD Elements
+  const telemetryBitrateVal = document.getElementById('telemetry-bitrate-val');
+  const telemetrySpeedVal = document.getElementById('telemetry-speed-val');
+  const telemetryDataVal = document.getElementById('telemetry-data-val');
+  const activeStationCodecBadge = document.getElementById('active-station-codec-badge');
+  const activeStationBitrateBadge = document.getElementById('active-station-bitrate-badge');
+  const visualizerStatsText = document.getElementById('visualizer-stats-text');
+
   // =========================================================================
   // STORAGE & INITIALIZATION
   // =========================================================================
@@ -212,6 +228,122 @@
   }
 
   // =========================================================================
+  // REAL-TIME TELEMETRY & NETWORK USAGE MONITOR
+  // =========================================================================
+  function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return '0.00 MB';
+    if (bytes < 1024 * 1024) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+    const mb = bytes / (1024 * 1024);
+    if (mb < 1024) {
+      return mb.toFixed(2) + ' MB';
+    }
+    return (mb / 1024).toFixed(2) + ' GB';
+  }
+
+  function formatSpeed(bytesPerSec) {
+    if (!bytesPerSec || bytesPerSec <= 0) return '0.0 KB/s';
+    const kb = bytesPerSec / 1024;
+    if (kb < 1000) {
+      return kb.toFixed(1) + ' KB/s';
+    }
+    return (kb / 1024).toFixed(2) + ' MB/s';
+  }
+
+  function updateTelemetryDisplay() {
+    // 1. Bitrate value in Top Telemetry cluster
+    if (telemetryBitrateVal) {
+      if (currentBitrateKbps) {
+        telemetryBitrateVal.textContent = `${currentBitrateKbps} kbps`;
+      } else if (isPlaying || isBuffering) {
+        telemetryBitrateVal.textContent = 'Detectando...';
+      } else {
+        telemetryBitrateVal.textContent = '-- kbps';
+      }
+    }
+
+    // 2. Real-time network speed
+    if (telemetrySpeedVal) {
+      telemetrySpeedVal.textContent = isPlaying ? formatSpeed(networkSpeedBytesPerSec) : '0.0 KB/s';
+    }
+
+    // 3. Accumulated session network data
+    if (telemetryDataVal) {
+      telemetryDataVal.textContent = formatBytes(sessionTotalBytes);
+    }
+
+    // 4. Codec Badge in Tuner Deck
+    const codecEl = document.getElementById('active-station-codec-badge');
+    if (codecEl) {
+      codecEl.textContent = currentCodec || 'STEREO';
+    }
+
+    // 5. Active Station Bitrate Badge
+    const bitrateBadgeEl = document.getElementById('active-station-bitrate-badge');
+    if (bitrateBadgeEl) {
+      if (currentBitrateKbps) {
+        bitrateBadgeEl.textContent = `${currentBitrateKbps} kbps`;
+      } else if (isPlaying || isBuffering) {
+        bitrateBadgeEl.textContent = 'DETECTANDO...';
+      } else {
+        bitrateBadgeEl.textContent = '-- kbps';
+      }
+    }
+
+    // 6. Visualizer Stats overlay
+    if (visualizerStatsText) {
+      const br = currentBitrateKbps ? `${currentBitrateKbps} kbps` : (isPlaying ? 'DETECTANDO...' : '--');
+      const spd = isPlaying ? formatSpeed(networkSpeedBytesPerSec) : '0.0 KB/s';
+      visualizerStatsText.textContent = `SPECTRUM ANALYZER • BITRATE: ${br} • RED: ${spd}`;
+    }
+  }
+
+  async function probeStreamTelemetry(targetUrl) {
+    if (probeAbortController) {
+      probeAbortController.abort();
+      probeAbortController = null;
+    }
+
+    probeAbortController = new AbortController();
+    const probeUrl = `/api/radio-proxy?probe=1&url=${encodeURIComponent(targetUrl)}`;
+
+    try {
+      const res = await fetch(probeUrl, { signal: probeAbortController.signal });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.bitrate) {
+          currentBitrateKbps = data.bitrate;
+          networkSpeedBytesPerSec = Math.round((data.bitrate * 1000) / 8);
+        }
+        if (data.codec) {
+          currentCodec = data.codec;
+        }
+        updateTelemetryDisplay();
+        renderStations();
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.warn('Bitrate probe warning:', err);
+      }
+    }
+  }
+
+  function startTelemetryLoop() {
+    if (telemetryTimer) clearInterval(telemetryTimer);
+
+    telemetryTimer = setInterval(() => {
+      if (isPlaying) {
+        // Calculate bytes transferred per second based on detected bitrate
+        const bytesThisSec = currentBitrateKbps ? Math.round((currentBitrateKbps * 1000) / 8) : 16000;
+        sessionTotalBytes += bytesThisSec;
+        networkSpeedBytesPerSec = bytesThisSec;
+        updateTelemetryDisplay();
+      }
+    }, 1000);
+  }
+
+  // =========================================================================
   // AUDIO CONTROLLER & HLS
   // =========================================================================
   function getPlayableUrl(rawUrl) {
@@ -240,6 +372,13 @@
     audio.removeAttribute('src');
     audio.load();
 
+    const isM3U8 = (station.url || '').includes('.m3u8');
+
+    // Reset telemetry metrics for newly sintonized station
+    currentBitrateKbps = null;
+    currentCodec = isM3U8 ? 'HLS' : 'MP3';
+    updateTelemetryDisplay();
+
     updateTunerDisplay(station);
     setBufferingState(true);
 
@@ -247,8 +386,6 @@
     if (forceProxy && !streamUrl.startsWith('/api/radio-proxy')) {
       streamUrl = `/api/radio-proxy?url=${encodeURIComponent(station.url)}`;
     }
-
-    const isM3U8 = station.url.includes('.m3u8') || streamUrl.includes('.m3u8');
 
     if (isM3U8 && window.Hls && Hls.isSupported()) {
       hls = new Hls({
@@ -263,6 +400,29 @@
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setupAudioContext();
         audio.play().catch(handlePlayError);
+      });
+
+      hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+        if (hls && hls.levels && hls.levels[hls.currentLevel]) {
+          const lvl = hls.levels[hls.currentLevel];
+          if (lvl.bitrate) {
+            currentBitrateKbps = Math.round(lvl.bitrate / 1000);
+            networkSpeedBytesPerSec = Math.round(lvl.bitrate / 8);
+          }
+        }
+        currentCodec = 'HLS / AAC';
+        updateTelemetryDisplay();
+        renderStations();
+      });
+
+      hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+        if (data && data.frag && data.frag.loaded) {
+          sessionTotalBytes += data.frag.loaded;
+          if (data.stats && data.stats.bwEstimate) {
+            networkSpeedBytesPerSec = Math.round(data.stats.bwEstimate / 8);
+          }
+          updateTelemetryDisplay();
+        }
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
@@ -290,6 +450,9 @@
           handlePlayError(err);
         }
       });
+
+      // Probe stream telemetry (real bitrate, server icy headers, audio codec)
+      probeStreamTelemetry(station.url);
     }
 
     updateMediaSession(station);
@@ -331,6 +494,10 @@
     if (nowPlayingStatus) {
       nowPlayingStatus.innerHTML = playing ? '<span class="pulse-led"></span> EN VIVO' : 'PAUSADO';
     }
+    if (!playing) {
+      networkSpeedBytesPerSec = 0;
+    }
+    updateTelemetryDisplay();
     renderStations();
   }
 
@@ -522,7 +689,7 @@
     if (activeStationName) activeStationName.textContent = station.name;
     if (activeStationFreq) activeStationFreq.innerHTML = `<span>●</span> ${station.freq || 'WEB STREAM'}`;
     if (activeStationGenre) {
-      activeStationGenre.innerHTML = `<span>${station.genre || 'General'}</span><span>HI-FI STEREO</span>`;
+      activeStationGenre.innerHTML = `<span>${station.genre || 'General'}</span><span id="active-station-codec-badge">${currentCodec || 'STEREO'}</span><span id="active-station-bitrate-badge" class="highlight-bitrate">${currentBitrateKbps ? currentBitrateKbps + ' kbps' : '-- kbps'}</span>`;
     }
     if (activeStationLogo) {
       const fallback = getStationFallbackSvg(station.name, station.genre);
@@ -595,6 +762,7 @@
             <div class="station-card-meta">
               <span class="badge-tag">${s.freq || 'WEB'}</span>
               <span class="badge-tag">${s.genre || 'Música'}</span>
+              ${isCurrent && currentBitrateKbps ? `<span class="badge-tag highlight-bitrate">${currentBitrateKbps} kbps</span>` : ''}
             </div>
           </div>
 
@@ -1131,6 +1299,8 @@
     renderStations();
     resizeCanvas();
     startVisualizer();
+    startTelemetryLoop();
+    updateTelemetryDisplay();
   });
 
 })();
