@@ -54,6 +54,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -74,6 +75,9 @@ html, body {
   border-radius: 50%;
   filter: blur(140px);
   opacity: 0.35;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 .glow-cyan {
   width: 500px;
@@ -524,7 +528,10 @@ html, body {
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.65);
   padding: 0.65rem 1.75rem;
-  transition: all var(--transition-normal);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  contain: layout style;
 }
 
 [data-theme="light"] .bottom-player-bar {
@@ -1149,7 +1156,7 @@ html, body {
   display: flex;
 }
 
-/* Mini equalizer animation */
+/* Mini equalizer animation (GPU transform-accelerated to prevent layout reflows) */
 .mini-eq {
   display: flex;
   align-items: flex-end;
@@ -1158,18 +1165,21 @@ html, body {
 }
 .mini-eq span {
   width: 3px;
+  height: 14px;
   background: var(--accent-cyan);
   border-radius: 1px;
+  transform-origin: bottom;
   animation: mini-eq-anim 0.8s ease-in-out infinite alternate;
+  will-change: transform;
 }
-.mini-eq span:nth-child(1) { height: 60%; animation-delay: 0.1s; }
-.mini-eq span:nth-child(2) { height: 100%; animation-delay: 0.3s; }
-.mini-eq span:nth-child(3) { height: 40%; animation-delay: 0.2s; }
-.mini-eq span:nth-child(4) { height: 80%; animation-delay: 0.4s; }
+.mini-eq span:nth-child(1) { transform: scaleY(0.6); animation-delay: 0.1s; }
+.mini-eq span:nth-child(2) { transform: scaleY(1.0); animation-delay: 0.3s; }
+.mini-eq span:nth-child(3) { transform: scaleY(0.4); animation-delay: 0.2s; }
+.mini-eq span:nth-child(4) { transform: scaleY(0.8); animation-delay: 0.4s; }
 
 @keyframes mini-eq-anim {
-  0% { height: 20%; }
-  100% { height: 100%; }
+  0% { transform: scaleY(0.2); }
+  100% { transform: scaleY(1); }
 }
 
 .station-card-content {
@@ -1453,6 +1463,24 @@ html, body {
 }
 
 @media (max-width: 680px) {
+  /* Disable expensive GPU blurs and mask compositing on mobile to prevent flickering */
+  .ambient-glow {
+    filter: none !important;
+    opacity: 0.28 !important;
+    transform: none !important;
+  }
+  .glow-cyan {
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.22) 0%, rgba(0, 240, 255, 0.05) 45%, transparent 70%) !important;
+  }
+  .glow-violet {
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, rgba(139, 92, 246, 0.05) 45%, transparent 70%) !important;
+  }
+  .hud-grid-pattern {
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+    opacity: 0.25 !important;
+  }
+
   .app-container {
     padding: 0.75rem 0.75rem calc(125px + 1rem + env(safe-area-inset-bottom, 12px));
   }
@@ -1461,6 +1489,9 @@ html, body {
     flex-wrap: wrap;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
+    background: rgba(11, 19, 43, 0.98);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .header-actions {
@@ -1541,12 +1572,27 @@ html, body {
 
   .station-card {
     position: relative;
-    background: rgba(13, 22, 44, 0.9);
+    background: rgba(13, 22, 44, 0.95);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1px solid rgba(56, 189, 248, 0.22);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
     padding: 0.75rem 0.85rem;
     gap: 0.75rem;
     border-radius: var(--radius-sm);
+    transition: none !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .station-card:hover {
+    transform: none !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+    background: rgba(13, 22, 44, 0.95) !important;
+    border-color: rgba(56, 189, 248, 0.22) !important;
+  }
+
+  .station-card:active {
+    background: rgba(20, 32, 60, 0.98) !important;
   }
 
   .station-card-logo-wrap,
@@ -1591,6 +1637,10 @@ html, body {
 
   /* Modern Fixed Bottom Player Bar */
   .bottom-player-bar {
+    background: rgba(5, 10, 24, 0.98) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transition: none !important;
     padding: 0.55rem 0.85rem calc(0.7rem + env(safe-area-inset-bottom, 12px));
   }
 

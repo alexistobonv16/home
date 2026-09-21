@@ -297,6 +297,35 @@
     return (kb / 1024).toFixed(2) + ' MB/s';
   }
 
+  // Efficient in-place card state update (avoids destroying/recreating 40 DOM nodes & images)
+  function updateCardPlayingState() {
+    if (!stationsGrid) return;
+    const cards = stationsGrid.querySelectorAll('.station-card');
+    cards.forEach(card => {
+      const sId = card.getAttribute('data-station-id');
+      const isThisCard = currentStation && currentStation.id === sId;
+      const shouldBePlaying = isThisCard && isPlaying;
+      if (shouldBePlaying) {
+        if (!card.classList.contains('playing')) card.classList.add('playing');
+      } else {
+        if (card.classList.contains('playing')) card.classList.remove('playing');
+      }
+
+      if (isThisCard && currentBitrateKbps) {
+        const meta = card.querySelector('.station-card-meta');
+        if (meta) {
+          let brTag = meta.querySelector('.highlight-bitrate');
+          if (!brTag) {
+            brTag = document.createElement('span');
+            brTag.className = 'badge-tag highlight-bitrate';
+            meta.appendChild(brTag);
+          }
+          brTag.textContent = `${currentBitrateKbps} kbps`;
+        }
+      }
+    });
+  }
+
   function updateTelemetryDisplay() {
     const fmt = detectStreamFormat(currentStation ? currentStation.url : '');
     const activeBitrate = currentBitrateKbps || (isPlaying ? fmt.defaultBitrate : null);
@@ -380,7 +409,7 @@
           currentCodec = data.codec;
         }
         updateTelemetryDisplay();
-        renderStations();
+        updateCardPlayingState();
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
@@ -499,7 +528,7 @@
 
     networkSpeedBytesPerSec = 0;
     updateTelemetryDisplay();
-    renderStations();
+    updateCardPlayingState();
     updateDocumentTitle();
 
     showToast(`"${station.name}" no está disponible o el stream está fuera del aire.`);
@@ -588,7 +617,7 @@
         }
         currentCodec = 'HLS / AAC';
         updateTelemetryDisplay();
-        renderStations();
+        updateCardPlayingState();
       });
 
       hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
@@ -625,7 +654,7 @@
     }
 
     updateMediaSession(station);
-    renderStations();
+    updateCardPlayingState();
     updateDocumentTitle();
   }
 
@@ -663,7 +692,7 @@
       networkSpeedBytesPerSec = 0;
     }
     updateTelemetryDisplay();
-    renderStations();
+    updateCardPlayingState();
     updateDocumentTitle();
   }
 
@@ -728,9 +757,24 @@
     }
   }
 
-  document.addEventListener('visibilitychange', updateDocumentTitle);
-  window.addEventListener('pagehide', updateDocumentTitle);
-  window.addEventListener('pageshow', updateDocumentTitle);
+  document.addEventListener('visibilitychange', () => {
+    updateDocumentTitle();
+    if (document.hidden) {
+      stopVisualizer();
+    } else if (window.innerWidth > 680) {
+      startVisualizer();
+    }
+  });
+
+  window.addEventListener('pagehide', () => {
+    updateDocumentTitle();
+    stopVisualizer();
+  });
+
+  window.addEventListener('pageshow', () => {
+    updateDocumentTitle();
+    if (window.innerWidth > 680) startVisualizer();
+  });
 
   // =========================================================================
   // WEB AUDIO API & REALTIME SPECTRUM VISUALIZER
@@ -765,17 +809,36 @@
     }
   }
 
+  function stopVisualizer() {
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+  }
+
   function startVisualizer() {
     if (!canvas || !canvasCtx) return;
+    stopVisualizer();
+
+    // Do not run canvas loop on mobile (hidden) or when tab is backgrounded
+    if (window.innerWidth <= 680 || document.hidden) {
+      return;
+    }
 
     const bufferLength = analyser ? analyser.frequencyBinCount : 32;
     const dataArray = new Uint8Array(bufferLength);
 
     function renderFrame() {
+      if (window.innerWidth <= 680 || document.hidden) {
+        stopVisualizer();
+        return;
+      }
+
       animFrameId = requestAnimationFrame(renderFrame);
 
       const width = canvas.width;
       const height = canvas.height;
+      if (width <= 0 || height <= 0) return;
 
       canvasCtx.clearRect(0, 0, width, height);
 
@@ -1039,7 +1102,13 @@
         if (action === 'star') {
           station.isStarred = !station.isStarred;
           saveStations();
-          renderStations();
+          if (activeFilter === 'starred') {
+            renderStations();
+          } else {
+            actionBtn.classList.toggle('starred', station.isStarred);
+            const svg = actionBtn.querySelector('svg');
+            if (svg) svg.setAttribute('fill', station.isStarred ? 'currentColor' : 'none');
+          }
           showToast(station.isStarred ? `Añadida a favoritas: ${station.name}` : `Eliminada de favoritas`);
         } else if (action === 'edit') {
           openEditStationModal(station);
@@ -1803,11 +1872,22 @@
     });
   }
 
-  // Window Resize Visualizer Fix
+  // Window Resize Visualizer Fix (safeguarded against mobile resize triggers)
   function resizeCanvas() {
+    if (window.innerWidth <= 680) {
+      stopVisualizer();
+      return;
+    }
     if (canvas && canvas.parentElement) {
-      canvas.width = canvas.parentElement.clientWidth || 140;
-      canvas.height = canvas.parentElement.clientHeight || 34;
+      const w = canvas.parentElement.clientWidth;
+      const h = canvas.parentElement.clientHeight;
+      if (w > 0 && h > 0) {
+        canvas.width = w;
+        canvas.height = h;
+        if (!animFrameId && !document.hidden) {
+          startVisualizer();
+        }
+      }
     }
   }
   window.addEventListener('resize', resizeCanvas);
