@@ -29,6 +29,8 @@
   <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
   <!-- In-Browser Native MPEG-2 Video Software Player -->
   <script src="/js/mpeg2-player.js"></script>
+  <!-- H.264 FFmpeg-WASM fallback decoder (Vía B) for streams MSE/WebCodecs cannot decode -->
+  <script src="/js/h264w-player.js"></script>
   <!-- Google Cast Framework SDK for Chromecast / Google TV playback -->
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" defer></script>
   <script>
@@ -2751,6 +2753,7 @@
         <div class="multiview-slot focus-active" id="multiview-slot-1">
           <video id="video-player" playsinline preload="auto" autoplay></video>
           <canvas id="mpeg2-canvas" class="mpeg2-canvas" style="display: none;"></canvas>
+          <canvas id="h264w-canvas" class="mpeg2-canvas" style="display: none;"></canvas>
           <div class="multiview-slot-overlay" id="multiview-overlay-1" style="display: none;">
             <div class="multiview-info">
               <span class="multiview-label">Pantalla 1</span>
@@ -3488,6 +3491,8 @@
       volume: parseFloat(localStorage.getItem('at_tv_vol') || '1.0'),
       mpeg2Player: null,
       isMpeg2Decoding: false,
+      h264wPlayer: null,
+      h264wActive: false,
       isDesktop: !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent),
       epgUrl: localStorage.getItem('at_tv_epg_url') || '',
       epgData: null,
@@ -3598,6 +3603,11 @@
       initPwaServiceWorker();
       if (window.Mpeg2LivePlayer && mpeg2Canvas) {
         state.mpeg2Player = new Mpeg2LivePlayer(mpeg2Canvas);
+      }
+      const h264wCanvas = document.getElementById('h264w-canvas');
+      if (window.H264WasmLivePlayer && h264wCanvas) {
+        state.h264wPlayer = new H264WasmLivePlayer(h264wCanvas);
+        window.__h264w = state.h264wPlayer;
       }
       initPlayerControls();
       initAuth();
@@ -5533,6 +5543,61 @@
       return merged;
     }
 
+    // Subclase del ErrorController de hls.js: en modo Vía B (decoder WASM) los errores
+    // MEDIA son irrelevantes (el video no pasa por MSE). Se anula "fatal" para que
+    // onErrorOut() NO ejecute stopLoad() y la descarga de segmentos siga viva sin
+    // ciclos startLoad() que abortaban las peticiones de playlist.
+    class TolerantMediaErrorController extends Hls.DefaultConfig.errorController {
+      onErrorOut(event, data) {
+        if (state.h264wActive && data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          data.fatal = false;
+          return;
+        }
+        super.onErrorOut(event, data);
+      }
+    }
+
+    // Vía B: decoder FFmpeg-H.264 (WASM) → canvas. Se activa cuando MSE/WebCodecs no
+    // pueden decodificar el H.264 (p. ej. interlaced PAFF sin cuadros IDR).
+    // kicks.soft/full = reanimación de hls.js (se pasan desde el scope donde vive `hls`).
+    function activateH264Wasm(kicks) {
+      if (state.h264wActive || !state.h264wPlayer) return;
+      state.h264wActive = true;
+      state.useWebAudio = true;
+      state.h264wPlayer.start();
+      hideMpeg2Alert();
+      hideLoader();
+      playerStage.classList.remove('paused');
+      showToast('🎬 Decodificador WASM activado — reproduciendo esta señal directo en el navegador');
+      console.log('[Alexis TV] Vía B: decoder FFmpeg-H.264 wasm activo (interlaced/sin-IDR OK)');
+      // Watchdog: si hls.js deja de entregar segmentos, reanimar la descarga.
+      if (state.h264wWatchdog) clearInterval(state.h264wWatchdog);
+      let lastPushes = window.__h264wPushes || 0;
+      let stall = 0;
+      state.h264wWatchdog = setInterval(() => {
+        if (!state.h264wActive) {
+          clearInterval(state.h264wWatchdog);
+          state.h264wWatchdog = null;
+          return;
+        }
+        const pushes = window.__h264wPushes || 0;
+        if (pushes > lastPushes) {
+          lastPushes = pushes;
+          stall = 0;
+          return;
+        }
+        stall++;
+        if (stall === 2 && kicks && kicks.soft) {
+          console.warn('[Alexis TV] h264w-watchdog: sin segmentos ~6 s → startLoad()');
+          kicks.soft();
+        } else if (stall >= 4 && kicks && kicks.full) {
+          console.warn('[Alexis TV] h264w-watchdog: sin segmentos ~12 s → reanudación completa de hls');
+          kicks.full();
+          stall = 1;
+        }
+      }, 3000);
+    }
+
     function playChannel(channel) {
       if (!channel || !channel.url) return;
 
@@ -5541,6 +5606,14 @@
         state.mpeg2Player.stop();
       }
       state.isMpeg2Decoding = false;
+      if (state.h264wPlayer) {
+        state.h264wPlayer.stop();
+      }
+      state.h264wActive = false;
+      if (state.h264wWatchdog) {
+        clearInterval(state.h264wWatchdog);
+        state.h264wWatchdog = null;
+      }
 
       if (state.activeChannel && state.activeChannel.url !== channel.url) {
         state.previousChannel = state.activeChannel;
@@ -5746,7 +5819,8 @@
                     video.muted = true;
                     video.volume = 0;
                     context.frag._rawChunkBuffer = response.data.slice(0);
-                  } else if (state.isActualMpeg2Stream) {
+                  } else if (state.isActualMpeg2Stream || state.hasH264Video) {
+                    // Conservar el TS crudo también en H.264 (Vía B: decoder WASM)
                     context.frag._rawChunkBuffer = response.data.slice(0);
                   }
                   response.data = processed.data;
@@ -5760,6 +5834,7 @@
 
         const hls = new Hls({
           fLoader: CustomFragLoader,
+          errorController: TolerantMediaErrorController,
           enableWorker: true,
           lowLatencyMode: false,
           forceKeyFrameOnDiscontinuity: false,
@@ -5818,6 +5893,12 @@
 
         // In-browser WebAssembly audio decoder fallback & Stall recovery:
         hls.on(Hls.Events.ERROR, (event, data) => {
+          if (window.__hlsErrN === undefined) window.__hlsErrN = 0;
+          if (window.__hlsErrN < 60) {
+            window.__hlsErrN++;
+            const tType = data.type === Hls.ErrorTypes.NETWORK_ERROR ? 'net' : (data.type === Hls.ErrorTypes.MEDIA_ERROR ? 'media' : String(data.type));
+            console.log('[hls-err]', tType, data.details, 'fatal=' + !!data.fatal, state.h264wActive ? '(wasm)' : '');
+          }
           if (data.details === Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR && data.sourceBufferName === 'audio') {
             console.log('Códec MP2 detectado. Activando decodificación directa en navegador vía WebAssembly...');
             state.useWebAudio = true;
@@ -5832,9 +5913,16 @@
                 if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR || 
                     data.details === Hls.ErrorDetails.MANIFEST_LOAD_TIMEOUT ||
                     data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR) {
-                  console.warn('[Alexis TV] Error fatal de red en manifest (' + data.details + ')');
-                  showToast('⚠️ Señal temporalmente no disponible en el servidor');
-                  hideLoader();
+                  if (state.h264wActive) {
+                    // Vía B: no rendirse con el manifest, reintentar en silencio
+                    // (el watchdog también cubre reanimaciones).
+                    console.warn('[Alexis TV] h264w: error de red (' + data.details + '), reintentando...');
+                    try { hls.startLoad(); } catch (e) {}
+                  } else {
+                    console.warn('[Alexis TV] Error fatal de red en manifest (' + data.details + ')');
+                    showToast('⚠️ Señal temporalmente no disponible en el servidor');
+                    hideLoader();
+                  }
                 } else {
                   hls.startLoad();
                 }
@@ -5848,7 +5936,11 @@
                 }
                 state.lastMediaRecoveryTime = now;
 
-                if (state.mediaRecoveryAttempts <= 2) {
+                if (state.h264wActive) {
+                  // TolerantMediaErrorController anula fatal/stopLoad en modo WASM;
+                  // si aun así llega aquí, el watchdog reanuda la carga.
+                  state.h264wMediaSkips = (state.h264wMediaSkips || 0) + 1;
+                } else if (state.mediaRecoveryAttempts <= 2) {
                   console.log(`[Alexis TV] Recuperación multimedia (intento ${state.mediaRecoveryAttempts})...`);
                   if (video && video.error) {
                     try {
@@ -5863,11 +5955,22 @@
                     hls.recoverMediaError();
                   }
                 } else {
-                  console.warn('[Alexis TV] Formato de video no decodificable por el navegador. Manteniendo reproducción limpia...');
                   state.mediaRecoveryAttempts = 0;
                   hideLoader();
-                  if (state.useWebAudio) {
-                    // El audio WebAudio sigue funcionando en vivo de forma ininterrumpida
+                  if (!state.h264wActive && state.hasH264Video && state.h264wPlayer) {
+                    activateH264Wasm({
+                      soft: function () { try { hls.startLoad(); } catch (e) {} },
+                      full: function () { try { hls.detachMedia(); hls.attachMedia(video); hls.startLoad(); } catch (e) {} }
+                    });
+                    // El error fatal detuvo la descarga: reanudar sin tocar los buffers
+                    // (detach/attach dejaría huecos de segmentos irreparables sin IDR).
+                    try {
+                      hls.startLoad();
+                    } catch (e) {
+                      console.warn('[Alexis TV] No se pudo reanudar la carga de segmentos:', e);
+                    }
+                  } else if (state.useWebAudio) {
+                    console.warn('[Alexis TV] Formato de video no decodificable por el navegador. Manteniendo reproducción limpia...');
                     showMpeg2Notice(state.activeChannel, 'El navegador no pudo decodificar esta señal (algunos proveedores la transmiten sin cuadros clave IDR, lo que impide sincronizar el video a media emisión en cualquier reproductor web). El audio original sigue en vivo: puedes copiar el enlace para abrirlo en VLC, o probar otra fuente del mismo canal si tu lista la incluye.');
                   } else {
                     showToast('⚠️ Señal de video no compatible con este navegador en PC');
@@ -5899,6 +6002,18 @@
             if (!state.isMpeg2Decoding && state.mpeg2Player) {
               state.isMpeg2Decoding = true;
               state.mpeg2Player.start();
+            }
+          }
+
+          if (state.h264wActive && state.h264wPlayer && !isTrueMpeg2) {
+            if (rawTsBuffer) {
+              state.h264wPlayer.pushChunk(rawTsBuffer);
+              window.__h264wPushes = (window.__h264wPushes || 0) + 1;
+              if (window.__h264wPushes <= 3) {
+                console.log('[Alexis TV] h264w feed:', (rawTsBuffer.byteLength || 0), 'bytes (frag', window.__h264wPushes + ')');
+              }
+            } else {
+              console.warn('[Alexis TV] h264w: FRAG_PARSED sin TS crudo disponible', 'hasH264=' + !!state.hasH264Video, 'mpeg2=' + !!state.isActualMpeg2Stream, 'sn=' + (data && data.frag && data.frag.sn !== undefined ? data.frag.sn : '?'), 'payload=' + !!(data && data.payload));
             }
           }
 
@@ -5937,13 +6052,13 @@
                     const fragStart = (data && data.frag && typeof data.frag.start === 'number') ? data.frag.start : null;
 
                     // Si el video aún no está reproduciendo activamente o está en buffer inicial, encolar para sincronización perfecta
-                    if (video.paused || video.readyState < 2 || video.currentTime <= 0) {
+                    if (!state.h264wActive && (video.paused || video.readyState < 2 || video.currentTime <= 0)) {
                       pendingAudioQueue.push({ fragStart, duration, buffer });
                     } else {
                       // Video reproduciendo activamente: programar sincronizado a la línea de tiempo del video
                       const vTime = video.currentTime;
                       const aNow = audioCtx.currentTime;
-                      const timeDelta = (fragStart !== null && !isNaN(fragStart)) ? (fragStart - vTime) : null;
+                      const timeDelta = (!state.h264wActive && fragStart !== null && !isNaN(fragStart)) ? (fragStart - vTime) : null;
 
                       if (timeDelta !== null && timeDelta + duration <= 0.05) {
                         // Fragmento en el pasado respecto al fotograma visible, ignorar
@@ -6106,7 +6221,7 @@
     window.hideMpeg2Alert = hideMpeg2Alert;
 
     function showMpeg2Notice(channel, customReason) {
-      if (state.isMpeg2Decoding) return;
+      if (state.isMpeg2Decoding || state.h264wActive) return;
       const target = channel || state.activeChannel;
       if (!target) return;
       const overlay = document.getElementById('mpeg2-alert-overlay');
@@ -6168,11 +6283,14 @@
             if (state.isMpeg2Decoding && state.mpeg2Player) {
               state.mpeg2Player.start();
             }
+            if (state.h264wActive && state.h264wPlayer) {
+              state.h264wPlayer.start();
+            }
             playerStage.classList.remove('paused');
             bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
           } catch (err) {
             console.warn('Error al reanudar reproducción:', err);
-            if (state.activeChannel) {
+            if (state.activeChannel && !state.h264wActive) {
               playChannel(state.activeChannel);
             }
           }
@@ -6183,6 +6301,9 @@
           }
           if (state.isMpeg2Decoding && state.mpeg2Player) {
             state.mpeg2Player.stop();
+          }
+          if (state.h264wActive && state.h264wPlayer) {
+            state.h264wPlayer.stop();
           }
           playerStage.classList.add('paused');
           bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
