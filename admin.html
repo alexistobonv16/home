@@ -624,7 +624,6 @@
             <input type="password" id="login-pin" class="form-input" placeholder="Ingresa tu clave" required autofocus>
             <button type="button" id="toggle-pin-visibility" class="btn btn-outline" style="padding: 0 0.75rem;" title="Mostrar / Ocultar clave">👁️</button>
           </div>
-          <span class="form-hint" style="margin-top: 0.4rem;">Clave por defecto inicial: <code>alexis2026</code></span>
         </div>
 
         <button type="submit" id="login-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; padding: 0.75rem;">
@@ -998,6 +997,13 @@
     });
 
     document.getElementById('logout-btn').addEventListener('click', () => {
+      if (sessionToken) {
+        // Revocar la sesión en KV para que el token deje de ser válido
+        fetch('/api/admin/auth', {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        }).catch(() => {});
+      }
       sessionStorage.removeItem('at_admin_token');
       sessionToken = '';
       loginOverlay.style.display = 'flex';
@@ -1069,19 +1075,19 @@
             <div class="project-card-actions">
               <label class="switch-label" title="Activar/Ocultar en alexistobon.com">
                 <div class="switch">
-                  <input type="checkbox" onchange="toggleProjectActive('${proj.id}', this.checked)" ${proj.active !== false ? 'checked' : ''}>
+                  <input type="checkbox" onchange="toggleProjectActive('${jsAttr(proj.id)}', this.checked)" ${proj.active !== false ? 'checked' : ''}>
                   <span class="slider"></span>
                 </div>
                 <span>${proj.active !== false ? 'Activo' : 'Oculto'}</span>
               </label>
 
               <div style="display: flex; gap: 0.25rem;">
-                <button class="btn-icon" style="width:30px; height:30px;" title="Subir orden" onclick="moveProject('${proj.id}', -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>↑</button>
-                <button class="btn-icon" style="width:30px; height:30px;" title="Bajar orden" onclick="moveProject('${proj.id}', 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>↓</button>
+                <button class="btn-icon" style="width:30px; height:30px;" title="Subir orden" onclick="moveProject('${jsAttr(proj.id)}', -1)" ${isFirst ? 'disabled style="opacity:0.3;"' : ''}>↑</button>
+                <button class="btn-icon" style="width:30px; height:30px;" title="Bajar orden" onclick="moveProject('${jsAttr(proj.id)}', 1)" ${isLast ? 'disabled style="opacity:0.3;"' : ''}>↓</button>
               </div>
 
-              <button class="btn btn-outline btn-sm" onclick="editProject('${proj.id}')">Editar</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteProject('${proj.id}')">Eliminar</button>
+              <button class="btn btn-outline btn-sm" onclick="editProject('${jsAttr(proj.id)}')">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProject('${jsAttr(proj.id)}')">Eliminar</button>
             </div>
           </div>
         `;
@@ -1275,7 +1281,12 @@
         return;
       }
 
-      await saveConfigToKV('Clave de administrador actualizada.', p1);
+      if (p1.trim().length < 4 || p1.trim().length > 64) {
+        alert('La nueva clave debe tener entre 4 y 64 caracteres.');
+        return;
+      }
+
+      await saveConfigToKV('Clave de administrador actualizada.', p1.trim());
       document.getElementById('change-pin-form').reset();
     });
 
@@ -1341,6 +1352,16 @@
         "'": '&#39;',
         '"': '&quot;'
       }[tag] || tag));
+    }
+
+    // Escaping para valores interpolados dentro de atributos onclick/onchange
+    // (JS primero, luego HTML: las entidades se decodifican antes de ejecutar JS).
+    function jsAttr(str) {
+      const jsEscaped = String(str ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r|\n/g, '');
+      return escapeHtml(jsEscaped);
     }
   </script>
 </body>

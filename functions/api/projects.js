@@ -2,7 +2,7 @@
  * Cloudflare Pages Function: /api/projects
  * Public endpoint to fetch active projects and current contact information.
  */
-import defaultConfig from '../../default-config.json';
+import defaultConfig from '../default-config.json';
 
 export async function onRequestGet(context) {
   try {

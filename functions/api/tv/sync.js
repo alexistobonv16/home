@@ -2,49 +2,46 @@
  * Cloudflare Pages Function: /api/tv/sync
  * GET: Retrieve playlists, favorites and last channel from Cloudflare KV
  * POST: Save and synchronize playlists, favorites and settings across devices
+ *
+ * Auth: only session tokens issued by /api/tv/auth (stored in KV) are valid.
+ * No hardcoded fallback PINs or plain-PIN headers are accepted.
  */
-import defaultConfig from '../../../default-config.json';
+import defaultConfig from '../../default-config.json';
 
-async function verifyToken(token, expectedPin, secret = 'at_tv_secret_salt_2026') {
-  if (!token) return false;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`${expectedPin}:${secret}:${new Date().toISOString().slice(0, 7)}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const expectedToken = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-  // Also verify against fallback pin if changed
-  if (token === expectedToken) return true;
-
-  // Fallback check
-  const dataFallback = encoder.encode(`alexis2026:${secret}:${new Date().toISOString().slice(0, 7)}`);
-  const hashBufferFb = await crypto.subtle.digest('SHA-256', dataFallback);
-  const hashArrayFb = Array.from(new Uint8Array(hashBufferFb));
-  const expectedTokenFb = hashArrayFb.map(b => b.toString(16).padStart(2, '0')).join('');
-  return token === expectedTokenFb;
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function checkAuth(context) {
-  let expectedPin = defaultConfig.adminPin || 'alexis2026';
-  if (context.env && context.env.HOME_KV) {
-    const raw = await context.env.HOME_KV.get('site_config');
-    if (raw) {
-      try {
-        const cfg = JSON.parse(raw);
-        if (cfg.tvPin) expectedPin = cfg.tvPin;
-        else if (cfg.adminPin) expectedPin = cfg.adminPin;
-      } catch {}
-    }
-  }
-
-  const pinHeader = context.request.headers.get('X-Admin-Pin') || '';
-  if (pinHeader && (pinHeader.trim() === expectedPin.trim() || pinHeader.trim() === 'alexis2026')) {
-    return true;
-  }
-
   const authHeader = context.request.headers.get('Authorization') || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  return await verifyToken(token, expectedPin);
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return false;
+  if (!context.env || !context.env.HOME_KV) return false;
+
+  // PIN vigente (tvPin o adminPin como respaldo inicial)
+  let expectedPin = defaultConfig.adminPin || '';
+  const raw = await context.env.HOME_KV.get('site_config');
+  if (raw) {
+    try {
+      const cfg = JSON.parse(raw);
+      if (cfg.tvPin) expectedPin = cfg.tvPin;
+      else if (cfg.adminPin) expectedPin = cfg.adminPin;
+    } catch {}
+  }
+  expectedPin = (expectedPin || '').trim();
+  if (!expectedPin) return false;
+
+  const sessionRaw = await context.env.HOME_KV.get(`tv_session_${token}`);
+  if (!sessionRaw) return false;
+
+  try {
+    const session = JSON.parse(sessionRaw);
+    // Invalida sesiones emitidas con un PIN anterior.
+    return session.pinHash === (await sha256Hex(expectedPin));
+  } catch {
+    return false;
+  }
 }
 
 export async function onRequestGet(context) {
@@ -88,8 +85,8 @@ export async function onRequestGet(context) {
       }
     });
 
-  } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), {
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Error interno del servidor.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
@@ -112,6 +109,14 @@ export async function onRequestPost(context) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: 'Cuerpo de solicitud inválido.' }), {
         status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    // Límite de tamaño: KV soporta 25 MB, pero evitamos payloads absurdos.
+    if (JSON.stringify(body).length > 5_000_000) {
+      return new Response(JSON.stringify({ success: false, error: 'Payload demasiado grande.' }), {
+        status: 413,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
@@ -145,8 +150,8 @@ export async function onRequestPost(context) {
       }
     });
 
-  } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), {
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'Error interno del servidor.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
@@ -159,7 +164,7 @@ export async function onRequestOptions() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Pin'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }
   });
 }

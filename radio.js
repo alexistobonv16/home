@@ -9,7 +9,7 @@
   // Default Curated Stations
   function getStationFallbackSvg(name, genre) {
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const initials = (name || 'RA').split(' ').filter(Boolean).map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'RA';
+    const initials = ((name || 'RA').split(' ').filter(Boolean).map(w => w[0]).join('') + 'RA').replace(/[^A-Za-z0-9]/g, '').substring(0, 2).toUpperCase() || 'RA';
     let color = isLight ? '#0284c7' : '#00f0ff';
     if (genre === 'Noticias') color = isLight ? '#0284c7' : '#38bdf8';
     else if (genre === 'Rock') color = isLight ? '#dc2626' : '#ef4444';
@@ -20,6 +20,17 @@
     const bgFill = isLight ? '%23f1f5f9' : '%23080f24';
     const strokeColor = encodeURIComponent(color);
     return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='${bgFill}' stroke='${strokeColor}' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='${strokeColor}' text-anchor='middle'%3E${initials}%3C/text%3E%3C/svg%3E`;
+  }
+
+  // Escape para HTML (evita XSS almacenado vía emisoras sincronizadas/importadas)
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag] || tag));
   }
 
   // Default Curated Stations
@@ -984,7 +995,7 @@
 
     // Top Stage Updates
     if (activeStationName) activeStationName.textContent = station.name;
-    if (activeStationFreq) activeStationFreq.innerHTML = `<span>●</span> ${station.freq || 'WEB STREAM'}`;
+    if (activeStationFreq) activeStationFreq.innerHTML = `<span>●</span> ${escapeHtml(station.freq || 'WEB STREAM')}`;
     const genreTextEl = document.getElementById('active-station-genre-text');
     if (genreTextEl) {
       genreTextEl.textContent = station.genre || 'General';
@@ -1050,10 +1061,12 @@
       const fallbackLogo = getStationFallbackSvg(s.name, s.genre);
       const sFmt = detectStreamFormat(s.url);
 
+      const logoSrc = /^(https?:\/\/|data:image\/)/i.test(s.logo || '') ? s.logo : fallbackLogo;
+
       return `
-        <div class="station-card ${isCardPlaying ? 'playing' : ''}" data-station-id="${s.id}">
+        <div class="station-card ${isCardPlaying ? 'playing' : ''}" data-station-id="${escapeHtml(s.id)}">
           <div class="station-card-logo-wrap">
-            <img class="station-card-img" src="${s.logo || fallbackLogo}" alt="${s.name}" onerror="this.src='${fallbackLogo}'" loading="lazy">
+            <img class="station-card-img" src="${escapeHtml(logoSrc)}" alt="${escapeHtml(s.name)}" data-fallback="${escapeHtml(fallbackLogo)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" loading="lazy">
             <div class="playing-badge-indicator">
               <div class="mini-eq">
                 <span></span><span></span><span></span><span></span>
@@ -1062,10 +1075,10 @@
           </div>
 
           <div class="station-card-content">
-            <div class="station-card-name" title="${s.name}">${s.name}</div>
+            <div class="station-card-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
             <div class="station-card-meta">
-              <span class="badge-tag">${s.freq || 'WEB'}</span>
-              <span class="badge-tag">${s.genre || 'Música'}</span>
+              <span class="badge-tag">${escapeHtml(s.freq || 'WEB')}</span>
+              <span class="badge-tag">${escapeHtml(s.genre || 'Música')}</span>
               <span class="badge-tag ${sFmt.badgeClass}">${sFmt.ext}</span>
               ${isCurrent && currentBitrateKbps ? `<span class="badge-tag highlight-bitrate">${currentBitrateKbps} kbps</span>` : ''}
             </div>
@@ -1788,7 +1801,7 @@
     toast.className = 'toast';
     toast.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-      <span>${msg}</span>
+      <span>${escapeHtml(msg)}</span>
     `;
 
     container.appendChild(toast);

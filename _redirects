@@ -1,0 +1,3 @@
+# Bloquea el archivo de configuración por defecto (contenía el PIN).
+# El archivo ya no existe en el repo, esto es defensa adicional si alguien lo reintroduce.
+/default-config.json / 301

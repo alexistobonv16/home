@@ -34,8 +34,8 @@ export async function onRequest(context) {
         'Access-Control-Allow-Origin': '*'
       }
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch {
+    return new Response(JSON.stringify({ error: 'No se pudo obtener el feed de NotiTec.' }), {
       status: 500,
       headers: {
         'Content-Type': 'application/json',

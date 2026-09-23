@@ -619,8 +619,8 @@ function initCommandPalette() {
           <div class="cmd-item-left">
             <span class="cmd-item-icon">${cmd.icon}</span>
             <div>
-              <div class="cmd-item-title">${cmd.title}</div>
-              <div class="cmd-item-shortcut">${cmd.desc}</div>
+              <div class="cmd-item-title">${escapeHtml(cmd.title)}</div>
+              <div class="cmd-item-shortcut">${escapeHtml(cmd.desc)}</div>
             </div>
           </div>
           <span class="cmd-item-shortcut">↵</span>
@@ -767,7 +767,8 @@ async function initNotiTecFeed() {
     // Build new cards dynamically
     const newCardsHtml = items.map(item => {
       const title = item.querySelector('title')?.textContent || 'Noticia de Tecnología';
-      const link = item.querySelector('link')?.textContent || 'https://www.notitec.co';
+      let link = item.querySelector('link')?.textContent || 'https://www.notitec.co';
+      if (!/^https?:\/\//i.test(link)) link = 'https://www.notitec.co';
       const category = item.querySelector('category')?.textContent || 'Tecnología';
       const rawDate = item.querySelector('pubDate')?.textContent || '';
       let dateStr = '';
@@ -806,15 +807,7 @@ async function initNotiTecFeed() {
   }
 }
 
-function escapeHtml(str) {
-  return str.replace(/[&<>'"]/g, tag => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    "'": '&#39;',
-    '"': '&quot;'
-  }[tag] || tag));
-}
+
 
 /* ==========================================================================
    FEATURE 3: SILENT BACKGROUND CONTACT FORM (to admin@alexistobon.com)
@@ -1130,14 +1123,14 @@ function escapeHtml(str) {
 function generateProjectCardHtml(proj, index) {
   const isMobileScreen = window.innerWidth <= 768;
   const isReversed = index % 2 === 1;
-  const badgeColorClass = `badge-${proj.badgeColor || 'brand'}`;
+  const badgeColorClass = 'badge-' + (String(proj.badgeColor || 'brand').replace(/[^a-z-]/gi, '') || 'brand');
   const defaultView = proj.defaultView || 'desktop';
   const effectiveView = isMobileScreen ? 'mobile' : defaultView;
   const tagsHtml = (proj.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
   const domain = proj.domain || (proj.url ? proj.url.replace(/^https?:\/\//, '').replace(/\/$/, '') : 'sitio web');
 
   return `
-    <article class="project-showcase ${isReversed ? 'reversed' : ''}" id="project-${proj.id}">
+    <article class="project-showcase ${isReversed ? 'reversed' : ''}" id="project-${escapeHtml(proj.id)}">
       <div class="project-info">
         <div class="project-meta-top">
           <div class="meta-left-group">
@@ -1182,7 +1175,7 @@ function generateProjectCardHtml(proj, index) {
 
       <!-- Live Browser Mockup -->
       <div class="browser-mockup-wrapper">
-        <div class="browser-window" data-project="${proj.id}" data-default-view="${defaultView}" data-view="${effectiveView}">
+        <div class="browser-window" data-project="${escapeHtml(proj.id)}" data-default-view="${escapeHtml(defaultView)}" data-view="${escapeHtml(effectiveView)}">
           <!-- Window Chrome / Header -->
           <div class="browser-header">
             <div class="window-dots">
@@ -1378,7 +1371,7 @@ function applyProjectsUpdates(projects) {
       const badgeEl = el.querySelector('.badge');
       if (badgeEl) {
         badgeEl.textContent = proj.badge || 'Proyecto';
-        badgeEl.className = `badge badge-${proj.badgeColor || 'brand'}`;
+        badgeEl.className = 'badge badge-' + (String(proj.badgeColor || 'brand').replace(/[^a-z-]/gi, '') || 'brand');
       }
 
       // Tech tags
