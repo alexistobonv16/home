@@ -3448,6 +3448,16 @@
        HLS Player, M3U Parser, Multi-Device Cloudflare KV Sync, PiP & PWA
        ========================================================================== */
 
+    // Parseo seguro de JSON persistido: evita que un valor corrupto en
+    // localStorage rompa el arranque completo de la aplicación.
+    function safeJsonParse(raw, fallback) {
+      try { return JSON.parse(raw); } catch { return fallback; }
+    }
+    function safeJsonArray(raw) {
+      const v = safeJsonParse(raw, null);
+      return Array.isArray(v) ? v : [];
+    }
+
     // Application State
     const state = {
       token: localStorage.getItem('at_tv_token') || '',
@@ -3457,7 +3467,7 @@
       filteredChannels: [],
       activeChannel: null,
       previousChannel: null,
-      recentChannels: JSON.parse(localStorage.getItem('at_tv_recents') || '[]'),
+      recentChannels: safeJsonArray(localStorage.getItem('at_tv_recents')),
       favorites: new Set(),
       activeGroup: 'all',
       searchQuery: '',
@@ -3494,7 +3504,7 @@
       sleepTimerEndTime: null,
       sleepTimerInterval: null,
       zappingTimeout: null,
-      hiddenGroups: JSON.parse(localStorage.getItem('at_tv_hidden_groups') || '[]'),
+      hiddenGroups: safeJsonArray(localStorage.getItem('at_tv_hidden_groups')),
       channelHealth: {},
       healthFilterActive: false,
       isCheckingHealth: false,
