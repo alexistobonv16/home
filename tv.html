@@ -5704,76 +5704,14 @@
             renderQualityAudioMenu();
           }
 
-          function cleanOrphanBottomField(targetBuf, vPid) {
-            let firstPusiIdx = -1;
-            let secondPusiIdx = -1;
-            let firstFieldType = 'unknown';
-
-            for (let i = 0; i + 188 <= targetBuf.length; i += 188) {
-              if (targetBuf[i] !== 0x47) continue;
-              const pid = ((targetBuf[i + 1] & 0x1f) << 8) | targetBuf[i + 2];
-              if (pid !== vPid) continue;
-              if ((targetBuf[i + 1] & 0x40) === 0) continue;
-
-              if (firstPusiIdx === -1) {
-                firstPusiIdx = i;
-                const pesBytes = [];
-                for (let k = i; k + 188 <= targetBuf.length && pesBytes.length < 120; k += 188) {
-                  if (targetBuf[k] !== 0x47) continue;
-                  if ((((targetBuf[k + 1] & 0x1f) << 8) | targetBuf[k + 2]) !== vPid) continue;
-                  if (k > i && (targetBuf[k + 1] & 0x40) !== 0) break;
-                  const afc = (targetBuf[k + 3] >> 4) & 3;
-                  let off = k + 4;
-                  if (afc === 2) continue;
-                  if (afc === 3) off += 1 + targetBuf[k + 4];
-                  if (off < k + 188) {
-                    for (let b = off; b < k + 188 && pesBytes.length < 120; b++) pesBytes.push(targetBuf[b]);
-                  }
-                }
-                if (pesBytes.length >= 14 && pesBytes[0] === 0 && pesBytes[1] === 0 && pesBytes[2] === 1) {
-                  const hdrLen = pesBytes[8] || 0;
-                  const pStart = 9 + hdrLen;
-                  for (let j = pStart; j < Math.min(pStart + 60, pesBytes.length - 5); j++) {
-                    if (pesBytes[j] === 0 && pesBytes[j+1] === 0 && pesBytes[j+2] === 1 && (pesBytes[j+3] & 0x1f) === 6 && pesBytes[j+4] === 1) {
-                      if (pesBytes[j+6] === 0x24 || (pesBytes[j+6] & 0xf0) === 0x20) {
-                        firstFieldType = 'BOT';
-                      } else if (pesBytes[j+6] === 0x14 || (pesBytes[j+6] & 0xf0) === 0x10) {
-                        firstFieldType = 'TOP';
-                      }
-                      break;
-                    }
-                  }
-                }
-              } else {
-                secondPusiIdx = i;
-                break;
-              }
-            }
-
-            if (firstFieldType === 'BOT' && firstPusiIdx !== -1 && secondPusiIdx !== -1) {
-              for (let i = firstPusiIdx; i < secondPusiIdx; i += 188) {
-                if (targetBuf[i] === 0x47 && (((targetBuf[i+1] & 0x1f) << 8) | targetBuf[i+2]) === vPid) {
-                  targetBuf[i+1] = 0x1f; targetBuf[i+2] = 0xff; targetBuf[i+3] = 0x10;
-                  targetBuf.fill(0xff, i + 4, i + 188);
-                }
-              }
-              return true;
-            }
-            return false;
-          }
-
+          // Nota: se eliminó cleanOrphanBottomField() — "limpiaba" campos entrelazados
+          // nullificando el primer PES de video de cada segmento, lo que destruía datos
+          // reales (SPS/PPS/paquetes clave) y rompía la reproducción en señales PAFF.
           if (!isMp2 || audioPids.size === 0) {
-            if (detectedVideoPid !== null) {
-              const copy = new Uint8Array(u8.length);
-              copy.set(u8);
-              if (cleanOrphanBottomField(copy, detectedVideoPid)) {
-                return { data: copy.buffer, isMp2: false };
-              }
-            }
             return { data: buffer, isMp2: false };
           }
 
-          // Paso 2: Solo enmascarar audio MP2 para WebAudio y normalizar campos entrelazados en inicio de segmento
+          // Paso 2: Solo enmascarar audio MP2 para WebAudio (el video se preserva íntegro)
           const copy = new Uint8Array(u8.length);
           copy.set(u8);
 
@@ -5787,10 +5725,6 @@
               copy[i + 3] = 0x10;
               copy.fill(0xff, i + 4, i + 188);
             }
-          }
-
-          if (detectedVideoPid !== null) {
-            cleanOrphanBottomField(copy, detectedVideoPid);
           }
 
           return { data: copy.buffer, isMp2: isMp2 };
@@ -5934,7 +5868,7 @@
                   hideLoader();
                   if (state.useWebAudio) {
                     // El audio WebAudio sigue funcionando en vivo de forma ininterrumpida
-                    showMpeg2Notice(state.activeChannel, 'Esta señal emite video en formato 1080i entrelazado (PAFF) que no puede ser procesado por el decodificador de este navegador en PC. El audio original en vivo se reproduce de manera continua y puedes copiar el enlace para abrirlo en VLC.');
+                    showMpeg2Notice(state.activeChannel, 'El navegador no pudo decodificar esta señal (algunos proveedores la transmiten sin cuadros clave IDR, lo que impide sincronizar el video a media emisión en cualquier reproductor web). El audio original sigue en vivo: puedes copiar el enlace para abrirlo en VLC, o probar otra fuente del mismo canal si tu lista la incluye.');
                   } else {
                     showToast('⚠️ Señal de video no compatible con este navegador en PC');
                   }

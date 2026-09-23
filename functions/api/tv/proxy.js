@@ -170,6 +170,7 @@ export async function onRequestGet(context) {
 
     let lastResponse = null;
     let lastError = null;
+    let sawStub = false;
 
     for (const candidateUrl of candidateUrls) {
       for (const ua of USER_AGENTS) {
@@ -259,6 +260,16 @@ export async function onRequestGet(context) {
             }
 
             // Binary TS video chunks or other media streams: pass stream directly
+            const mediaContentLength = parseInt(res.headers.get('content-length') || '0', 10);
+            if (mediaContentLength > 0 && mediaContentLength < 1024 && !targetUrl.match(/\.(m3u8?|xml)(\?|$)/i)) {
+              // El servidor IPTV devuelve "stubs" de1 paquete TS (~188 B) cuando está
+              // saturado o limitando. Servirlos como200 basura haría que hls.js montara
+              // fragmentos irrecuperables en el MSE y matara la reproducción: mejor
+              // responder un error de red para que hls.js reintente con backoff.
+              sawStub = true;
+              lastResponse = res;
+              continue;
+            }
             return new Response(res.body, {
               status: 200,
               headers: {
@@ -282,6 +293,12 @@ export async function onRequestGet(context) {
           break;
         }
       }
+    }
+
+    // Respuestas truncadas de origen (stubs de ~188 B): la redía arriba para no
+    // basurar el reproductor; avisamos con un error recuperable para hls.js.
+    if (sawStub && !lastError) {
+      return jsonError('El servidor IPTV devolvió una respuesta incompleta (suele indicar saturación del origen). El reproductor reintentará automáticamente.', 503);
     }
 
     // If we received an HTTP error response from the upstream IPTV server
