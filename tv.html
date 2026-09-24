@@ -3607,7 +3607,9 @@
       const h264wCanvas = document.getElementById('h264w-canvas');
       if (window.H264WasmLivePlayer && h264wCanvas) {
         state.h264wPlayer = new H264WasmLivePlayer(h264wCanvas);
+        // Debug hooks (solo lectura) para pruebas E2E.
         window.__h264w = state.h264wPlayer;
+        window.__tvState = state;
       }
       initPlayerControls();
       initAuth();
@@ -5563,6 +5565,7 @@
     function activateH264Wasm(kicks) {
       if (state.h264wActive || !state.h264wPlayer) return;
       state.h264wActive = true;
+      state.mediaRecoveryPending = false;
       state.useWebAudio = true;
       state.h264wPlayer.start();
       hideMpeg2Alert();
@@ -5610,6 +5613,12 @@
         state.h264wPlayer.stop();
       }
       state.h264wActive = false;
+      // Abrir la ventana de enmascaramiento desde el arranque del canal: durante la
+      // carga (p. ej. autoplay del <video> que falla antes del primer error hls) no
+      // debe parpadear el botón de play. Se cierra con progreso real de video, al
+      // activar Vía B o con interacción del usuario.
+      state.mediaRecoveryPending = true;
+      state.mediaRecoveryTimePos = null;
       if (state.h264wWatchdog) {
         clearInterval(state.h264wWatchdog);
         state.h264wWatchdog = null;
@@ -5928,6 +5937,15 @@
                 }
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
+                // Ventana de recuperación: enmascara el parpadeo del botón de play
+                // (eventos play/pause del <video> durante detach/attach) y mantiene
+                // el loader visible. Se cierra con progreso real de video, al activar
+                // Vía B, por interacción del usuario o al cambiar de canal.
+                if (!state.mediaRecoveryPending) {
+                  state.mediaRecoveryPending = true;
+                  state.mediaRecoveryTimePos = null;
+                  showLoader('Sincronizando señal...');
+                }
                 const now = Date.now();
                 if (now - state.lastMediaRecoveryTime < 4000) {
                   state.mediaRecoveryAttempts++;
@@ -6110,7 +6128,7 @@
             hideMpeg2Alert();
           }
 
-          hideLoader();
+          if (!state.mediaRecoveryPending) hideLoader();
         });
 
         state.hls = hls;
@@ -6136,7 +6154,7 @@
       if (p !== undefined) {
         p.then(() => {
           playerStage.classList.remove('paused');
-          hideLoader();
+          if (!state.mediaRecoveryPending) hideLoader();
         }).catch((err) => {
           // Si la reproducción fue interrumpida mientras se preparaban búferes, reintentar al recibir datos
           if (err && (err.name === 'AbortError' || err.message?.includes('interrupted'))) {
@@ -6145,7 +6163,7 @@
               if (video.paused && state.channelSessionId === currentSession) {
                 video.play().then(() => {
                   playerStage.classList.remove('paused');
-                  hideLoader();
+                  if (!state.mediaRecoveryPending) hideLoader();
                 }).catch(() => {});
               }
             }, { once: true });
@@ -6205,6 +6223,8 @@
     }
 
     function showControlsPrompt() {
+      // Escape de la ventana de recuperación: la reproducción está realmente bloqueada.
+      state.mediaRecoveryPending = false;
       playerStage.classList.add('paused');
       hideLoader();
     }
@@ -6274,17 +6294,28 @@
     function initPlayerControls() {
       // Play / Pause toggle
       async function togglePlay() {
-        if (video.paused) {
+        // Interacción del usuario = fin de la ventana de recuperación.
+        state.mediaRecoveryPending = false;
+        hideLoader();
+        // En modo Vía B (WASM) el <video> nativo queda pausado con la señal
+        // rota: decidir por el estado del decoder, no por video.paused.
+        const wasmMode = state.h264wActive && state.h264wPlayer;
+        const wantsResume = wasmMode ? !state.h264wPlayer.active : video.paused;
+        if (wantsResume) {
           try {
-            await video.play();
+            if (wasmMode) {
+              // Best-effort: el elemento puede estar en error; el canvas es la fuente.
+              const pp = video.play();
+              if (pp && pp.catch) pp.catch(() => {});
+              state.h264wPlayer.start();
+            } else {
+              await video.play();
+            }
             if (state.useWebAudio && audioCtx && audioCtx.state === 'suspended') {
               audioCtx.resume();
             }
             if (state.isMpeg2Decoding && state.mpeg2Player) {
               state.mpeg2Player.start();
-            }
-            if (state.h264wActive && state.h264wPlayer) {
-              state.h264wPlayer.start();
             }
             playerStage.classList.remove('paused');
             bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
@@ -6399,13 +6430,16 @@
       video.addEventListener('play', () => {
         playerStage.classList.remove('paused');
         bottomPlaySvg.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
-        showPlayerControls(2500);
+        if (!state.mediaRecoveryPending) showPlayerControls(2500);
         if (state.useWebAudio && audioCtx && audioCtx.state === 'suspended' && !state.isMuted) {
           try { audioCtx.resume(); } catch (e) {}
         }
       });
 
       video.addEventListener('pause', () => {
+        // Durante la recuperación de errores MEDIA (o en modo Vía B/WASM) el <video>
+        // se pausa solo: no parpadear el botón de play ni cortar el audio WebAudio.
+        if (state.mediaRecoveryPending || state.h264wActive) return;
         playerStage.classList.add('paused');
         bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
         showPlayerControls(5000);
@@ -6667,7 +6701,9 @@
       // ANTI-FREEZE WATCHDOG: auto-nudges past micro PTS drops or stuck buffer frames
       let stallWatchdog = null;
       video.addEventListener('waiting', () => {
-        if (state.useWebAudio) {
+        // No cortar el audio WebAudio en modo WASM (va por su propio reloj) ni
+        // durante la ventana de recuperación (se reanuda en 'playing').
+        if (state.useWebAudio && !state.h264wActive && !state.mediaRecoveryPending) {
           stopWebAudio();
         }
         clearTimeout(stallWatchdog);
@@ -6693,8 +6729,11 @@
       });
 
       video.addEventListener('playing', () => {
+        // No limpiar mediaRecoveryPending aquí: en canales problemáticos 'playing'
+        // puede parpadear entre intentos y reabrir el destello. Se limpia con
+        // progreso real (timeupdate), al activar Vía B o con interacción del usuario.
         clearTimeout(stallWatchdog);
-        hideLoader();
+        if (!state.mediaRecoveryPending) hideLoader();
         if (video.videoWidth > 0) {
           hideMpeg2Alert();
         }
@@ -6716,13 +6755,24 @@
       });
 
       video.addEventListener('loadeddata', () => {
-        hideLoader();
+        if (!state.mediaRecoveryPending) hideLoader();
       });
 
       video.addEventListener('timeupdate', () => {
         clearTimeout(stallWatchdog);
         if (video.currentTime > 0) {
-          hideLoader();
+          if (state.mediaRecoveryPending) {
+            // Solo salir de la ventana con avance real y sostenido del timeline
+            // (el currentTime congelado de un stream que no decodifica no cuenta).
+            const prev = state.mediaRecoveryTimePos;
+            state.mediaRecoveryTimePos = video.currentTime;
+            if (!video.paused && typeof prev === 'number' && video.currentTime > prev + 0.25) {
+              state.mediaRecoveryPending = false;
+              hideLoader();
+            }
+          } else {
+            hideLoader();
+          }
         }
       });
 
