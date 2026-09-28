@@ -186,7 +186,11 @@ export async function onRequestGet(context) {
 
           if (res.ok) {
             const contentType = res.headers.get('content-type') || '';
-            const isXml = contentType.includes('xml') || targetUrl.includes('.xml');
+            // .xml.gz / gzip: son binario comprimido, NO XML en texto plano.
+            // Devolverlos por la rama de texto los manguerea (UTF-8 sobre gzip);
+            // se dejan pasar como binario y el cliente los descomprime.
+            const isGzTarget = /\.gz(\?|$)/i.test(targetUrl) || contentType.includes('gzip');
+            const isXml = !isGzTarget && (contentType.includes('xml') || targetUrl.includes('.xml'));
             const isTextOrM3u = isXml ||
                                 contentType.includes('mpegurl') ||
                                 contentType.includes('m3u') ||
