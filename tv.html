@@ -3481,6 +3481,9 @@
       useWebAudio: false,
       channelSessionId: 0,
       selectedMp2Pid: null,
+      audioCodec: null, // 'mp2' | 'dolby' — códec de la pista de audio WebAudio seleccionada
+      dolbyDecoder: null, // decoder AC-3/E-AC-3 (FFmpeg ac3dec wasm), carga perezosa
+      dolbyErrorsWarned: false,
       availableMp2Tracks: [],
       processedAudioFrags: new Set(),
       hasH264Video: false,
@@ -4692,6 +4695,8 @@
 
     window.selectMp2AudioTrack = function(pid, name) {
       state.selectedMp2Pid = pid;
+      const track = (state.availableMp2Tracks || []).find(t => Number(t.pid) === Number(pid));
+      if (track && track.codec) state.audioCodec = track.codec;
       stopWebAudio();
       renderQualityAudioMenu();
       closeQualityMenu();
@@ -5443,7 +5448,9 @@
       stops: state.diagAudioStops || 0,
       seeks: state.diagSeeks || 0,
       dur: +(state.diagAudioDur || 0).toFixed(2),
-      t0: state.diagAudioT0 || null
+      t0: state.diagAudioT0 || null,
+      codec: state.audioCodec || null,
+      dolbyErr: state.dolbyDecoder ? state.dolbyDecoder.errors : null
     });
 
     // Android/iOS pueden suspender el AudioContext (notificaciones, presión de
@@ -5534,7 +5541,7 @@
               const streamType = buf[p];
               const elemPid = ((buf[p + 1] & 0x1f) << 8) | buf[p + 2];
               const esInfoLen = ((buf[p + 3] & 0x0f) << 8) | buf[p + 4];
-              if (streamType === 0x03 || streamType === 0x04) {
+              if (streamType === 0x03 || streamType === 0x04 || streamType === 0x81 || streamType === 0x87) {
                 chosenPid = elemPid;
                 break;
               }
@@ -5583,6 +5590,30 @@
         pos += c.length;
       }
       return merged;
+    }
+
+    // Decoder Dolby (AC-3 / E-AC-3): FFmpeg ac3dec compilado a WASM (LGPL-2.1,
+    // js/decode-eac3.js + js/src/eac3.wasm.js). Carga perezosa: sólo se importa
+    // cuando el canal seleccionado tiene audio Dolby (~447 KB, cacheados por el SW).
+    // API idéntica a mpg123: decode(chunk) síncrono → { channelData, sampleRate }.
+    let dolbyDecoderPromise = null;
+    function getDolbyDecoder() {
+      if (state.dolbyDecoder) return Promise.resolve(state.dolbyDecoder);
+      if (!dolbyDecoderPromise) {
+        dolbyDecoderPromise = import('/js/decode-eac3.js')
+          .then(mod => mod.decoder())
+          .then(dec => {
+            state.dolbyDecoder = dec;
+            console.log('[Alexis TV] decoder Dolby AC-3/E-AC-3 (ffmpeg wasm) listo');
+            return dec;
+          })
+          .catch(err => {
+            dolbyDecoderPromise = null;
+            console.warn('[Alexis TV] no se pudo cargar el decoder Dolby:', err);
+            return null;
+          });
+      }
+      return dolbyDecoderPromise;
     }
 
     // Subclase del ErrorController de hls.js: en modo Vía B (decoder WASM) los errores
@@ -5676,6 +5707,9 @@
       pendingAudioQueue = [];
       state.useWebAudio = false;
       state.selectedMp2Pid = null;
+      state.audioCodec = null;
+      state.dolbyErrorsWarned = false;
+      if (state.dolbyDecoder) { try { state.dolbyDecoder.flush(); } catch (e) {} }
       state.availableMp2Tracks = [];
       state.processedAudioFrags = new Set();
       state.hasH264Video = false;
@@ -5750,6 +5784,7 @@
           let audioPids = new Set();
           let parsedTracks = [];
           let isMp2 = false;
+          let isDolby = false;
 
           // Paso 1: Explorar PAT y PMT para identificar todos los PIDs de audio y el tipo de video
           let detectedVideoPid = null;
@@ -5808,7 +5843,28 @@
                   parsedTracks.push({
                     pid: elemPid,
                     name: lang ? `Audio (${lang.toUpperCase()})` : (parsedTracks.length === 0 ? 'Pista 1 (Principal)' : `Pista ${parsedTracks.length + 1} (SAP)`),
-                    lang: lang
+                    lang: lang,
+                    codec: 'mp2'
+                  });
+                } else if (streamType === 0x81 || streamType === 0x87) { // AC-3 / E-AC-3 (Dolby)
+                  audioPids.add(elemPid);
+                  isDolby = true;
+                  let lang = '';
+                  let d = p + 5;
+                  const dEnd = d + esInfoLen;
+                  while (d < dEnd) {
+                    const tag = u8[d];
+                    const len = u8[d + 1];
+                    if (tag === 0x0A && len >= 3) {
+                      lang = String.fromCharCode(u8[d + 2], u8[d + 3], u8[d + 4]);
+                    }
+                    d += 2 + len;
+                  }
+                  parsedTracks.push({
+                    pid: elemPid,
+                    name: lang ? `Dolby (${lang.toUpperCase()})` : (parsedTracks.length === 0 ? 'Dolby (Principal)' : `Dolby ${parsedTracks.length + 1}`),
+                    lang: lang,
+                    codec: 'dolby'
                   });
                 }
                 p += 5 + esInfoLen;
@@ -5823,14 +5879,16 @@
             if (!state.selectedMp2Pid) {
               state.selectedMp2Pid = parsedTracks[0].pid;
             }
+            const selTrack = parsedTracks.find(t => Number(t.pid) === Number(state.selectedMp2Pid));
+            if (selTrack && selTrack.codec) state.audioCodec = selTrack.codec;
             renderQualityAudioMenu();
           }
 
           // Nota: se eliminó cleanOrphanBottomField() — "limpiaba" campos entrelazados
           // nullificando el primer PES de video de cada segmento, lo que destruía datos
           // reales (SPS/PPS/paquetes clave) y rompía la reproducción en señales PAFF.
-          if (!isMp2 || audioPids.size === 0) {
-            return { data: buffer, isMp2: false };
+          if ((!isMp2 && !isDolby) || audioPids.size === 0) {
+            return { data: buffer, isMp2: false, isDolby: false };
           }
 
           // Paso 2: Solo enmascarar audio MP2 para WebAudio (el video se preserva íntegro)
@@ -5849,7 +5907,7 @@
             }
           }
 
-          return { data: copy.buffer, isMp2: isMp2 };
+          return { data: copy.buffer, isMp2: isMp2, isDolby: isDolby };
         }
 
         // Custom fragment loader to intercept raw MPEG-2 TS chunk bytes and isolate MP2 audio
@@ -5863,7 +5921,7 @@
                 if (currentSessionId !== state.channelSessionId) return;
                 if (context.frag && response.data) {
                   const processed = preprocessTsChunk(response.data);
-                  if (processed.isMp2) {
+                  if (processed.isMp2 || processed.isDolby) {
                     state.useWebAudio = true;
                     video.muted = true;
                     video.volume = 0;
@@ -6100,8 +6158,17 @@
                 if (audioDecoder && audioDecoder.ready) {
                   try { await audioDecoder.ready; } catch (e) {}
                 }
-                if (audioDecoder && audioCtx) {
-                  const decoded = audioDecoder.decode(rawAudio);
+                // Decoder según el códec de la pista seleccionada: mpg123 para
+                // MP2/MPEG; FFmpeg ac3dec (wasm) para Dolby AC-3/E-AC-3.
+                const mainDecoder = (state.audioCodec === 'dolby')
+                  ? await getDolbyDecoder()
+                  : audioDecoder;
+                if (mainDecoder && audioCtx) {
+                  const decoded = mainDecoder.decode(rawAudio);
+                  if (state.audioCodec === 'dolby' && mainDecoder.errors > 0 && !state.dolbyErrorsWarned) {
+                    state.dolbyErrorsWarned = true;
+                    console.warn('[Alexis TV] decoder Dolby: ' + mainDecoder.errors + ' frame(s) con error de decodificación');
+                  }
                   if (decoded && decoded.channelData && decoded.channelData.length && decoded.channelData[0].length) {
                     const numChannels = decoded.channelData.length;
                     const numSamples = decoded.channelData[0].length;
