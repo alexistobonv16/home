@@ -3886,7 +3886,22 @@
               (allChs.find(c => c.url === json.data.lastChannel.url) || state.channels[0]) : 
               state.channels[0];
 
-            if (toPlay) playChannel(toPlay);
+            if (toPlay) {
+              // Primer arranque de sesión sin ninguna interacción del usuario:
+              // Android Chrome bloquearía el sonido (política de autoplay) y el
+              // canal arrancaría mudo hasta que se habilite a mano. En vez de
+              // eso, esperar al primer gesto y arrancar entonces CON sonido
+              // desde el primer instante. Si ya hubo interacción (o el navegador
+              // no expone userActivation), restaurar directamente como antes.
+              if (navigator.userActivation && !navigator.userActivation.hasBeenActive) {
+                state.pendingRestoreChannel = toPlay;
+                state.autoplayBlocked = true;
+                showControlsPrompt();
+                showToast('▶️ Toca para reproducir con sonido');
+              } else {
+                playChannel(toPlay);
+              }
+            }
           } else {
             renderEmptyChannels();
           }
@@ -5347,7 +5362,12 @@
         audioGain = audioCtx.createGain();
         audioGain.gain.value = (state.isMuted || !state.useWebAudio) ? 0 : state.volume;
         audioGain.connect(audioCtx.destination);
+        state.audioChainBaselineV = video ? video.currentTime : 0;
       }
+      // Si el contexto quedó congelado mientras el video seguía avanzando
+      // (p. ej. creación previa al primer gesto), la cadena programada está
+      // desalineada: reconstruirla antes de reanudar.
+      maybeRebuildStaleChain();
       // initWebAudio se invoca en cada fragmento: no debe reanudar un contexto
       // congelado intencionalmente (pausa del usuario, stall congelado en
       // 'waiting' o decoder Vía B detenido) porque reactivaría el audio de la
@@ -5450,8 +5470,36 @@
       dur: +(state.diagAudioDur || 0).toFixed(2),
       t0: state.diagAudioT0 || null,
       codec: state.audioCodec || null,
-      dolbyErr: state.dolbyDecoder ? state.dolbyDecoder.errors : null
+      dolbyErr: state.dolbyDecoder ? state.dolbyDecoder.errors : null,
+      baseline: typeof state.audioChainBaselineV === 'number' ? +state.audioChainBaselineV.toFixed(2) : null,
+      restorePending: !!state.pendingRestoreChannel,
+      autoplayBlocked: !!state.autoplayBlocked || !!state.muteFromAutoplayBlock
     });
+
+    // Guardia anti-desfase: si el AudioContext estuvo congelado mientras el
+    // <video> seguía avanzando (arranque mudo previo al primer gesto del
+    // usuario, salto grande durante un stall), la cadena programada durante la
+    // congelación quedó desalineada con el timeline del video. En ese caso se
+    // reconstruye con el próximo fragmento en vez de reproducir audio
+    // permanentemente desfasado. Si el video no se movió (pausa o stall
+    // normal), la cadena congelada sigue siendo válida: conservarla — destruirla
+    // era lo que dejaba silencio de 1-3 s tras cada micro-stall en móvil.
+    function maybeRebuildStaleChain() {
+      if (!audioCtx || audioCtx.state !== 'suspended') return;
+      if (nextAudioTime <= 0) return;
+      // Vía B: el <video> no es la fuente de tiempo (el audio se encadena en el
+      // propio reloj del AudioContext y el elemento va pausado sin emitir
+      // timeupdate), así que el baseline queda clavado y esta comparación daría
+      // falsos positivos (Δ=decenas de segundos) que mataban la cadena en cada
+      // pausa.
+      if (state.h264wActive) return;
+      if (!video || typeof state.audioChainBaselineV !== 'number') return;
+      const drift = video.currentTime - state.audioChainBaselineV;
+      if (Math.abs(drift) > 0.5) {
+        stopWebAudio();
+        console.log('[Alexis TV] cadena de audio desalineada tras congelación (Δ=' + drift.toFixed(2) + ' s) → reconstrucción');
+      }
+    }
 
     // Android/iOS pueden suspender el AudioContext (notificaciones, presión de
     // memoria, cambios de pestaña). En modo Vía B el <video> no emite eventos de
@@ -5459,13 +5507,14 @@
     // volver a la pestaña mientras el decoder siga activo.
     function ensureAudioRunning() {
       if (!audioCtx || audioCtx.state === 'running') return;
+      maybeRebuildStaleChain();
       // Vía B: mientras el decoder esté activo. MSE: mientras el <video> esté
       // reproduciendo de verdad (no durante 'waiting'/pausa, donde debe quedar
       // congelado el contexto).
       const wasmPlaying = state.h264wActive && state.h264wPlayer && state.h264wPlayer.active;
       const msePlaying = !state.h264wActive && video && !video.paused && video.readyState >= 3;
       if (wasmPlaying || msePlaying) {
-        audioCtx.resume().catch(() => {});
+        audioCtx.resume().then(() => flushAudioQueue()).catch(() => {});
       }
     }
     document.addEventListener('visibilitychange', () => {
@@ -5716,6 +5765,11 @@
       state.isActualMpeg2Stream = false;
       state.mediaRecoveryAttempts = 0;
       state.lastMediaRecoveryTime = 0;
+      // El canal ya no está en espera ni bloqueado por política de autoplay
+      state.pendingRestoreChannel = null;
+      state.autoplayBlocked = false;
+      state.muteFromAutoplayBlock = false;
+      if (state.rawTsRing) state.rawTsRing.clear();
       applyVolume();
 
       // Limpiar y detener instancia HLS y reproducción anterior de forma limpia sin corromper el elemento video
@@ -5866,6 +5920,39 @@
                     lang: lang,
                     codec: 'dolby'
                   });
+                } else if (streamType === 0x06) { // PES privado DVB/ATSC: AC-3/E-AC-3 envueltos
+                  // Envoltorios habituales: descriptor 0x6A (AC-3), 0x7A (E-AC-3)
+                  // o registration descriptor 'AC-3'/'EAC3' (p. ej. ESPN HD en la
+                  // lista Win +: stream_type 0x06 con descriptor 0x6A en dos pistas).
+                  // Sin descriptor Dolby se ignora (podría ser DTS u otro codec
+                  // sin decodificador disponible).
+                  let lang = '';
+                  let isDolbyES = false;
+                  let d = p + 5;
+                  const dEnd = d + esInfoLen;
+                  while (d + 1 < dEnd) {
+                    const tag = u8[d];
+                    const len = u8[d + 1];
+                    if (tag === 0x0A && len >= 3 && d + 4 < dEnd) {
+                      lang = String.fromCharCode(u8[d + 2], u8[d + 3], u8[d + 4]);
+                    } else if (tag === 0x6A || tag === 0x7A) {
+                      isDolbyES = true;
+                    } else if (tag === 0x05 && len >= 4 && d + 5 < dEnd) {
+                      const fourcc = String.fromCharCode(u8[d + 2], u8[d + 3], u8[d + 4], u8[d + 5]);
+                      if (fourcc === 'AC-3' || fourcc === 'EAC3') isDolbyES = true;
+                    }
+                    d += 2 + len;
+                  }
+                  if (isDolbyES) {
+                    audioPids.add(elemPid);
+                    isDolby = true;
+                    parsedTracks.push({
+                      pid: elemPid,
+                      name: lang ? `Dolby (${lang.toUpperCase()})` : (parsedTracks.length === 0 ? 'Dolby (Principal)' : `Dolby ${parsedTracks.length + 1}`),
+                      lang: lang,
+                      codec: 'dolby'
+                    });
+                  }
                 }
                 p += 5 + esInfoLen;
               }
@@ -5925,10 +6012,26 @@
                     state.useWebAudio = true;
                     video.muted = true;
                     video.volume = 0;
-                    context.frag._rawChunkBuffer = response.data.slice(0);
-                  } else if (state.isActualMpeg2Stream || state.hasH264Video) {
-                    // Conservar el TS crudo también en H.264 (Vía B: decoder WASM)
-                    context.frag._rawChunkBuffer = response.data.slice(0);
+                  }
+                  // TS crudo en un anillo acotado por sn (8 fragmentos): fuente
+                  // única para FRAG_PARSED. Guardarlo como propiedad del objeto
+                  // frag perdía el dato cuando hls.js re-entregaba el fragmento
+                  // con OTRO objeto (p. ej. tras detach/attach o
+                  // recoverMediaError en la ventana de errores), y el resultado
+                  // era "FRAG_PARSED sin TS crudo" → huecos de audio de ~3 s en
+                  // modo Vía B (y silencio en extracción WebAudio). El lookup
+                  // por sn cura esa re-entrega.
+                  if (!state.rawTsRing) state.rawTsRing = new Map();
+                  const snKey = (context.frag.sn !== undefined && context.frag.sn !== null)
+                    ? context.frag.sn
+                    : (context.frag.start !== undefined ? 's' + context.frag.start : null);
+                  if (snKey !== null) {
+                    state.rawTsRing.set(snKey, response.data.slice(0));
+                    while (state.rawTsRing.size > 8) {
+                      state.rawTsRing.delete(state.rawTsRing.keys().next().value);
+                    }
+                  } else {
+                    console.warn('[Alexis TV] loader: frag sin sn/start — TS crudo no indexado');
                   }
                   response.data = processed.data;
                 }
@@ -6110,7 +6213,16 @@
 
           const isTrueMpeg2 = state.isActualMpeg2Stream === true && !state.hasH264Video;
 
-          const rawTsBuffer = (data && data.frag && data.frag._rawChunkBuffer) ? data.frag._rawChunkBuffer : (data ? data.payload : null);
+          // TS crudo: propiedad del frag (ruta histórica) → anillo por sn
+          // (cura re-entregas con otro objeto de frag) → payload de hls.js.
+          const fragObj = (data && data.frag) ? data.frag : null;
+          const ringKey = fragObj
+            ? ((fragObj.sn !== undefined && fragObj.sn !== null) ? fragObj.sn
+              : (fragObj.start !== undefined ? 's' + fragObj.start : null))
+            : null;
+          const ringBuf = (ringKey !== null && state.rawTsRing) ? state.rawTsRing.get(ringKey) : null;
+          const rawTsBuffer = (fragObj && fragObj._rawChunkBuffer) ? fragObj._rawChunkBuffer
+            : (ringBuf || (data ? data.payload : null));
 
           if (isTrueMpeg2 && lacksMseVideo) {
             state.useWebAudio = true;
@@ -6129,7 +6241,7 @@
                 console.log('[Alexis TV] h264w feed:', (rawTsBuffer.byteLength || 0), 'bytes (frag', window.__h264wPushes + ')');
               }
             } else {
-              console.warn('[Alexis TV] h264w: FRAG_PARSED sin TS crudo disponible', 'hasH264=' + !!state.hasH264Video, 'mpeg2=' + !!state.isActualMpeg2Stream, 'sn=' + (data && data.frag && data.frag.sn !== undefined ? data.frag.sn : '?'), 'payload=' + !!(data && data.payload));
+              console.warn('[Alexis TV] h264w: FRAG_PARSED sin TS crudo disponible', 'hasH264=' + !!state.hasH264Video, 'mpeg2=' + !!state.isActualMpeg2Stream, 'sn=' + (fragObj && fragObj.sn !== undefined ? fragObj.sn : '?'), 'payload=' + !!(data && data.payload), 'ringHas=' + !!(ringKey !== null && state.rawTsRing && state.rawTsRing.has(ringKey)), 'url=' + (fragObj && fragObj.url ? String(fragObj.url).slice(-28) : '?'));
             }
           }
 
@@ -6299,6 +6411,7 @@
             console.warn('Reproducción con audio bloqueada por política del navegador en primer arranque, silenciando:', err);
             // Fallback a reproducción silenciada solo ante bloqueo inicial estricto del navegador
             state.isMuted = true;
+            state.muteFromAutoplayBlock = true; // el primer gesto lo desbloquea solo
             applyVolume();
             const pMuted = video.play();
             if (pMuted !== undefined) {
@@ -6308,6 +6421,7 @@
                 showToast('🔇 Video reproduciendo. Toca la pantalla para activar sonido');
                 enableSoundOnFirstInteraction();
               }).catch(() => {
+                state.autoplayBlocked = true; // ni siquiera mudo: primer gesto arranca todo
                 showControlsPrompt();
               });
             }
@@ -6332,6 +6446,7 @@
         }
         if (state.isMuted && !video.paused) {
           state.isMuted = false;
+          state.muteFromAutoplayBlock = false;
           if (audioCtx && audioCtx.state === 'suspended') {
             audioCtx.resume();
           }
@@ -6346,6 +6461,54 @@
       if (stage) {
         ['click', 'touchstart'].forEach(ev => stage.addEventListener(ev, unmuteOnTap));
       }
+    }
+
+    // Desbloqueo de audio en el primer gesto del usuario. Android Chrome crea
+    // el AudioContext suspendido (política de autoplay) si la página aún no tuvo
+    // ninguna interacción — p. ej. al restaurar el último canal al abrir la app
+    // — y en ese estado el primer canal de la sesión sale SIN AUDIO hasta que el
+    // usuario lo habilite a mano. Este escuchador se registra una sola vez en el
+    // documento (fase de captura, dentro del gesto) y hace tres cosas:
+    //   1) arranca el canal restaurado que estaba esperando gesto (con sonido),
+    //   2) reanuda la cadena WebAudio congelada por política (sonido al instante,
+    //      porque los fragmentos ya están programados en el contexto),
+    //   3) deshace el auto-silencio de respaldo de triggerAutoPlay y arranca la
+    //      reproducción si quedó totalmente bloqueada.
+    // Todas las ramas son idempotentes: se puede ejecutar en cada toque.
+    function attachAudioUnlockOnGesture() {
+      const unlock = () => {
+        if (state.pendingRestoreChannel) {
+          const ch = state.pendingRestoreChannel;
+          state.pendingRestoreChannel = null;
+          state.autoplayBlocked = false;
+          playChannel(ch);
+          return;
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          maybeRebuildStaleChain();
+          if (!state.isMuted) {
+            audioCtx.resume().then(() => {
+              ensureAudioRunning();
+              flushAudioQueue();
+            }).catch(() => {});
+          }
+        }
+        if (state.muteFromAutoplayBlock && state.isMuted) {
+          state.muteFromAutoplayBlock = false;
+          state.isMuted = false;
+          applyVolume();
+          showToast('🔊 Sonido activado');
+        }
+        if (state.autoplayBlocked && video.paused && state.activeChannel) {
+          state.autoplayBlocked = false;
+          video.play().then(() => {
+            playerStage.classList.remove('paused');
+            hideLoader();
+          }).catch(() => {});
+        }
+      };
+      ['pointerdown', 'touchstart', 'keydown'].forEach(ev =>
+        document.addEventListener(ev, unlock, true));
     }
 
     function showControlsPrompt() {
@@ -6583,16 +6746,35 @@
       video.addEventListener('seeking', () => {
         // Diagnóstico: registrar seeks del elemento (posible causa de cortes).
         state.diagSeeks = (state.diagSeeks || 0) + 1;
+        const jump = (typeof state.lastVideoPos === 'number')
+          ? Math.abs(video.currentTime - state.lastVideoPos) : null;
         if (state.diagSeeks <= 10) {
           console.log('[Alexis TV] video seek #' + state.diagSeeks + ' (wasm=' + !!state.h264wActive +
-            ', pending=' + !!state.mediaRecoveryPending + ', t=' + (video.currentTime || 0).toFixed(2) + ')');
+            ', pending=' + !!state.mediaRecoveryPending + ', t=' + (video.currentTime || 0).toFixed(2) +
+            (jump !== null ? ', jump=' + jump.toFixed(2) + 's' : '') + ')');
         }
         // En modo Vía B (o durante la recuperación) el <video> no es la fuente de
         // audio: un seek del elemento no debe cortar la cadena WebAudio.
         if (state.useWebAudio && !state.h264wActive && !state.mediaRecoveryPending) {
-          stopWebAudio();
-          pendingAudioQueue = [];
+          // Micro-seeks ≤0.25 s (nudges del watchdog de stalls de 0.1 s y los
+          // nudges internos de hls.js de nudgeOffset=0.2) NO deben destruir la
+          // cadena: reconstruirla dejaba silencio de 1-3 s tras cada micro-stall
+          // en móvil. Ese margen cabe en la tolerancia de encadenamiento y no
+          // produce desfase audible. Saltos grandes (seek del usuario, catch-up
+          // de live, recuperación de huecos) sí reconstruyen, como hasta ahora.
+          if (jump === null || jump > 0.25) {
+            stopWebAudio();
+            if (state.diagSeeks <= 10) console.log('[Alexis TV]   salto grande → cadena de audio reconstruida');
+          } else if (state.diagSeeks <= 10) {
+            console.log('[Alexis TV]   micro-seek → cadena de audio conservada');
+          }
         }
+        // NOTA: no limpiar pendingAudioQueue. Los ítems llevan fragStart y
+        // flushAudioQueue() (en 'seeked'/'playing') recalcula su timing contra
+        // la posición actual del video, descartando los que quedaron en el
+        // pasado. Limpiar aquí perdía el audio encolado durante el arranque
+        // (seek inicial al borde del live justo cuando llegaban los primeros
+        // fragmentos): "canal abierto por primera vez sin audio".
       });
 
       video.addEventListener('seeked', () => {
@@ -6882,6 +7064,7 @@
           hideMpeg2Alert();
         }
         if (state.useWebAudio) {
+          maybeRebuildStaleChain();
           if (audioCtx && audioCtx.state === 'suspended' && !state.isMuted) {
             try { audioCtx.resume(); } catch (e) {}
           }
@@ -6904,6 +7087,16 @@
 
       video.addEventListener('timeupdate', () => {
         clearTimeout(stallWatchdog);
+        // Última posición conocida: permite medir el tamaño del salto en cada
+        // 'seeking' (los saltos pequeños conservan la cadena de audio).
+        state.lastVideoPos = video.currentTime;
+        // Baseline de la cadena WebAudio: solo con el contexto corriendo.
+        // Si más tarde el contexto despierta con el video lejos de esta
+        // baseline, la cadena programada durante la congelación quedó
+        // desalineada y debe reconstruirse (ver maybeRebuildStaleChain).
+        if (audioCtx && audioCtx.state === 'running') {
+          state.audioChainBaselineV = video.currentTime;
+        }
         if (video.currentTime > 0) {
           if (state.mediaRecoveryPending) {
             // Solo salir de la ventana con avance real y sostenido del timeline
@@ -6952,6 +7145,7 @@
         }
         showPlayerControls(4500);
         state.isMuted = !state.isMuted;
+        state.muteFromAutoplayBlock = false; // el usuario tomó control manual
         if (!state.isMuted && audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume();
         }
@@ -6961,6 +7155,9 @@
 
       // Initialize volume and mute display
       applyVolume();
+
+      // Primer gesto del usuario → desbloquear audio (ver función)
+      attachAudioUnlockOnGesture();
 
       // RELOAD STREAM
       reloadStreamBtn.addEventListener('click', (e) => {
