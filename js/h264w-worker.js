@@ -101,6 +101,10 @@ let tickTimer = null, statsTimer = null;
 let startedAt = null, firstFrameMs = null;
 let frames = 0, nalsFed = 0, renderErrs = 0, strideWarn = 0;
 let curW = 0, curH = 0, curStride = 0;
+// Reloj de contenido (Vía B): posición del último cuadro rendido en la línea de
+// tiempo del playlist (fragStart del fragmento + cuadros rendidos dentro de él).
+// El main lo usa para alinear el audio (fragStart − picPos) y así mantener labios.
+let curFs = null, fsFrames = 0, lastCt = null;
 let inited = false;
 
 /* ---------- Sílabo de conversión YUV→RGB (WebGL) ---------- */
@@ -224,7 +228,9 @@ function tick() {
   if (!mod || !inited) return;
   let budget = NAL_BUDGET;
   while (queue.length && budget-- > 0) {
-    const nal = queue.shift();
+    const item = queue.shift();
+    const nal = item.b;
+    if (item.fs !== null && item.fs !== curFs) { curFs = item.fs; fsFrames = 0; }
     const H = mod.HEAPU8, p = dataIn;
     H[p] = 0; H[p + 1] = 0; H[p + 2] = 0; H[p + 3] = 1;
     H.set(nal, p + 4);
@@ -243,6 +249,7 @@ function tick() {
         }
       }
       frames++;
+      if (curFs !== null) { fsFrames++; lastCt = curFs + fsFrames / FPS; }
       if (firstFrameMs === null && startedAt !== null) firstFrameMs = Math.round(performance.now() - startedAt);
       break; // 1 frame por tick → pacing a tiempo real
     }
@@ -252,14 +259,15 @@ function tick() {
 function postStats() {
   postMessage({
     type: 'stats',
-    frames, nalsFed, q: queue.length, firstFrameMs,
+    frames, nalsFed, q: queue.length, firstFrameMs, ct: lastCt,
     w: curW, h: curH, stride: curStride, strideWarn, renderErrs, conv
   });
 }
 
 function startTimers() {
   if (!tickTimer) tickTimer = setInterval(tick, TICK);
-  if (!statsTimer) statsTimer = setInterval(postStats, 1000);
+  //250 ms: el main necesita el reloj de contenido (ct) fresco para alinear el audio.
+  if (!statsTimer) statsTimer = setInterval(postStats, 250);
 }
 
 function stopTimers() {
@@ -315,13 +323,15 @@ onmessage = (e) => {
     if (mod && ctx) { try { mod._destroy_codec_context(ctx); } catch (e) {} }
     if (mod) ctx = mod._create_codec_context();
     frames = 0; nalsFed = 0; firstFrameMs = null; renderErrs = 0; strideWarn = 0;
+    curFs = null; fsFrames = 0; lastCt = null;
     startedAt = null;
     postStats();
   } else if (m.type === 'decode-ts') {
     if (!m.buffer) return;
     try {
       const nals = videoPesNals(new Uint8Array(m.buffer));
-      for (let i = 0; i < nals.length; i++) queue.push(nals[i]);
+      const fs = (typeof m.fs === 'number' && isFinite(m.fs)) ? m.fs : null;
+      for (let i = 0; i < nals.length; i++) queue.push({ b: nals[i], fs });
       if (queue.length > QUEUE_MAX) queue.splice(0, queue.length - QUEUE_MAX);
     } catch (err) {
       postMessage({ type: 'error', message: 'decode-ts: ' + err.message });

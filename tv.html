@@ -5564,6 +5564,7 @@
       });
       activeAudioSources = [];
       nextAudioTime = 0;
+      state.vbAudioEnd = null;
       if (audioDecoder) {
         try { audioDecoder.reset(); } catch (e) {}
       }
@@ -5619,6 +5620,141 @@
       }
     }
 
+    // Reloj de contenido en Vía B: posición (segundos de la línea de tiempo del
+    // playlist) del último cuadro rendido por el worker. Se publica en stats cada
+    // 250 ms; sirve de ancla para programar el audio (fragStart − picPos).
+    function getVbPicPos() {
+      const p = window.__h264w;
+      const ct = p && p.stats ? p.stats.ct : null;
+      return (typeof ct === 'number' && isFinite(ct)) ? ct : null;
+    }
+
+    // Desfase audio↔video en Vía B: posición audible del audio (fin de contenido
+    // de la cadena retrotraído al reloj actual) menos la posición del cuadro en
+    // pantalla. >0 → audio adelantado; <0 → audio atrasado.
+    function getVbAvDelta() {
+      if (!state.h264wActive || !audioCtx || !nextAudioTime || nextAudioTime <= 0) return null;
+      if (state.vbAudioEnd == null) return null;
+      const picPos = getVbPicPos();
+      if (picPos === null) return null;
+      const audioPos = state.vbAudioEnd - Math.max(nextAudioTime - audioCtx.currentTime, 0);
+      return +(audioPos - picPos).toFixed(2);
+    }
+
+    // ---- Vía B: programación just-in-time del audio contra el cuadro en pantalla ----
+    // En Vía B los bloques de audio llegan con el contenido "en vivo", ~8-12 s por
+    // delante del cuadro visible (la cola de NALs del worker acumula ese rezago y
+    // nunca se drena: el render va al mismo ritmo que la llegada). Programarlos al
+    // llegar comprometía la cadena segundos en el futuro y cualquier salto del
+    // reloj de contenido dejaba el desfase congelado. En vez de eso se guardan en
+    // state.vbPending y sólo se programan cuando picPos alcanza su fragStart:
+    // la cadena comprometida nunca supera ~1 bloque, así que los saltos (cola,
+    // recuperaciones, huecos) se corrigen solos: lo atrasado se recorta, lo
+    // adelantado espera su turno.
+    function scheduleVbAudioBlock(fragStart, duration, buffer) {
+      if (!audioCtx || !audioGain || !buffer) return;
+      const aNow = audioCtx.currentTime;
+      // Diagnóstico: si la cadena terminó en el pasado, ya hubo silencio real.
+      if (nextAudioTime > 0 && aNow > nextAudioTime + 0.15) {
+        state.diagAudioHoles = (state.diagAudioHoles || 0) + 1;
+        if (state.diagAudioHoles <= 8) {
+          console.warn('[Alexis TV] hueco de audio: ' + (aNow - nextAudioTime).toFixed(2) + ' s de silencio');
+        }
+      }
+      const picPos = getVbPicPos();
+      let timeDelta = null;
+      if (fragStart !== null && !isNaN(fragStart) && picPos !== null) {
+        timeDelta = fragStart - picPos;
+      }
+      if (timeDelta !== null && timeDelta + duration <= 0.05) {
+        return; // contenido ya mostrado y sin cadena que continuar: descartar
+      }
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioGain);
+      activeAudioSources.push(source);
+      source.onended = () => {
+        try { source.disconnect(); } catch (e) {}
+        const idx = activeAudioSources.indexOf(source);
+        if (idx !== -1) activeAudioSources.splice(idx, 1);
+      };
+
+      if (!state.diagAudioT0) state.diagAudioT0 = Date.now();
+      state.diagAudioDur = (state.diagAudioDur || 0) + duration;
+      // Fin de contenido de la cadena (para getVbAvDelta).
+      if (fragStart !== null && !isNaN(fragStart)) {
+        state.vbAudioEnd = fragStart + duration;
+      }
+
+      // Instante deseado: null → encadenar ya; negativo → el cuadro ya pasó por
+      // este contenido (recortar lo mostrado); positivo → sonar cuando el cuadro
+      // lo alcance.
+      let desired, playDur = duration, offset = 0;
+      if (timeDelta === null || isNaN(timeDelta)) {
+        desired = nextAudioTime > aNow ? nextAudioTime : aNow + 0.03;
+      } else if (timeDelta < 0) {
+        offset = Math.min(-timeDelta, duration - 0.05);
+        playDur = duration - offset;
+        desired = aNow + 0.02;
+      } else {
+        desired = aNow + timeDelta;
+      }
+      let startTime = Math.max(aNow + 0.02, desired);
+      if (nextAudioTime > aNow + 0.12 && desired < nextAudioTime - 0.12) {
+        // No solapar fuentes: si el objetivo cae dentro de la cadena ya
+        // comprometida (≤1 bloque, porque sólo se programa just-in-time), se
+        // continúa la cadena y la corrección restante la hace el próximo bloque.
+        startTime = nextAudioTime;
+      }
+      source.start(startTime, offset);
+      nextAudioTime = startTime + playDur;
+    }
+
+    // Drena vbPending: programa el bloque más antiguo sólo cuando su contenido
+    // está (o está a punto de estar) en pantalla. Corre cada 150 ms mientras
+    // dure la reproducción en Vía B.
+    function vbPendingTick() {
+      const q = state.vbPending;
+      if (!state.h264wActive || !audioCtx || !q || !q.length) return;
+      while (q.length) {
+        const head = q[0];
+        if (head.fragStart === null || isNaN(head.fragStart)) {
+          q.shift();
+          scheduleVbAudioBlock(null, head.duration, head.buffer);
+          continue;
+        }
+        const picPos = getVbPicPos();
+        if (picPos === null) {
+          // Sin reloj de contenido todavía (primeros ms tras activar o reanudar):
+          // si la cadena está muerta, arrancar con un solo bloque; el resto
+          // espera a que aparezca picPos para no comprometer toda la cola.
+          if (nextAudioTime > audioCtx.currentTime) return;
+          q.shift();
+          scheduleVbAudioBlock(head.fragStart, head.duration, head.buffer);
+          continue;
+        }
+        if (head.fragStart <= picPos || head.fragStart - picPos <= 0.2) {
+          q.shift();
+          scheduleVbAudioBlock(head.fragStart, head.duration, head.buffer);
+          continue;
+        }
+        break; // su contenido aún no está en pantalla: esperar al próximo tick
+      }
+    }
+
+    function ensureVbPendingTimer() {
+      if (state.vbPendingTimer) return;
+      state.vbPendingTimer = setInterval(() => {
+        if (!state.h264wActive) {
+          clearInterval(state.vbPendingTimer);
+          state.vbPendingTimer = null;
+          return;
+        }
+        vbPendingTick();
+      }, 150);
+    }
+
     // Diagnóstico de audio: estado del contexto, adelanto de la cadena programada,
     // fuentes activas y contadores de cortes (huecos/seeks/paradas).
     state.getAudioDiag = () => ({
@@ -5629,6 +5765,9 @@
       stops: state.diagAudioStops || 0,
       seeks: state.diagSeeks || 0,
       dur: +(state.diagAudioDur || 0).toFixed(2),
+      picPos: getVbPicPos(),
+      avDelta: getVbAvDelta(),
+      vbPend: (state.vbPending || []).length,
       t0: state.diagAudioT0 || null,
       codec: state.audioCodec || null,
       dolbyErr: state.dolbyDecoder ? state.dolbyDecoder.errors : null,
@@ -5849,6 +5988,9 @@
       state.mediaRecoveryPending = false;
       state.useWebAudio = true;
       state.h264wPlayer.start();
+      // Reloj de contenido y cola JIT arrancan de cero con el decoder.
+      state.vbAudioEnd = null;
+      ensureVbPendingTimer();
       hideMpeg2Alert();
       hideLoader();
       playerStage.classList.remove('paused');
@@ -5894,6 +6036,8 @@
         state.h264wPlayer.stop();
       }
       state.h264wActive = false;
+      // Cambio de canal: la cola JIT del audio pertenece al canal anterior.
+      state.vbPending = [];
       // Abrir la ventana de enmascaramiento desde el arranque del canal: durante la
       // carga (p. ej. autoplay del <video> que falla antes del primer error hls) no
       // debe parpadear el botón de play. Se cierra con progreso real de video, al
@@ -6396,7 +6540,8 @@
 
           if (state.h264wActive && state.h264wPlayer && !isTrueMpeg2) {
             if (rawTsBuffer) {
-              state.h264wPlayer.pushChunk(rawTsBuffer);
+              const fragStartFeed = (fragObj && typeof fragObj.start === 'number') ? fragObj.start : null;
+              state.h264wPlayer.pushChunk(rawTsBuffer, fragStartFeed);
               window.__h264wPushes = (window.__h264wPushes || 0) + 1;
               if (window.__h264wPushes <= 3) {
                 console.log('[Alexis TV] h264w feed:', (rawTsBuffer.byteLength || 0), 'bytes (frag', window.__h264wPushes + ')');
@@ -6455,16 +6600,35 @@
 
                     const fragStart = (data && data.frag && typeof data.frag.start === 'number') ? data.frag.start : null;
 
-                    // Si el video aún no está reproduciendo activamente o está en buffer inicial, encolar para sincronización perfecta
-                    if (!state.h264wActive && (video.paused || video.readyState < 2 || video.currentTime <= 0)) {
+                    // Vía B: no hay <video> reproducible; el bloque se encola y
+                    // vbPendingTick() lo programa just-in-time cuando el cuadro
+                    // alcance su contenido (picPos ≈ fragStart). Así la cadena
+                    // comprometida nunca supera ~1 bloque y cualquier salto del
+                    // reloj de contenido se corrige solo.
+                    if (state.h264wActive) {
+                      if (fragStart === null || isNaN(fragStart)) {
+                        scheduleVbAudioBlock(null, duration, buffer);
+                      } else {
+                        if (!state.vbPending) state.vbPending = [];
+                        if (state.vbPending.length < 12) {
+                          state.vbPending.push({ fragStart, duration, buffer });
+                          ensureVbPendingTimer();
+                        } else {
+                          // Cola saturada (el cuadro lleva >~36 s estancado):
+                          // conservar lo más antiguo, que es lo más cercano a
+                          // la posición en pantalla.
+                          console.warn('[Alexis TV] vbPending saturado: bloque de audio descartado');
+                        }
+                      }
+                    } else if (video.paused || video.readyState < 2 || video.currentTime <= 0) {
+                      // Si el video aún no está reproduciendo activamente o está en buffer inicial, encolar para sincronización perfecta
                       pendingAudioQueue.push({ fragStart, duration, buffer });
                     } else {
                       // Video reproduciendo activamente: programar sincronizado a la línea de tiempo del video
                       const vTime = video.currentTime;
                       const aNow = audioCtx.currentTime;
-                      // Diagnóstico (todas las ramas, MSE y Vía B): si la cadena de
-                      // audio terminó en el pasado, ya hubo silencio real (dato
-                      // tarde del navegador o fragmento de audio perdido).
+                      // Diagnóstico: si la cadena de audio terminó en el pasado,
+                      // ya hubo silencio real (dato tarde o fragmento perdido).
                       if (nextAudioTime > 0 && aNow > nextAudioTime + 0.15) {
                         state.diagAudioHoles = (state.diagAudioHoles || 0) + 1;
                         if (state.diagAudioHoles <= 8) {

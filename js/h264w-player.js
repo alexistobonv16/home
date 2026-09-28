@@ -16,7 +16,7 @@ class H264WasmLivePlayer {
     this.renderedFrameCount = 0;
     this.stats = {
       frames: 0, nalsFed: 0, q: 0, w: 0, h: 0,
-      firstFrameMs: null, renderErrs: 0, strideWarn: 0, conv: '-'
+      firstFrameMs: null, renderErrs: 0, strideWarn: 0, conv: '-', ct: null
     };
     this._lastStatsLog = 0;
     this._initWorker();
@@ -56,6 +56,7 @@ class H264WasmLivePlayer {
         this.stats.firstFrameMs = m.firstFrameMs;
         this.stats.renderErrs = m.renderErrs;
         this.stats.strideWarn = m.strideWarn;
+        this.stats.ct = (typeof m.ct === 'number' && isFinite(m.ct)) ? m.ct : null;
         this.renderedFrameCount = m.frames;
         const now = Date.now();
         if (now - this._lastStatsLog > 15000) {
@@ -98,7 +99,7 @@ class H264WasmLivePlayer {
     this.reset();
   }
 
-  pushChunk(chunkBuffer) {
+  pushChunk(chunkBuffer, fragStart) {
     if (!this.worker || !chunkBuffer || !this.active) return;
     try {
       const copyBuffer = chunkBuffer instanceof ArrayBuffer
@@ -106,7 +107,8 @@ class H264WasmLivePlayer {
         : (chunkBuffer.buffer ? chunkBuffer.buffer.slice(chunkBuffer.byteOffset, chunkBuffer.byteOffset + chunkBuffer.byteLength) : null);
       if (!copyBuffer) return;
       this.worker.postMessage(
-        { type: 'decode-ts', buffer: copyBuffer },
+        { type: 'decode-ts', buffer: copyBuffer,
+          fs: (typeof fragStart === 'number' && isFinite(fragStart)) ? fragStart : null },
         [copyBuffer]
       );
     } catch (e) {
@@ -121,7 +123,7 @@ class H264WasmLivePlayer {
     this.renderedFrameCount = 0;
     this.stats = {
       frames: 0, nalsFed: 0, q: 0, w: 0, h: 0,
-      firstFrameMs: null, renderErrs: 0, strideWarn: 0, conv: this.stats.conv
+      firstFrameMs: null, renderErrs: 0, strideWarn: 0, conv: this.stats.conv, ct: null
     };
   }
 
