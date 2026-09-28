@@ -5343,10 +5343,14 @@
         audioGain.gain.value = (state.isMuted || !state.useWebAudio) ? 0 : state.volume;
         audioGain.connect(audioCtx.destination);
       }
-      // No reanudar mientras el decoder Vía B esté en pausa: initWebAudio se
-      // invoca en cada fragmento y reactivaría el audio programado en la pre-pausa.
-      const h264wPaused = state.h264wActive && state.h264wPlayer && !state.h264wPlayer.active;
-      if (audioCtx.state === 'suspended' && !state.isMuted && !h264wPaused) {
+      // initWebAudio se invoca en cada fragmento: no debe reanudar un contexto
+      // congelado intencionalmente (pausa del usuario, stall congelado en
+      // 'waiting' o decoder Vía B detenido) porque reactivaría el audio de la
+      // pre-pausa. La reanudación real la hace ensureAudioRunning() cuando el
+      // reproductor vuelve a estar activo.
+      const mediaStalled = !state.h264wActive && video && (video.paused || video.readyState < 3);
+      const wasmPaused = state.h264wActive && state.h264wPlayer && !state.h264wPlayer.active;
+      if (audioCtx.state === 'suspended' && !state.isMuted && !mediaStalled && !wasmPaused) {
         await audioCtx.resume();
       }
       if (!audioDecoder && window['mpg123-decoder'] && window['mpg123-decoder'].MPEGDecoder) {
@@ -5448,7 +5452,12 @@
     // volver a la pestaña mientras el decoder siga activo.
     function ensureAudioRunning() {
       if (!audioCtx || audioCtx.state === 'running') return;
-      if (state.h264wActive && state.h264wPlayer && state.h264wPlayer.active) {
+      // Vía B: mientras el decoder esté activo. MSE: mientras el <video> esté
+      // reproduciendo de verdad (no durante 'waiting'/pausa, donde debe quedar
+      // congelado el contexto).
+      const wasmPlaying = state.h264wActive && state.h264wPlayer && state.h264wPlayer.active;
+      const msePlaying = !state.h264wActive && video && !video.paused && video.readyState >= 3;
+      if (wasmPlaying || msePlaying) {
         audioCtx.resume().catch(() => {});
       }
     }
@@ -6113,6 +6122,15 @@
                       // Video reproduciendo activamente: programar sincronizado a la línea de tiempo del video
                       const vTime = video.currentTime;
                       const aNow = audioCtx.currentTime;
+                      // Diagnóstico (todas las ramas, MSE y Vía B): si la cadena de
+                      // audio terminó en el pasado, ya hubo silencio real (dato
+                      // tarde del navegador o fragmento de audio perdido).
+                      if (nextAudioTime > 0 && aNow > nextAudioTime + 0.15) {
+                        state.diagAudioHoles = (state.diagAudioHoles || 0) + 1;
+                        if (state.diagAudioHoles <= 8) {
+                          console.warn('[Alexis TV] hueco de audio: ' + (aNow - nextAudioTime).toFixed(2) + ' s de silencio');
+                        }
+                      }
                       const timeDelta = (!state.h264wActive && fragStart !== null && !isNaN(fragStart)) ? (fragStart - vTime) : null;
 
                       if (timeDelta !== null && timeDelta + duration <= 0.05) {
@@ -6130,17 +6148,11 @@
                         if (idx !== -1) activeAudioSources.splice(idx, 1);
                       };
 
+                      // Diagnóstico: duración total programada en todas las ramas.
+                      if (!state.diagAudioT0) state.diagAudioT0 = Date.now();
+                      state.diagAudioDur = (state.diagAudioDur || 0) + duration;
+
                       if (timeDelta === null || isNaN(timeDelta)) {
-                        // Diagnóstico de cortes: hueco real de datos (la cadena quedó
-                        // por detás del reloj del AudioContext) y duración programada.
-                        if (nextAudioTime > 0 && aNow > nextAudioTime + 0.15) {
-                          state.diagAudioHoles = (state.diagAudioHoles || 0) + 1;
-                          if (state.diagAudioHoles <= 8) {
-                            console.warn('[Alexis TV] hueco de audio: ' + (aNow - nextAudioTime).toFixed(2) + ' s de silencio');
-                          }
-                        }
-                        if (!state.diagAudioT0) state.diagAudioT0 = Date.now();
-                        state.diagAudioDur = (state.diagAudioDur || 0) + duration;
                         const startTime = Math.max(aNow + 0.03, nextAudioTime);
                         source.start(startTime, 0);
                         nextAudioTime = startTime + duration;
@@ -6491,8 +6503,10 @@
         bottomPlaySvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
         showPlayerControls(5000);
         if (state.useWebAudio) {
-          stopWebAudio();
-          pendingAudioQueue = [];
+          // Congelar (no destruir) la cadena: suspender el AudioContext preserva
+          // las fuentes programadas y mantiene alineados ambos relojes; 'playing'
+          // y ensureAudioRunning() lo reanudan. Destruir la cadena dejaba
+          // silencio hasta el siguiente fragmento parseado (1-3 s en móvil).
           if (audioCtx && audioCtx.state === 'running') {
             try { audioCtx.suspend(); } catch (e) {}
           }
@@ -6756,10 +6770,15 @@
       // ANTI-FREEZE WATCHDOG: auto-nudges past micro PTS drops or stuck buffer frames
       let stallWatchdog = null;
       video.addEventListener('waiting', () => {
-        // No cortar el audio WebAudio en modo WASM (va por su propio reloj) ni
-        // durante la ventana de recuperación (se reanuda en 'playing').
-        if (state.useWebAudio && !state.h264wActive && !state.mediaRecoveryPending) {
-          stopWebAudio();
+        // Congelar (no destruir) la cadena WebAudio ante un stall del video:
+        // suspender el AudioContext congela el reloj de audio junto con el del
+        // video y preserva todo lo ya programado. Destruir la cadena aquí era
+        // lo que dejaba silencio de 1-3 s tras cada micro-stall en móvil.
+        // 'playing' y ensureAudioRunning() lo reanudan. En modo WASM (o durante
+        // la ventana de recuperación) el audio va por su propio reloj: no tocar.
+        if (state.useWebAudio && !state.h264wActive && !state.mediaRecoveryPending &&
+            audioCtx && audioCtx.state === 'running') {
+          try { audioCtx.suspend(); } catch (e) {}
         }
         clearTimeout(stallWatchdog);
         stallWatchdog = setTimeout(() => {
