@@ -5343,7 +5343,10 @@
         audioGain.gain.value = (state.isMuted || !state.useWebAudio) ? 0 : state.volume;
         audioGain.connect(audioCtx.destination);
       }
-      if (audioCtx.state === 'suspended' && !state.isMuted) {
+      // No reanudar mientras el decoder Vía B esté en pausa: initWebAudio se
+      // invoca en cada fragmento y reactivaría el audio programado en la pre-pausa.
+      const h264wPaused = state.h264wActive && state.h264wPlayer && !state.h264wPlayer.active;
+      if (audioCtx.state === 'suspended' && !state.isMuted && !h264wPaused) {
         await audioCtx.resume();
       }
       if (!audioDecoder && window['mpg123-decoder'] && window['mpg123-decoder'].MPEGDecoder) {
@@ -5362,6 +5365,7 @@
     }
 
     function stopWebAudio() {
+      state.diagAudioStops = (state.diagAudioStops || 0) + 1;
       activeAudioSources.forEach(s => {
         try {
           s.stop();
@@ -5424,6 +5428,33 @@
         }
       }
     }
+
+    // Diagnóstico de audio: estado del contexto, adelanto de la cadena programada,
+    // fuentes activas y contadores de cortes (huecos/seeks/paradas).
+    state.getAudioDiag = () => ({
+      state: audioCtx ? audioCtx.state : null,
+      lead: (audioCtx && nextAudioTime) ? +(nextAudioTime - audioCtx.currentTime).toFixed(2) : null,
+      sources: activeAudioSources.length,
+      holes: state.diagAudioHoles || 0,
+      stops: state.diagAudioStops || 0,
+      seeks: state.diagSeeks || 0,
+      dur: +(state.diagAudioDur || 0).toFixed(2),
+      t0: state.diagAudioT0 || null
+    });
+
+    // Android/iOS pueden suspender el AudioContext (notificaciones, presión de
+    // memoria, cambios de pestaña). En modo Vía B el <video> no emite eventos de
+    // reproducción, así que nadie lo reanuda: se comprueba por fragmento y al
+    // volver a la pestaña mientras el decoder siga activo.
+    function ensureAudioRunning() {
+      if (!audioCtx || audioCtx.state === 'running') return;
+      if (state.h264wActive && state.h264wPlayer && state.h264wPlayer.active) {
+        audioCtx.resume().catch(() => {});
+      }
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) setTimeout(ensureAudioRunning, 300);
+    });
 
     function applyVolume() {
       const isMuted = state.isMuted;
@@ -6036,6 +6067,11 @@
           }
 
           if (state.useWebAudio && rawTsBuffer) {
+            // Modo Vía B con el decoder en pausa: no extraer ni programar audio
+            // (el usuario pausó; el worker de video también descarta los chunks).
+            if (state.h264wActive && state.h264wPlayer && !state.h264wPlayer.active) {
+              return;
+            }
             // Deduplicación estricta de fragmentos en WebAudio para eliminar completamente cualquier audio doble
             const fragId = (data && data.frag) ? (data.frag.sn !== undefined ? data.frag.sn : (data.frag.start !== undefined ? data.frag.start : null)) : null;
             if (fragId !== null && state.processedAudioFrags.has(fragId)) {
@@ -6050,6 +6086,7 @@
               if (rawAudio && rawAudio.length) {
                 await initWebAudio();
                 applyVolume();
+                ensureAudioRunning();
                 if (currentSessionId !== state.channelSessionId) return;
                 if (audioDecoder && audioDecoder.ready) {
                   try { await audioDecoder.ready; } catch (e) {}
@@ -6094,6 +6131,16 @@
                       };
 
                       if (timeDelta === null || isNaN(timeDelta)) {
+                        // Diagnóstico de cortes: hueco real de datos (la cadena quedó
+                        // por detás del reloj del AudioContext) y duración programada.
+                        if (nextAudioTime > 0 && aNow > nextAudioTime + 0.15) {
+                          state.diagAudioHoles = (state.diagAudioHoles || 0) + 1;
+                          if (state.diagAudioHoles <= 8) {
+                            console.warn('[Alexis TV] hueco de audio: ' + (aNow - nextAudioTime).toFixed(2) + ' s de silencio');
+                          }
+                        }
+                        if (!state.diagAudioT0) state.diagAudioT0 = Date.now();
+                        state.diagAudioDur = (state.diagAudioDur || 0) + duration;
                         const startTime = Math.max(aNow + 0.03, nextAudioTime);
                         source.start(startTime, 0);
                         nextAudioTime = startTime + duration;
@@ -6453,7 +6500,15 @@
       });
 
       video.addEventListener('seeking', () => {
-        if (state.useWebAudio) {
+        // Diagnóstico: registrar seeks del elemento (posible causa de cortes).
+        state.diagSeeks = (state.diagSeeks || 0) + 1;
+        if (state.diagSeeks <= 10) {
+          console.log('[Alexis TV] video seek #' + state.diagSeeks + ' (wasm=' + !!state.h264wActive +
+            ', pending=' + !!state.mediaRecoveryPending + ', t=' + (video.currentTime || 0).toFixed(2) + ')');
+        }
+        // En modo Vía B (o durante la recuperación) el <video> no es la fuente de
+        // audio: un seek del elemento no debe cortar la cadena WebAudio.
+        if (state.useWebAudio && !state.h264wActive && !state.mediaRecoveryPending) {
           stopWebAudio();
           pendingAudioQueue = [];
         }
@@ -6708,6 +6763,9 @@
         }
         clearTimeout(stallWatchdog);
         stallWatchdog = setTimeout(() => {
+          // En modo Vía B el canvas es la fuente: no "nudgear" el <video> roto
+          // (cada salto disparaía eventos seeking sobre el elemento).
+          if (state.h264wActive) return;
           if (video.paused || video.readyState > 2) return;
           try {
             const b = video.buffered;
