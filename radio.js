@@ -442,10 +442,28 @@
         const bytesThisSec = Math.round((br * 1000) / 8);
         sessionTotalBytes += bytesThisSec;
         networkSpeedBytesPerSec = bytesThisSec;
-        updateTelemetryDisplay();
+        // En segundo plano no tocar el DOM: menos wake-ups y sin jank al
+        // volver (el marcador se refresca en el primer tick visible).
+        if (!document.hidden) updateTelemetryDisplay();
       }
     }, 1000);
   }
+
+  // Diagnóstico (tests E2E / soporte): estado de reproducción, ruta de audio
+  // (¿el stream pasa por WebAudio?) y salud del pipeline.
+  window.__radioDiag = () => ({
+    playing: isPlaying,
+    buffering: isBuffering,
+    paused: audio.paused,
+    ct: +audio.currentTime.toFixed(2),
+    ready: audio.readyState,
+    src: (audio.currentSrc || audio.src || '').slice(0, 140),
+    hls: !!hls,
+    ctx: audioCtx ? audioCtx.state : null,
+    ctxUsed: isAudioContextConnected,
+    coarse: !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches),
+    station: currentStation ? currentStation.name : null
+  });
 
   // =========================================================================
   // AUDIO CONTROLLER & HLS
@@ -600,7 +618,14 @@
     if (isM3U8 && window.Hls && Hls.isSupported()) {
       hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
+        // Radio: la latencia no importa, y el modo LL exige cargas pequeñas y
+        // frecuentes, muy sensibles a la reducción de timers/CPU que Chrome
+        // aplica a las pestañas ocultas en móvil (→ buffer se vacía y el audio
+        // queda entrecortado). Con búfer grande y sincronía holgada al vivo,
+        // la reproducción sobrevive a los despertares de la pestaña oculta.
+        lowLatencyMode: false,
+        maxBufferLength: 120,
+        liveSyncDurationCount: 8,
         backBufferLength: 30,
         manifestLoadingTimeOut: 8000,
         fragLoadingTimeOut: 8000
@@ -796,6 +821,15 @@
   function setupAudioContext() {
     if (isAudioContextConnected) return;
 
+    // Sólo desktop: si el puntero primario es coarse (móvil/tablet) NO se
+    // enruta el audio por WebAudio. El pipeline nativo del <audio> tolera
+    // mucho mejor las interrupciones del sistema (notificaciones, cambio de
+    // app, pantalla en off, cambio de ruta de audio) — el audio por
+    // MediaElementSource se corta o queda tartamudeando cuando el sistema
+    // suspende el AudioContext en segundo plano. Sin contexto, el visualizador
+    // usa la animación sintética (fallback ya contemplado en el bucle).
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
+
     try {
       const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtxClass) return;
@@ -815,6 +849,16 @@
       sourceNode = audioCtx.createMediaElementSource(audio);
       sourceNode.connect(analyser);
       analyser.connect(audioCtx.destination);
+
+      // Si el sistema suspende/interrumpe el contexto (notificación, otra app
+      // con audio, cambio de ruta), reanudarlo mientras haya reproducción:
+      // sin esto el audio conectado al contexto queda mudo o entrecortado.
+      audioCtx.onstatechange = () => {
+        if (audioCtx && audioCtx.state !== 'running' && isPlaying) {
+          const r = audioCtx.resume();
+          if (r && typeof r.catch === 'function') r.catch(() => {});
+        }
+      };
 
       isAudioContextConnected = true;
     } catch (e) {
