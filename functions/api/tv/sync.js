@@ -156,7 +156,7 @@ export async function onRequestGet(context) {
     if (!isAuthed) {
       return new Response(JSON.stringify({ success: false, error: 'No autorizado. Por favor ingresa tu PIN.' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -227,7 +227,7 @@ export async function onRequestGet(context) {
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Error interno del servidor.' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }
@@ -238,7 +238,7 @@ export async function onRequestPost(context) {
     if (!isAuthed) {
       return new Response(JSON.stringify({ success: false, error: 'No autorizado. Por favor ingresa tu PIN.' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -248,7 +248,7 @@ export async function onRequestPost(context) {
     } catch {
       return new Response(JSON.stringify({ success: false, error: 'Cuerpo de solicitud inválido.' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -276,7 +276,7 @@ export async function onRequestPost(context) {
     if (JSON.stringify(body).length > 5_000_000) {
       return new Response(JSON.stringify({ success: false, error: 'Payload demasiado grande.' }), {
         status: 413,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -335,7 +335,7 @@ export async function onRequestPost(context) {
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'Error interno del servidor.' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }
