@@ -84,6 +84,8 @@ function videoPesNals(u8) {
 const FPS = 29.97;
 const TICK = 1000 / FPS;
 const NAL_BUDGET = 96;          // máx. NALs por tick (evita bloquear el hilo)
+const NAL_MAX_BYTES = 4 * 1024 * 1024; // tope del buffer de entrada WASM (dataIn)
+let nalsDropped = 0;
 const QUEUE_MAX = 12000;        // válvula de seguridad de memoria (≈25 s de video)
 
 let mod = null, ctx = 0, dataIn = 0;
@@ -231,6 +233,16 @@ function tick() {
     const item = queue.shift();
     const nal = item.b;
     if (item.fs !== null && item.fs !== curFs) { curFs = item.fs; fsFrames = 0; }
+    const nalLen = (nal && nal.length) || 0;
+    if (nalLen + 4 > NAL_MAX_BYTES) {
+      // NAL más grande que el buffer asignado: H.set lo escribiría fuera de
+      // dataIn y corrompería el heap WASM adyacente. Se descarta (anomalía).
+      nalsDropped++;
+      if (nalsDropped <= 3 || nalsDropped % 100 === 0) {
+        console.warn('[h264w] NAL descartado por tamaño:', nalLen, 'bytes');
+      }
+      continue;
+    }
     const H = mod.HEAPU8, p = dataIn;
     H[p] = 0; H[p + 1] = 0; H[p + 2] = 0; H[p + 3] = 1;
     H.set(nal, p + 4);
@@ -285,7 +297,7 @@ async function boot() {
   mod = await LibavH264({ print: () => {}, printErr: quietLog });
   ctx = mod._create_codec_context();
   if (!ctx) throw new Error('create_codec_context falló');
-  dataIn = mod._malloc(1024 * 1024);
+  dataIn = mod._malloc(NAL_MAX_BYTES);
   yO = mod._malloc(4); uO = mod._malloc(4); vO = mod._malloc(4);
   wO = mod._malloc(4); hO = mod._malloc(4); sO = mod._malloc(4);
   postMessage({ type: 'ready' });

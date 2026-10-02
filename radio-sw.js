@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alexis-radio-v8';
+const CACHE_NAME = 'alexis-radio-v9';
 const STATIC_ASSETS = [
   '/radio.html',
   '/radio.css',
@@ -25,7 +25,9 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          // Solo purga cachés VIEJAS de ESTA app: borrar las de la otra PWA
+          // (TV) rompía su uso offline y viceversa.
+          if (key.startsWith('alexis-radio-') && key !== CACHE_NAME) {
             console.log('[Radio SW] Deleting legacy cache:', key);
             return caches.delete(key);
           }

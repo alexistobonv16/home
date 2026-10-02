@@ -24,9 +24,9 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Hls.js library for cross-browser HLS playback -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" integrity="sha384-xLhS5rbIdhv65H3GLX+caQgMSiEK/Hkw8Z6HITolgRxvXs0omcbeYD639tkJ2Wu6" crossorigin="anonymous"></script>
   <!-- WebAssembly MP2/MPEG audio decoder for in-browser TV audio decoding -->
-  <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js" integrity="sha384-aQpkjUAn6ujDRSPr6OEnQSdUFdWPOeoMYIgweD7351f5ZBGOo4E6atnIS4Mid0+f" crossorigin="anonymous"></script>
   <!-- In-Browser Native MPEG-2 Video Software Player -->
   <script src="/js/mpeg2-player.js"></script>
   <!-- H.264 FFmpeg-WASM fallback decoder (Vía B) for streams MSE/WebCodecs cannot decode -->
@@ -3710,9 +3710,17 @@
       }
 
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/tv-sw.js').then((reg) => {
+        // Scope acotado a /tv: antes ambos SW (TV y radio) competían por '/' y
+        // cada activación borraba la caché de la otra app (rompía el offline).
+        navigator.serviceWorker.register('/tv-sw.js', { scope: '/tv' }).then((reg) => {
           console.debug('Alexis TV Service Worker activo:', reg.scope);
           try { reg.update(); } catch (e) {}
+          // Limpia el registro legacy de scope '/' si quedó de una versión previa.
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(r => {
+              if (r.scope === location.origin + '/') r.unregister().catch(() => {});
+            });
+          }).catch(() => {});
         }).catch(err => {
           console.warn('Error registrando SW:', err);
         });
@@ -5571,7 +5579,11 @@
     }
 
     function flushAudioQueue() {
-      if (!state.useWebAudio || !audioCtx || !video || video.paused || video.readyState < 2) return;
+      // Vía B: pendingAudioQueue pertenece a la era MSE y se limpia en
+      // playChannel/activateH264Wasm; programarla aquí calcularía timeDelta
+      // contra un <video> congelado y empujaría nextAudioTime minutos al
+      // futuro, dejando la cadena JIT tras el cuadro (audio tardío/silencio).
+      if (!state.useWebAudio || !audioCtx || !video || state.h264wActive || video.paused || video.readyState < 2) return;
       const vTime = video.currentTime;
       const aNow = audioCtx.currentTime;
       if (vTime <= 0) return;
@@ -5985,6 +5997,9 @@
     function activateH264Wasm(kicks) {
       if (state.h264wActive || !state.h264wPlayer) return;
       state.h264wActive = true;
+      // La cola MSE no aplica en Vía B: si quedaron bloques de la era previa,
+      // flushAudioQueue los programaría contra el <video> congelado.
+      pendingAudioQueue = [];
       state.mediaRecoveryPending = false;
       state.useWebAudio = true;
       state.h264wPlayer.start();
@@ -6581,6 +6596,10 @@
                 const mainDecoder = (state.audioCodec === 'dolby')
                   ? await getDolbyDecoder()
                   : audioDecoder;
+                // Re-chequeo tras los awaits: pudo haber cambio de canal mientras
+                // cargaba el decoder; sin esto se encolaría audio del canal
+                // anterior en la cola recién vaciada de playChannel.
+                if (currentSessionId !== state.channelSessionId) return;
                 if (mainDecoder && audioCtx) {
                   const decoded = mainDecoder.decode(rawAudio);
                   if (state.audioCodec === 'dolby' && mainDecoder.errors > 0 && !state.dolbyErrorsWarned) {
@@ -6623,6 +6642,9 @@
                     } else if (video.paused || video.readyState < 2 || video.currentTime <= 0) {
                       // Si el video aún no está reproduciendo activamente o está en buffer inicial, encolar para sincronización perfecta
                       pendingAudioQueue.push({ fragStart, duration, buffer });
+                      // Cota de memoria: en un estancamiento largo la cola crece sin
+                      // límite; se descarta el más antiguo (se saltaría igual al reanudar).
+                      if (pendingAudioQueue.length > 16) pendingAudioQueue.shift();
                     } else {
                       // Video reproduciendo activamente: programar sincronizado a la línea de tiempo del video
                       const vTime = video.currentTime;

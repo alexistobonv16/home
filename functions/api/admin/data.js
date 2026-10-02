@@ -56,10 +56,14 @@ export async function onRequestGet(context) {
       });
     }
 
+    // ?defaults=1 → valores por defecto (los usa el botón "Restaurar" del panel).
+    const wantsDefaults = new URL(context.request.url).searchParams.get('defaults') === '1';
+    const source = wantsDefaults ? defaultConfig : config;
+
     // Nunca devolver el PIN en claro al cliente.
     const safeConfig = {
-      contact: config.contact || defaultConfig.contact,
-      projects: Array.isArray(config.projects) ? config.projects : defaultConfig.projects,
+      contact: source.contact || defaultConfig.contact,
+      projects: Array.isArray(source.projects) ? source.projects : defaultConfig.projects,
       hasCustomPin: Boolean(config.adminPin && config.adminPin !== defaultConfig.adminPin)
     };
 
@@ -123,11 +127,27 @@ export async function onRequestPost(context) {
       });
     }
 
+    // URLs de proyecto: solo http(s). Bloquea javascript:/data: que, renderizados
+    // en el portafolio público, serían XSS almacenado para todos los visitantes.
+    if (Array.isArray(projects)) {
+      for (const p of projects) {
+        if (p && p.url != null && String(p.url).trim() !== '' && !/^https?:\/\//i.test(String(p.url).trim())) {
+          return new Response(JSON.stringify({ success: false, error: `URL no válida en "${p.title || p.id || '?'}": solo se permiten http:// o https://.` }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+    }
+
+    const cleanIdentity = (v, fb) => String(v ?? fb).replace(/[^a-zA-Z0-9_-]/g, '') || fb;
+
     const updatedConfig = {
       ...config, // conserva tvPin y cualquier otro campo
       adminPin: (newPin && newPin.trim()) ? newPin.trim() : (config.adminPin || defaultConfig.adminPin),
       contact: contact || config.contact || defaultConfig.contact,
-      projects: Array.isArray(projects) ? projects : (config.projects || defaultConfig.projects)
+      projects: (Array.isArray(projects) ? projects : (config.projects || defaultConfig.projects))
+        .map(p => ({ ...(p || {}), id: cleanIdentity(p && p.id, 'proj'), badgeColor: cleanIdentity(p && p.badgeColor, 'brand') }))
     };
 
     if (context.env && context.env.HOME_KV) {

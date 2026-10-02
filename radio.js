@@ -236,8 +236,10 @@
   function initStorage() {
     try {
       const saved = localStorage.getItem('at_radio_stations');
-      if (saved !== null) {
-        stations = JSON.parse(saved);
+      const parsed = saved !== null ? JSON.parse(saved) : null;
+      // JSON válido pero no-array (p. ej. "null" u objeto) rompería el render.
+      if (Array.isArray(parsed)) {
+        stations = parsed;
       } else {
         stations = [...DEFAULT_STATIONS];
         saveStations();
@@ -1177,7 +1179,23 @@
             stations = stations.filter(s => s.id !== stationId);
             saveStations();
             if (currentStation && currentStation.id === stationId) {
+              // Teardown completo: invalida reintentos/timeouts pendientes y
+              // destruye el stream; sin esto seguía descargando en segundo
+              // plano y la barra quedaba con estado inconsistente.
+              currentPlaybackToken++;
+              if (connectionTimeoutTimer) {
+                clearTimeout(connectionTimeoutTimer);
+                connectionTimeoutTimer = null;
+              }
+              if (hls) {
+                try { hls.destroy(); } catch (e) {}
+                hls = null;
+              }
               audio.pause();
+              audio.removeAttribute('src');
+              audio.load();
+              currentStation = null;
+              isBuffering = false;
               setPlayingState(false);
             }
             renderStations();
@@ -1928,8 +1946,16 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/radio-sw.js').then(reg => {
+      // Scope acotado a /radio: antes ambos SW competían por '/' y cada
+      // activación borraba la caché de la otra app (rompía el offline).
+      navigator.serviceWorker.register('/radio-sw.js', { scope: '/radio' }).then(reg => {
         try { reg.update(); } catch(e) {}
+        // Limpia el registro legacy de scope '/' si quedó de una versión previa.
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(r => {
+            if (r.scope === location.origin + '/') r.unregister().catch(() => {});
+          });
+        }).catch(() => {});
       }).catch(err => {
         console.warn('Radio SW registration failed:', err);
       });

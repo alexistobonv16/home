@@ -144,7 +144,6 @@ function jsonRes(obj, status = 200, extraHeaders = {}) {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       ...extraHeaders
     }
@@ -186,7 +185,6 @@ export async function onRequestGet(context) {
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
             'Content-Disposition': `attachment; filename="${name}"`,
-            'Access-Control-Allow-Origin': '*',
             'Cache-Control': 'no-cache, no-store, must-revalidate'
           }
         });
@@ -222,7 +220,6 @@ export async function onRequestGet(context) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     });
@@ -331,8 +328,7 @@ export async function onRequestPost(context) {
     }), {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'application/json'
       }
     });
 
@@ -345,10 +341,10 @@ export async function onRequestPost(context) {
 }
 
 export async function onRequestOptions() {
+  // Sin ACAO: solo el mismo origen consume este endpoint (tv.html).
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }

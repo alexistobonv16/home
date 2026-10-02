@@ -3,7 +3,7 @@
  * Enables offline shell, installability, and fast asset loading
  */
 
-const CACHE_NAME = 'alexis-tv-cache-v10';
+const CACHE_NAME = 'alexis-tv-cache-v11';
 const SHELL_ASSETS = [
   '/tv',
   '/tv.webmanifest',
@@ -26,8 +26,12 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
+      // Solo purga cachés VIEJAS de ESTA app: borrar las de la otra PWA
+      // (radio) rompía su uso offline y viceversa.
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys
+          .filter((key) => key.startsWith('alexis-tv-cache-') && key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
       );
     })
   );

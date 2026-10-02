@@ -11,9 +11,11 @@ const MAX_FAILED_ATTEMPTS = 5;
 const RATE_WINDOW_SECONDS = 300;
 
 function json(data, status = 200) {
+  // Sin ACAO: el endpoint se consume solo desde el mismo origen (tv.html);
+  // '*' permitía leer respuestas de auth desde sitios de terceros.
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    headers: { 'Content-Type': 'application/json' }
   });
 }
 
@@ -192,10 +194,10 @@ export async function onRequestPut(context) {
 }
 
 export async function onRequestOptions() {
+  // Sin ACAO: solo el mismo origen consume este endpoint (tv.html).
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, PUT, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }

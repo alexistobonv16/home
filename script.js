@@ -1082,6 +1082,16 @@ function escapeHtml(str) {
   }[tag] || tag));
 }
 
+// Solo http(s): bloquea javascript:/data: provenientes de KV antes de que
+// lleguen a href/src/iframe (XSS almacenado en el portafolio público).
+function safeProjectUrl(raw) {
+  try {
+    const u = new URL(String(raw), location.href);
+    if (u.protocol === 'https:' || u.protocol === 'http:') return u.href;
+  } catch (e) {}
+  return '';
+}
+
 function generateProjectCardHtml(proj, index) {
   const isMobileScreen = window.innerWidth <= 768;
   const isReversed = index % 2 === 1;
@@ -1265,6 +1275,9 @@ function applyContactUpdates(c) {
 function applyProjectsUpdates(projects) {
   const container = document.querySelector('.projects-list');
   if (!container) return;
+
+  // Sanear URLs antes de tocar el DOM: href/src/data-url solo aceptan http(s).
+  projects = (projects || []).map(p => ({ ...p, url: safeProjectUrl(p && p.url) }));
 
   const currentShowcases = container.querySelectorAll('.project-showcase');
   const currentIds = Array.from(currentShowcases).map(el => el.id.replace(/^project-/, ''));

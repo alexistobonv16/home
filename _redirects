@@ -1,3 +1,9 @@
 # Bloquea el archivo de configuración por defecto (contenía el PIN).
 # El archivo ya no existe en el repo, esto es defensa adicional si alguien lo reintroduce.
 /default-config.json / 301
+
+# El directorio de salida es la raíz del repo: evita servir configs del proyecto.
+/wrangler.jsonc /404.html 404
+/package.json /404.html 404
+/README.md /404.html 404
+/.gitignore /404.html 404

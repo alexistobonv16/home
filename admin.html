@@ -1044,12 +1044,15 @@
       }
 
       container.innerHTML = siteConfig.projects.map((proj, idx) => {
-        const badgeColorClass = `badge-${proj.badgeColor || 'brand'}`;
+        // Sanear clase/atributos: en KV podrían venir con comillas/espacios y
+        // romper la plantilla (escapeHtml no sirve dentro de clase/atributo ya
+        // construido sin escapar).
+        const badgeColorClass = `badge-${String(proj.badgeColor || 'brand').replace(/[^a-z0-9_-]/gi, '') || 'brand'}`;
         const isFirst = idx === 0;
         const isLast = idx === siteConfig.projects.length - 1;
 
         return `
-          <div class="project-admin-card ${proj.active === false ? 'inactive' : ''}" data-id="${proj.id}">
+          <div class="project-admin-card ${proj.active === false ? 'inactive' : ''}" data-id="${escapeHtml(proj.id)}">
             <div class="project-card-info">
               <div class="project-card-meta">
                 <span class="badge ${badgeColorClass}">${escapeHtml(proj.badge || 'Proyecto')}</span>
@@ -1139,6 +1142,10 @@
       const url = document.getElementById('proj-url').value.trim();
       if (!url) {
         alert('Por favor ingresa primero la URL.');
+        return;
+      }
+      if (!/^https?:\/\//i.test(url)) {
+        alert('La URL debe empezar con http:// o https://.');
         return;
       }
       iframeBox.style.display = 'block';
@@ -1307,9 +1314,24 @@
     document.getElementById('reset-defaults-btn').addEventListener('click', async () => {
       if (!confirm('¿Restaurar configuración inicial (NotiTec y Mis Gastos)? Esta acción reemplazará tus cambios actuales.')) return;
       try {
-        const res = await fetch('/api/projects');
-        // reload default
-        location.reload();
+        const res = await fetch('/api/admin/data?defaults=1', {
+          headers: { 'Authorization': `Bearer ${sessionToken}` }
+        });
+        if (res.status === 401) {
+          sessionStorage.removeItem('at_admin_token');
+          loginOverlay.style.display = 'flex';
+          return;
+        }
+        const json = await res.json();
+        if (!json.success || !json.data) {
+          showToast(json.error || 'No se pudieron obtener los valores por defecto.', 'error');
+          return;
+        }
+        // Aplica los defaults en el panel y los persiste en KV.
+        siteConfig = json.data;
+        renderProjectsList();
+        fillContactForm();
+        await saveConfigToKV('Configuración restaurada a los valores por defecto.');
       } catch (e) {
         alert('Error: ' + e.message);
       }
