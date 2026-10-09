@@ -1,5 +1,6 @@
-const CACHE_NAME = 'alexis-radio-v10';
+const CACHE_NAME = 'alexis-radio-v12';
 const STATIC_ASSETS = [
+  '/',
   '/radio.html',
   '/radio.css',
   '/radio.js',
@@ -62,7 +63,7 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request).then((cached) => {
           if (cached) return cached;
           if (event.request.mode === 'navigate') {
-            return caches.match('/radio.html');
+            return caches.match('/').then(res => res || caches.match('/radio.html'));
           }
         });
       })

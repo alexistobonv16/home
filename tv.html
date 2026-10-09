@@ -2746,7 +2746,7 @@
 
   <!-- 2. TOP HEADER -->
   <header class="tv-header">
-    <a href="/tv" class="brand-area">
+    <a href="/" class="brand-area">
       <div class="brand-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
       </div>
@@ -2786,6 +2786,11 @@
       <button id="lock-app-btn" class="btn-icon" title="Bloquear / Salir">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
       </button>
+
+      <!-- Return to alexistobon.com -->
+      <a href="https://alexistobon.com" class="btn-icon" title="Volver a alexistobon.com" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none; color: inherit;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      </a>
     </div>
   </header>
 
@@ -3710,17 +3715,26 @@
       }
 
       if ('serviceWorker' in navigator) {
-        // Scope acotado a /tv: antes ambos SW (TV y radio) competían por '/' y
-        // cada activación borraba la caché de la otra app (rompía el offline).
-        navigator.serviceWorker.register('/tv-sw.js', { scope: '/tv' }).then((reg) => {
+        const isDedicatedSubdomain = location.hostname === 'tv.alexistobon.com';
+        const targetScope = isDedicatedSubdomain ? '/' : '/tv';
+        navigator.serviceWorker.register('/tv-sw.js', { scope: targetScope }).then((reg) => {
           console.debug('Alexis TV Service Worker activo:', reg.scope);
           try { reg.update(); } catch (e) {}
-          // Limpia el registro legacy de scope '/' si quedó de una versión previa.
-          navigator.serviceWorker.getRegistrations().then(regs => {
-            regs.forEach(r => {
-              if (r.scope === location.origin + '/') r.unregister().catch(() => {});
-            });
-          }).catch(() => {});
+          if (isDedicatedSubdomain) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(r => {
+                if (r.scope.endsWith('/tv') || r.scope.endsWith('/tv/')) {
+                  r.unregister().catch(() => {});
+                }
+              });
+            }).catch(() => {});
+          } else {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(r => {
+                if (r.scope === location.origin + '/') r.unregister().catch(() => {});
+              });
+            }).catch(() => {});
+          }
         }).catch(err => {
           console.warn('Error registrando SW:', err);
         });

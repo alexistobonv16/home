@@ -3,9 +3,11 @@
  * Enables offline shell, installability, and fast asset loading
  */
 
-const CACHE_NAME = 'alexis-tv-cache-v11';
+const CACHE_NAME = 'alexis-tv-cache-v13';
 const SHELL_ASSETS = [
+  '/',
   '/tv',
+  '/tv.html',
   '/tv.webmanifest',
   '/tv-icon.svg',
   '/tv-icon-192.png',
@@ -70,7 +72,7 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
           if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/tv');
+            return caches.match('/').then(res => res || caches.match('/tv.html') || caches.match('/tv'));
           }
           return new Response('Sin conexión', { status: 503, statusText: 'Offline' });
         });

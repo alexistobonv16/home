@@ -1,10 +1,10 @@
 {
-  "id": "/radio",
+  "id": "/",
   "name": "Alexis Radio",
   "short_name": "Alexis Radio",
   "description": "Sintonizador de radio web moderno con soporte para streams MP3, AAC, M3U8 HLS y listas M3U personalizadas.",
-  "start_url": "/radio",
-  "scope": "/radio",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#030712",

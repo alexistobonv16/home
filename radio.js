@@ -2133,16 +2133,25 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // Scope acotado a /radio: antes ambos SW competían por '/' y cada
-      // activación borraba la caché de la otra app (rompía el offline).
-      navigator.serviceWorker.register('/radio-sw.js', { scope: '/radio' }).then(reg => {
+      const isDedicatedSubdomain = location.hostname === 'radio.alexistobon.com';
+      const targetScope = isDedicatedSubdomain ? '/' : '/radio';
+      navigator.serviceWorker.register('/radio-sw.js', { scope: targetScope }).then(reg => {
         try { reg.update(); } catch(e) {}
-        // Limpia el registro legacy de scope '/' si quedó de una versión previa.
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          regs.forEach(r => {
-            if (r.scope === location.origin + '/') r.unregister().catch(() => {});
-          });
-        }).catch(() => {});
+        if (isDedicatedSubdomain) {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(r => {
+              if (r.scope.endsWith('/radio') || r.scope.endsWith('/radio/')) {
+                r.unregister().catch(() => {});
+              }
+            });
+          }).catch(() => {});
+        } else {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(r => {
+              if (r.scope === location.origin + '/') r.unregister().catch(() => {});
+            });
+          }).catch(() => {});
+        }
       }).catch(err => {
         console.warn('Radio SW registration failed:', err);
       });
