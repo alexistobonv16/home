@@ -16,7 +16,7 @@ export async function onRequest(context) {
   // -------------------------------------------------------------
   if (hostname === 'radio.alexistobon.com') {
     // Rutas de navegación principales de la app de Radio
-    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/radio' || url.pathname === '/radio.html') {
+    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/radio' || url.pathname === '/radio/' || url.pathname === '/radio.html') {
       const assetUrl = new URL('/radio.html', url.origin);
       assetUrl.search = url.search;
       return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
@@ -43,7 +43,7 @@ export async function onRequest(context) {
   // -------------------------------------------------------------
   if (hostname === 'tv.alexistobon.com') {
     // Rutas de navegación principales de la app de TV
-    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/tv' || url.pathname === '/tv.html') {
+    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/tv' || url.pathname === '/tv/' || url.pathname === '/tv.html') {
       const assetUrl = new URL('/tv.html', url.origin);
       assetUrl.search = url.search;
       return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
@@ -69,12 +69,12 @@ export async function onRequest(context) {
   // 3. DOMINIO PRINCIPAL: alexistobon.com (y www.alexistobon.com)
   // -------------------------------------------------------------
   if (hostname === 'alexistobon.com' || hostname === 'www.alexistobon.com') {
-    if (url.pathname === '/radio' || url.pathname === '/radio.html') {
+    if (url.pathname === '/radio' || url.pathname === '/radio/' || url.pathname === '/radio.html') {
       const target = new URL('https://radio.alexistobon.com/');
       target.search = url.search;
       return Response.redirect(target.toString(), 301);
     }
-    if (url.pathname === '/tv' || url.pathname === '/tv.html') {
+    if (url.pathname === '/tv' || url.pathname === '/tv/' || url.pathname === '/tv.html') {
       const target = new URL('https://tv.alexistobon.com/');
       target.search = url.search;
       return Response.redirect(target.toString(), 301);
