@@ -34,7 +34,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=4.9">
+  <link rel="stylesheet" href="radio.css?v=5.2">
 </head>
 <body>
 
@@ -142,7 +142,7 @@
   <footer class="bottom-player-bar" id="bottom-player-bar">
     <div class="bottom-bar-container">
       <!-- Left: Active Station Meta & Extension / Bitrate Badges -->
-      <div class="bottom-bar-left">
+      <div class="bottom-bar-left" id="bottom-bar-left" title="Abrir Reproductor en Pantalla Completa (F)" role="button" tabindex="0">
         <img id="bottom-bar-logo" class="bottom-bar-logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23080f24' stroke='%2300f0ff' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='%2300f0ff' text-anchor='middle'%3ERA%3C/text%3E%3C/svg%3E" alt="Emisora">
         <div class="bottom-bar-meta">
           <div class="bottom-bar-title-row">
@@ -157,6 +157,9 @@
             <span id="bottom-bar-telemetry" class="bottom-bar-telemetry">VEL: 0.0 KB/s • RED: 0.00 MB</span>
           </div>
         </div>
+        <button id="bottom-bar-expand-btn" class="bottom-bar-expand-btn" title="Pantalla Completa (F)" aria-label="Abrir reproductor en pantalla completa">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+        </button>
       </div>
 
       <!-- Center: High-Tech Transport Controls -->
@@ -202,10 +205,124 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
             <span>Proxy</span>
           </button>
+
+          <button id="fullscreen-player-btn" class="fullscreen-btn" title="Modo Pantalla Completa (F)" aria-label="Pantalla Completa">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+            <span>Pantalla</span>
+          </button>
         </div>
       </div>
     </div>
   </footer>
+
+  <!-- FULLSCREEN PLAYER OVERLAY (Modo Pantalla Completa / Now Playing) -->
+  <div id="fullscreen-player-overlay" class="fullscreen-player-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Reproductor en Pantalla Completa">
+    <div class="fs-backdrop-blur"></div>
+    <div class="fs-ambient-glow" id="fs-ambient-glow"></div>
+
+    <div class="fs-player-container">
+      <!-- 1. Top Bar -->
+      <header class="fs-header">
+        <button id="fs-close-btn" class="fs-icon-btn fs-close-btn" title="Cerrar / Minimizar (Esc o arrastrar abajo)" aria-label="Cerrar reproductor">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+
+        <div class="fs-header-center">
+          <div class="fs-header-badge"><span class="pulse-led" id="fs-pulse-led"></span> <span id="fs-status-text">EN VIVO</span></div>
+          <div class="fs-header-subtitle">ALEXIS RADIO // CYBER-TUNER</div>
+        </div>
+
+        <div class="fs-header-actions">
+          <button id="fs-star-btn" class="fs-icon-btn fs-star-btn" title="Añadir a favoritas" aria-label="Marcar como favorita">
+            <svg id="fs-star-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </button>
+
+          <button id="fs-browser-fullscreen-btn" class="fs-icon-btn fs-browser-fs-btn" title="Pantalla completa nativa del navegador" aria-label="Pantalla completa del navegador">
+            <svg id="fs-browser-fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            <svg id="fs-browser-fs-icon-compress" style="display:none;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6 7 7M10 10H4m6 0V4m0 6L3 3m14 7h6m-6 0V4m0 6 7-7"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- 2. Main Stage -->
+      <main class="fs-stage">
+        <div class="fs-artwork-wrapper">
+          <div class="fs-artwork-glow" id="fs-artwork-glow"></div>
+          <img id="fs-station-logo" class="fs-station-logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23080f24' stroke='%2300f0ff' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='%2300f0ff' text-anchor='middle'%3ERA%3C/text%3E%3C/svg%3E" alt="Emisora">
+        </div>
+
+        <div class="fs-info-group">
+          <div class="fs-badges-row">
+            <span id="fs-station-genre" class="fs-badge fs-badge-genre">Noticias</span>
+            <span id="fs-station-freq" class="fs-badge fs-badge-freq">100.9 FM</span>
+            <span id="fs-station-format-badge" class="format-badge badge-mp3">MP3</span>
+            <span id="fs-station-bitrate-badge" class="highlight-bitrate">128 kbps</span>
+          </div>
+
+          <h2 id="fs-station-name" class="fs-station-name">Caracol Radio</h2>
+
+          <div class="fs-telemetry-row">
+            <span class="fs-telemetry-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span id="fs-telemetry-speed">VEL: 0.0 KB/s</span>
+            </span>
+            <span class="fs-telemetry-divider">•</span>
+            <span class="fs-telemetry-item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span id="fs-telemetry-data">RED: 0.00 MB</span>
+            </span>
+            <span class="fs-telemetry-divider">•</span>
+            <span id="fs-proxy-indicator" class="fs-telemetry-proxy">DIRECTO</span>
+          </div>
+        </div>
+
+        <!-- Wide Responsive Spectrum Canvas Visualizer -->
+        <div class="fs-visualizer-container">
+          <canvas id="fs-visualizer-canvas"></canvas>
+        </div>
+      </main>
+
+      <!-- 3. Footer Controls Deck -->
+      <footer class="fs-footer">
+        <div class="fs-tools-row">
+          <button id="fs-sleep-btn" class="sleep-btn" title="Temporizador de apagado">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Sleep</span>
+            <span id="fs-sleep-badge" style="color: var(--accent-amber); font-weight: bold;"></span>
+          </button>
+
+          <button id="fs-proxy-btn" class="proxy-toggle-btn" title="Activar/Desactivar Proxy Cloudflare">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+            <span>Proxy</span>
+          </button>
+        </div>
+
+        <!-- Big Illuminated Transport Cluster -->
+        <div class="fs-playback-row">
+          <button id="fs-prev-btn" class="fs-nav-btn" title="Emisora anterior (←)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+          </button>
+
+          <button id="fs-play-btn" class="fs-play-btn" title="Reproducir / Pausar (Espacio)">
+            <svg id="fs-play-icon" xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+            <svg id="fs-pause-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </button>
+
+          <button id="fs-next-btn" class="fs-nav-btn" title="Siguiente emisora (→)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+          </button>
+        </div>
+
+        <!-- Volume Deck -->
+        <div class="fs-volume-row">
+          <button id="fs-mute-btn" class="fs-mute-btn" title="Silenciar / Activar sonido (M)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </button>
+          <input type="range" id="fs-volume-slider" class="volume-slider fs-volume-slider" min="0" max="1" step="0.01" value="0.85">
+        </div>
+      </footer>
+    </div>
+  </div>
 
   <!-- MODAL 1: Add/Edit Station -->
   <div id="add-station-modal" class="modal-backdrop">
@@ -460,6 +577,6 @@
   </div>
 
   <!-- Scripts -->
-  <script src="radio.js?v=5.1"></script>
+  <script src="radio.js?v=5.2"></script>
 </body>
 </html>

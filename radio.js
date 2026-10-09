@@ -229,6 +229,43 @@
   const bottomBarFormatBadge = document.getElementById('bottom-bar-format-badge');
   const bottomBarBitrateBadge = document.getElementById('bottom-bar-bitrate-badge');
   const bottomBarTelemetry = document.getElementById('bottom-bar-telemetry');
+  const bottomBarExpandBtn = document.getElementById('bottom-bar-expand-btn');
+  const bottomBarLeft = document.getElementById('bottom-bar-left');
+  const fullscreenPlayerBtn = document.getElementById('fullscreen-player-btn');
+
+  // Fullscreen Player Overlay Elements
+  const fsOverlay = document.getElementById('fullscreen-player-overlay');
+  const fsCloseBtn = document.getElementById('fs-close-btn');
+  const fsPulseLed = document.getElementById('fs-pulse-led');
+  const fsStatusText = document.getElementById('fs-status-text');
+  const fsStarBtn = document.getElementById('fs-star-btn');
+  const fsStarIcon = document.getElementById('fs-star-icon');
+  const fsBrowserFsBtn = document.getElementById('fs-browser-fullscreen-btn');
+  const fsBrowserFsIconExpand = document.getElementById('fs-browser-fs-icon-expand');
+  const fsBrowserFsIconCompress = document.getElementById('fs-browser-fs-icon-compress');
+  const fsStationLogo = document.getElementById('fs-station-logo');
+  const fsStationGenre = document.getElementById('fs-station-genre');
+  const fsStationFreq = document.getElementById('fs-station-freq');
+  const fsStationFormatBadge = document.getElementById('fs-station-format-badge');
+  const fsStationBitrateBadge = document.getElementById('fs-station-bitrate-badge');
+  const fsStationName = document.getElementById('fs-station-name');
+  const fsTelemetrySpeed = document.getElementById('fs-telemetry-speed');
+  const fsTelemetryData = document.getElementById('fs-telemetry-data');
+  const fsProxyIndicator = document.getElementById('fs-proxy-indicator');
+  const fsVisualizerCanvas = document.getElementById('fs-visualizer-canvas');
+  const fsCanvasCtx = fsVisualizerCanvas ? fsVisualizerCanvas.getContext('2d') : null;
+  const fsSleepBtn = document.getElementById('fs-sleep-btn');
+  const fsSleepBadge = document.getElementById('fs-sleep-badge');
+  const fsProxyBtn = document.getElementById('fs-proxy-btn');
+  const fsPrevBtn = document.getElementById('fs-prev-btn');
+  const fsPlayBtn = document.getElementById('fs-play-btn');
+  const fsPlayIcon = document.getElementById('fs-play-icon');
+  const fsPauseIcon = document.getElementById('fs-pause-icon');
+  const fsNextBtn = document.getElementById('fs-next-btn');
+  const fsMuteBtn = document.getElementById('fs-mute-btn');
+  const fsVolumeSlider = document.getElementById('fs-volume-slider');
+
+  let isFullscreenPlayerOpen = false;
 
   // =========================================================================
   // STORAGE & INITIALIZATION
@@ -401,6 +438,25 @@
     if (bottomBarTelemetry) {
       bottomBarTelemetry.textContent = `VEL: ${activeSpeedText} • RED: ${activeDataText}`;
     }
+
+    // 9. Fullscreen Player elements
+    if (fsTelemetrySpeed) {
+      fsTelemetrySpeed.textContent = `VEL: ${activeSpeedText}`;
+    }
+    if (fsTelemetryData) {
+      fsTelemetryData.textContent = `RED: ${activeDataText}`;
+    }
+    if (fsStationBitrateBadge) {
+      fsStationBitrateBadge.textContent = activeBitrateText;
+    }
+    if (fsStationFormatBadge) {
+      fsStationFormatBadge.textContent = fmt.ext;
+      fsStationFormatBadge.className = `format-badge ${fmt.badgeClass}`;
+    }
+    if (fsProxyIndicator) {
+      fsProxyIndicator.textContent = useProxyForced ? 'PROXY ACTIVO' : 'DIRECTO';
+      fsProxyIndicator.style.color = useProxyForced ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+    }
   }
 
   async function probeStreamTelemetry(targetUrl) {
@@ -517,6 +573,31 @@
       nowPlayingStatus.style.color = 'var(--text-muted)';
       nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#64748b;box-shadow:none;"></span> LISTO';
     }
+
+    // Sync Fullscreen Player Status
+    if (fsStatusText && fsPulseLed) {
+      if (state === 'playing') {
+        fsStatusText.textContent = 'EN VIVO';
+        fsPulseLed.style.background = '#10b981';
+        fsPulseLed.style.boxShadow = '0 0 10px #10b981';
+      } else if (state === 'buffering') {
+        fsStatusText.textContent = 'CONECTANDO...';
+        fsPulseLed.style.background = '#f59e0b';
+        fsPulseLed.style.boxShadow = '0 0 10px #f59e0b';
+      } else if (state === 'error') {
+        fsStatusText.textContent = 'NO DISPONIBLE';
+        fsPulseLed.style.background = '#ef4444';
+        fsPulseLed.style.boxShadow = '0 0 10px #ef4444';
+      } else if (state === 'paused') {
+        fsStatusText.textContent = 'PAUSADO';
+        fsPulseLed.style.background = '#64748b';
+        fsPulseLed.style.boxShadow = 'none';
+      } else {
+        fsStatusText.textContent = 'LISTO';
+        fsPulseLed.style.background = '#64748b';
+        fsPulseLed.style.boxShadow = 'none';
+      }
+    }
   }
 
   function handleStreamError(station, reason, token) {
@@ -557,6 +638,10 @@
     if (playIcon && pauseIcon) {
       playIcon.style.display = 'block';
       pauseIcon.style.display = 'none';
+    }
+    if (fsPlayIcon && fsPauseIcon) {
+      fsPlayIcon.style.display = 'block';
+      fsPauseIcon.style.display = 'none';
     }
     updatePlayerStatus('error');
 
@@ -723,6 +808,10 @@
     if (playIcon && pauseIcon) {
       playIcon.style.display = playing ? 'none' : 'block';
       pauseIcon.style.display = playing ? 'block' : 'none';
+    }
+    if (fsPlayIcon && fsPauseIcon) {
+      fsPlayIcon.style.display = playing ? 'none' : 'block';
+      fsPauseIcon.style.display = playing ? 'block' : 'none';
     }
     updatePlayerStatus(playing ? 'playing' : 'paused');
     if (playing) {
@@ -1065,7 +1154,69 @@
       bottomBarFreq.textContent = station.freq || station.genre || 'WEB STREAM';
     }
 
+    updateFullscreenPlayer(station);
     updateTelemetryDisplay();
+  }
+
+  function updateFullscreenPlayer(station) {
+    if (!station) return;
+    const fallback = getStationFallbackSvg(station.name, station.genre);
+
+    if (fsStationLogo) {
+      fsStationLogo.src = station.logo || fallback;
+      fsStationLogo.onerror = () => { fsStationLogo.src = fallback; };
+      fsStationLogo.alt = station.name;
+    }
+    if (fsStationName) {
+      fsStationName.textContent = station.name;
+    }
+    if (fsStationGenre) {
+      fsStationGenre.textContent = station.genre || 'General';
+    }
+    if (fsStationFreq) {
+      fsStationFreq.textContent = station.freq || 'WEB STREAM';
+    }
+
+    updateFullscreenStarState();
+
+    if (fsPlayIcon && fsPauseIcon) {
+      fsPlayIcon.style.display = isPlaying ? 'none' : 'block';
+      fsPauseIcon.style.display = isPlaying ? 'block' : 'none';
+    }
+
+    if (fsSleepBadge) {
+      fsSleepBadge.textContent = (sleepBadge && sleepBadge.textContent) ? sleepBadge.textContent : '';
+    }
+    if (fsSleepBtn) {
+      fsSleepBtn.classList.toggle('active', !!sleepTimerId);
+    }
+    if (fsProxyBtn) {
+      fsProxyBtn.classList.toggle('active', useProxyForced);
+    }
+    if (fsMuteBtn) {
+      fsMuteBtn.style.color = audio.muted ? 'var(--accent-red)' : 'var(--text-muted)';
+    }
+    if (fsVolumeSlider) {
+      fsVolumeSlider.value = audio.volume;
+      updateVolumeVisual(audio.volume);
+    }
+  }
+
+  function updateFullscreenStarState() {
+    if (!fsStarBtn || !currentStation) return;
+    fsStarBtn.classList.toggle('starred', !!currentStation.isStarred);
+    if (fsStarIcon) {
+      fsStarIcon.setAttribute('fill', currentStation.isStarred ? 'currentColor' : 'none');
+    }
+  }
+
+  function toggleCurrentStationStar() {
+    if (!currentStation) return;
+    currentStation.isStarred = !currentStation.isStarred;
+    saveStations();
+    updateFullscreenStarState();
+    renderStations();
+    showToast(currentStation.isStarred ? `Añadida a favoritas: ${currentStation.name}` : `Eliminada de favoritas`);
   }
 
   // =========================================================================
@@ -1279,58 +1430,87 @@
   if (prevBtn) prevBtn.addEventListener('click', playPrevStation);
 
   function updateVolumeVisual(val) {
-    if (!volumeSlider) return;
     const pct = Math.round((parseFloat(val) || 0) * 100);
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const trackColor = isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.22)';
-    volumeSlider.style.background = `linear-gradient(to right, var(--accent-cyan) 0%, var(--accent-cyan) ${pct}%, ${trackColor} ${pct}%, ${trackColor} 100%)`;
+    const grad = `linear-gradient(to right, var(--accent-cyan) 0%, var(--accent-cyan) ${pct}%, ${trackColor} ${pct}%, ${trackColor} 100%)`;
+    if (volumeSlider) {
+      volumeSlider.value = val;
+      volumeSlider.style.background = grad;
+    }
+    if (fsVolumeSlider) {
+      fsVolumeSlider.value = val;
+      fsVolumeSlider.style.background = grad;
+    }
+  }
+
+  function syncMuteState() {
+    const color = audio.muted ? 'var(--accent-red)' : 'var(--text-muted)';
+    if (muteBtn) muteBtn.style.color = color;
+    if (fsMuteBtn) fsMuteBtn.style.color = color;
+  }
+
+  function handleVolumeInput(val) {
+    const vol = parseFloat(val);
+    audio.volume = vol;
+    localStorage.setItem('at_radio_volume', vol);
+    updateVolumeVisual(vol);
+    audio.muted = (vol === 0);
+    syncMuteState();
   }
 
   if (volumeSlider) {
-    volumeSlider.addEventListener('input', (e) => {
-      const vol = parseFloat(e.target.value);
-      audio.volume = vol;
-      localStorage.setItem('at_radio_volume', vol);
-      updateVolumeVisual(vol);
-      if (vol === 0) {
-        audio.muted = true;
-      } else {
-        audio.muted = false;
-      }
-    });
+    volumeSlider.addEventListener('input', (e) => handleVolumeInput(e.target.value));
 
     const savedVol = localStorage.getItem('at_radio_volume');
     if (savedVol !== null) {
       audio.volume = parseFloat(savedVol);
-      volumeSlider.value = savedVol;
       updateVolumeVisual(savedVol);
     } else {
       updateVolumeVisual(volumeSlider.value);
     }
   }
 
-  if (muteBtn) {
-    muteBtn.addEventListener('click', () => {
-      audio.muted = !audio.muted;
-      muteBtn.style.color = audio.muted ? 'var(--accent-red)' : 'var(--text-muted)';
-      showToast(audio.muted ? 'Silenciado' : 'Sonido activado');
-    });
+  if (fsVolumeSlider) {
+    fsVolumeSlider.addEventListener('input', (e) => handleVolumeInput(e.target.value));
   }
 
-  if (proxyToggleBtn) {
-    proxyToggleBtn.addEventListener('click', () => {
-      useProxyForced = !useProxyForced;
-      proxyToggleBtn.classList.toggle('active', useProxyForced);
-      showToast(useProxyForced ? 'Cloudflare Proxy activado (Mayor compatibilidad)' : 'Modo Directo activado');
-      if (currentStation && isPlaying) {
-        playStation(currentStation, useProxyForced);
-      }
-    });
+  function toggleMute() {
+    audio.muted = !audio.muted;
+    syncMuteState();
+    showToast(audio.muted ? 'Silenciado' : 'Sonido activado');
   }
+
+  if (muteBtn) muteBtn.addEventListener('click', toggleMute);
+  if (fsMuteBtn) fsMuteBtn.addEventListener('click', toggleMute);
+
+  function toggleProxyMode() {
+    useProxyForced = !useProxyForced;
+    if (proxyToggleBtn) proxyToggleBtn.classList.toggle('active', useProxyForced);
+    if (fsProxyBtn) fsProxyBtn.classList.toggle('active', useProxyForced);
+    if (fsProxyIndicator) {
+      fsProxyIndicator.textContent = useProxyForced ? 'PROXY ACTIVO' : 'DIRECTO';
+      fsProxyIndicator.style.color = useProxyForced ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+    }
+    showToast(useProxyForced ? 'Cloudflare Proxy activado (Mayor compatibilidad)' : 'Modo Directo activado');
+    if (currentStation && isPlaying) {
+      playStation(currentStation, useProxyForced);
+    }
+  }
+
+  if (proxyToggleBtn) proxyToggleBtn.addEventListener('click', toggleProxyMode);
+  if (fsProxyBtn) fsProxyBtn.addEventListener('click', toggleProxyMode);
 
   // Sleep Timer
   if (sleepTimerBtn) {
     sleepTimerBtn.addEventListener('click', () => {
+      const modal = document.getElementById('sleep-modal');
+      if (modal) modal.classList.add('open');
+    });
+  }
+
+  if (fsSleepBtn) {
+    fsSleepBtn.addEventListener('click', () => {
       const modal = document.getElementById('sleep-modal');
       if (modal) modal.classList.add('open');
     });
@@ -1346,13 +1526,18 @@
       sleepTimerEnd = null;
       if (sleepBadge) sleepBadge.textContent = '';
       if (sleepTimerBtn) sleepTimerBtn.classList.remove('active');
+      if (fsSleepBadge) fsSleepBadge.textContent = '';
+      if (fsSleepBtn) fsSleepBtn.classList.remove('active');
       showToast('Temporizador desactivado');
       return;
     }
 
     sleepTimerEnd = Date.now() + minutes * 60 * 1000;
-    if (sleepBadge) sleepBadge.textContent = `${minutes}m`;
+    const badgeText = `${minutes}m`;
+    if (sleepBadge) sleepBadge.textContent = badgeText;
     if (sleepTimerBtn) sleepTimerBtn.classList.add('active');
+    if (fsSleepBadge) fsSleepBadge.textContent = badgeText;
+    if (fsSleepBtn) fsSleepBtn.classList.add('active');
 
     sleepTimerId = setTimeout(() => {
       // Smooth fade out
@@ -1366,6 +1551,8 @@
           audio.volume = parseFloat(localStorage.getItem('at_radio_volume') || '1');
           if (sleepBadge) sleepBadge.textContent = '';
           if (sleepTimerBtn) sleepTimerBtn.classList.remove('active');
+          if (fsSleepBadge) fsSleepBadge.textContent = '';
+          if (fsSleepBtn) fsSleepBtn.classList.remove('active');
           showToast('Temporizador: Radio apagada');
         }
       }, 200);
@@ -1962,8 +2149,299 @@
     });
   }
 
+  // =========================================================================
+  // FULLSCREEN PLAYER CONTROLLER (Modo Pantalla Completa / Now Playing)
+  // =========================================================================
+  let fsAnimFrameId = null;
+
+  function openFullscreenPlayer() {
+    if (!fsOverlay) return;
+    isFullscreenPlayerOpen = true;
+    fsOverlay.classList.add('open');
+    fsOverlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    if (currentStation) {
+      updateFullscreenPlayer(currentStation);
+    }
+    resizeFsCanvas();
+    startFsVisualizer();
+  }
+
+  function closeFullscreenPlayer() {
+    if (!fsOverlay) return;
+    isFullscreenPlayerOpen = false;
+    fsOverlay.classList.remove('open');
+    fsOverlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    stopFsVisualizer();
+  }
+
+  function toggleFullscreenPlayer() {
+    if (isFullscreenPlayerOpen) {
+      closeFullscreenPlayer();
+    } else {
+      openFullscreenPlayer();
+    }
+  }
+
+  // Native Browser Fullscreen API Toggle
+  function toggleBrowserFullscreen() {
+    const docEl = document.documentElement;
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+    if (!isFs) {
+      const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+      if (req) {
+        req.call(docEl).catch(err => {
+          console.warn('Native fullscreen request rejected:', err);
+        });
+      }
+    } else {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+      if (exit) {
+        exit.call(document).catch(err => {
+          console.warn('Native fullscreen exit error:', err);
+        });
+      }
+    }
+  }
+
+  function syncBrowserFullscreenIcons() {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+    if (fsBrowserFsIconExpand && fsBrowserFsIconCompress) {
+      fsBrowserFsIconExpand.style.display = isFs ? 'none' : 'block';
+      fsBrowserFsIconCompress.style.display = isFs ? 'block' : 'none';
+    }
+  }
+
+  document.addEventListener('fullscreenchange', syncBrowserFullscreenIcons);
+  document.addEventListener('webkitfullscreenchange', syncBrowserFullscreenIcons);
+
+  // Fullscreen Audio Spectrum Visualizer
+  function stopFsVisualizer() {
+    if (fsAnimFrameId) {
+      cancelAnimationFrame(fsAnimFrameId);
+      fsAnimFrameId = null;
+    }
+  }
+
+  function resizeFsCanvas() {
+    if (!fsVisualizerCanvas || !fsVisualizerCanvas.parentElement) return;
+    const rect = fsVisualizerCanvas.parentElement.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (rect.width > 0 && rect.height > 0) {
+      fsVisualizerCanvas.width = Math.round(rect.width * dpr);
+      fsVisualizerCanvas.height = Math.round(rect.height * dpr);
+    }
+  }
+
+  function startFsVisualizer() {
+    if (!fsVisualizerCanvas || !fsCanvasCtx) return;
+    stopFsVisualizer();
+    resizeFsCanvas();
+
+    const bufferLength = analyser ? analyser.frequencyBinCount : 64;
+    const dataArray = new Uint8Array(bufferLength);
+
+    function renderFsFrame() {
+      if (!isFullscreenPlayerOpen) {
+        stopFsVisualizer();
+        return;
+      }
+
+      fsAnimFrameId = requestAnimationFrame(renderFsFrame);
+
+      const width = fsVisualizerCanvas.width;
+      const height = fsVisualizerCanvas.height;
+      if (width <= 0 || height <= 0) return;
+
+      fsCanvasCtx.clearRect(0, 0, width, height);
+
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      fsCanvasCtx.strokeStyle = isLight ? 'rgba(2, 132, 199, 0.12)' : 'rgba(56, 189, 248, 0.12)';
+      fsCanvasCtx.lineWidth = 1;
+      fsCanvasCtx.beginPath();
+      fsCanvasCtx.moveTo(0, height / 2);
+      fsCanvasCtx.lineTo(width, height / 2);
+      fsCanvasCtx.stroke();
+
+      if (isPlaying) {
+        let hasData = false;
+        if (analyser && isAudioContextConnected) {
+          analyser.getByteFrequencyData(dataArray);
+          for (let i = 0; i < bufferLength; i++) {
+            if (dataArray[i] > 0) {
+              hasData = true;
+              break;
+            }
+          }
+        }
+
+        const barCount = window.innerWidth <= 680 ? 28 : 42;
+        const barSpacing = 3;
+        const totalSpacing = (barCount - 1) * barSpacing;
+        const barWidth = Math.max(3, Math.floor((width - totalSpacing) / barCount));
+        const usableHeight = height - 6;
+        const startX = Math.max(0, Math.floor((width - (barCount * barWidth + totalSpacing)) / 2));
+        let x = startX;
+
+        for (let i = 0; i < barCount; i++) {
+          let barHeight = 0;
+
+          if (hasData) {
+            const dataIndex = Math.floor(i * (bufferLength / barCount));
+            barHeight = Math.max(3, (dataArray[dataIndex] / 255) * usableHeight);
+          } else {
+            // High-energy cyber synth wave when WebAudio PCM isn't cross-origin enabled
+            const time = Date.now() * 0.0038;
+            const wave1 = Math.sin(time + i * 0.28) * 0.5 + 0.5;
+            const wave2 = Math.cos(time * 0.75 + i * 0.18) * 0.5 + 0.5;
+            const wave3 = Math.sin(time * 1.3 - i * 0.12) * 0.3 + 0.3;
+            barHeight = Math.max(4, (wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2) * usableHeight);
+          }
+
+          const grad = fsCanvasCtx.createLinearGradient(0, height, 0, 0);
+          if (isLight) {
+            grad.addColorStop(0, '#0284c7');
+            grad.addColorStop(0.5, '#3b82f6');
+            grad.addColorStop(1, '#7c3aed');
+          } else {
+            grad.addColorStop(0, '#00f0ff');
+            grad.addColorStop(0.5, '#38bdf8');
+            grad.addColorStop(1, '#a855f7');
+          }
+
+          fsCanvasCtx.fillStyle = grad;
+          fsCanvasCtx.fillRect(x, height - barHeight - 2, barWidth, barHeight);
+
+          // Glowing peak cap dot
+          fsCanvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
+          fsCanvasCtx.fillRect(x, height - barHeight - 4, barWidth, 2);
+
+          x += barWidth + barSpacing;
+        }
+      } else {
+        // Idle flat baseline
+        fsCanvasCtx.fillStyle = isLight ? 'rgba(2, 132, 199, 0.25)' : 'rgba(56, 189, 248, 0.25)';
+        fsCanvasCtx.fillRect(0, height / 2 - 1, width, 2);
+      }
+    }
+
+    renderFsFrame();
+  }
+
+  // Fullscreen Player Event Listeners
+  if (fullscreenPlayerBtn) {
+    fullscreenPlayerBtn.addEventListener('click', openFullscreenPlayer);
+  }
+
+  if (bottomBarExpandBtn) {
+    bottomBarExpandBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openFullscreenPlayer();
+    });
+  }
+
+  if (bottomBarLeft) {
+    bottomBarLeft.addEventListener('click', openFullscreenPlayer);
+  }
+
+  if (fsCloseBtn) {
+    fsCloseBtn.addEventListener('click', closeFullscreenPlayer);
+  }
+
+  if (fsBrowserFsBtn) {
+    fsBrowserFsBtn.addEventListener('click', toggleBrowserFullscreen);
+  }
+
+  if (fsStarBtn) {
+    fsStarBtn.addEventListener('click', toggleCurrentStationStar);
+  }
+
+  if (fsPrevBtn) {
+    fsPrevBtn.addEventListener('click', playPrevStation);
+  }
+
+  if (fsPlayBtn) {
+    fsPlayBtn.addEventListener('click', togglePlayPause);
+  }
+
+  if (fsNextBtn) {
+    fsNextBtn.addEventListener('click', playNextStation);
+  }
+
+  // Touch gesture: swipe down to dismiss on mobile
+  let touchStartY = 0;
+  let touchStartX = 0;
+
+  if (fsOverlay) {
+    fsOverlay.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+      }
+    }, { passive: true });
+
+    fsOverlay.addEventListener('touchend', (e) => {
+      if (e.changedTouches && e.changedTouches.length === 1) {
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+        const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
+        if (deltaY > 80 && deltaX < 60 && fsOverlay.scrollTop <= 10) {
+          closeFullscreenPlayer();
+        }
+      }
+    }, { passive: true });
+  }
+
+  // Global Keyboard Shortcuts
+  window.addEventListener('keydown', (e) => {
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      if (isFullscreenPlayerOpen) {
+        closeFullscreenPlayer();
+      }
+      return;
+    }
+
+    if (e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      toggleFullscreenPlayer();
+      return;
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      togglePlayPause();
+      return;
+    }
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      playNextStation();
+      return;
+    }
+
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      playPrevStation();
+      return;
+    }
+
+    if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      toggleMute();
+      return;
+    }
+  });
+
   // Window Resize Visualizer Fix (safeguarded against mobile resize triggers)
   function resizeCanvas() {
+    if (isFullscreenPlayerOpen) {
+      resizeFsCanvas();
+    }
     if (window.innerWidth <= 680) {
       stopVisualizer();
       return;
