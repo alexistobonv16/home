@@ -7,8 +7,9 @@
  * el cliente siempre envía una clave explícita.
  */
 
-const GET_LIMIT = { max: 120, windowSec: 300 };
-const POST_LIMIT = { max: 60, windowSec: 300 };
+// Nota: Sincronización de radio sin rate limiting en KV para preservar la cuota
+// diaria gratuita (1.000 escrituras/día). Solo las operaciones POST persisten
+// las emisoras explícitamente solicitadas por el usuario.
 
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -26,41 +27,6 @@ function getCleanKey(rawKey) {
   return (rawKey || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 64);
 }
 
-function clientIp(context) {
-  return context.request.headers.get('cf-connecting-ip') || 'unknown';
-}
-
-// Rate limit suave por IP (KV, mejor que nada; no es atómico).
-async function isRateLimited(context, bucket, { max, windowSec }) {
-  const env = context.env;
-  if (!env || !env.HOME_KV) return false;
-  try {
-    const raw = await env.HOME_KV.get(`rl_${bucket}_${clientIp(context)}`);
-    if (!raw) return false;
-    const rec = JSON.parse(raw);
-    if (Date.now() > rec.resetAt) return false;
-    return rec.count >= max;
-  } catch {
-    return false;
-  }
-}
-
-async function registerHit(context, bucket, { windowSec }) {
-  const env = context.env;
-  if (!env || !env.HOME_KV) return;
-  try {
-    const key = `rl_${bucket}_${clientIp(context)}`;
-    const raw = await env.HOME_KV.get(key);
-    const now = Date.now();
-    let rec = { count: 0, resetAt: now + windowSec * 1000 };
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (now <= parsed.resetAt) rec = parsed;
-    }
-    rec.count += 1;
-    await env.HOME_KV.put(key, JSON.stringify(rec), { expirationTtl: windowSec });
-  } catch {}
-}
 
 // Limpia campos de texto: sin HTML, longitudes razonables.
 function cleanText(value, fallback, maxLen) {
@@ -92,11 +58,6 @@ export async function onRequestOptions() {
 
 export async function onRequestGet(context) {
   try {
-    if (await isRateLimited(context, 'radio_get', GET_LIMIT)) {
-      return jsonResponse({ success: false, error: 'Demasiadas solicitudes. Espera unos minutos.' }, 429);
-    }
-    await registerHit(context, 'radio_get', GET_LIMIT);
-
     const url = new URL(context.request.url);
     const queryKey = url.searchParams.get('key') || url.searchParams.get('code') || '';
     const headerKey = context.request.headers.get('X-Sync-Key') || context.request.headers.get('X-Admin-Pin') || '';
@@ -148,10 +109,6 @@ export async function onRequestGet(context) {
 
 export async function onRequestPost(context) {
   try {
-    if (await isRateLimited(context, 'radio_post', POST_LIMIT)) {
-      return jsonResponse({ success: false, error: 'Demasiadas solicitudes. Espera unos minutos.' }, 429);
-    }
-
     let body = {};
     try {
       body = await context.request.json();
@@ -175,8 +132,6 @@ export async function onRequestPost(context) {
     if (!Array.isArray(stations)) {
       return jsonResponse({ success: false, error: 'El campo stations debe ser un array válido de emisoras.' }, 400);
     }
-
-    await registerHit(context, 'radio_post', POST_LIMIT);
 
     // Sanitize and preserve fields: id, name, url, genre, freq, logo, isStarred, isDefault
     const sanitizedStations = stations.slice(0, 500).map((s, idx) => ({

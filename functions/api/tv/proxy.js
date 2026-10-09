@@ -22,47 +22,10 @@ function jsonError(message, status = 400) {
   });
 }
 
-// --- Rate limit por IP (KV, suave y no atómico, igual que auth/sync) ---------
-// Evita usar el proxy como relay abierto de gran volumen. El límite es
-// generoso (~10 req/s sostenidas) para jamás afectar la reproducción real.
-const RATE_LIMIT = { max: 600, windowSec: 60 };
+// Nota: El proxy de streaming no realiza escrituras en Cloudflare KV para evitar
+// agotar la cuota diaria gratuita (1.000 escrituras/día). La mitigación DDoS se
+// apoya en Cloudflare Edge / WAF.
 
-function clientIp(context) {
-  return context.request.headers.get('cf-connecting-ip') || 'unknown';
-}
-
-async function isRateLimited(context, bucket) {
-  const env = context.env;
-  if (!env || !env.HOME_KV) return false;
-  try {
-    const raw = await env.HOME_KV.get(`rl_${bucket}_${clientIp(context)}`);
-    if (!raw) return false;
-    const rec = JSON.parse(raw);
-    if (Date.now() > rec.resetAt) return false;
-    return rec.count >= RATE_LIMIT.max;
-  } catch {
-    return false;
-  }
-}
-
-async function registerHit(context, bucket) {
-  const env = context.env;
-  if (!env || !env.HOME_KV) return;
-  try {
-    const key = `rl_${bucket}_${clientIp(context)}`;
-    const raw = await env.HOME_KV.get(key);
-    const now = Date.now();
-    let rec = { count: 0, resetAt: now + RATE_LIMIT.windowSec * 1000 };
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (now <= parsed.resetAt) rec = parsed;
-      } catch {}
-    }
-    rec.count += 1;
-    await env.HOME_KV.put(key, JSON.stringify(rec), { expirationTtl: RATE_LIMIT.windowSec });
-  } catch {}
-}
 
 // --- Protección SSRF: bloquea destinos internos/privados -------------------
 
@@ -162,11 +125,6 @@ function rewriteTagUris(line, candidateUrl, proxyPath) {
 
 export async function onRequestGet(context) {
   try {
-    if (await isRateLimited(context, 'tv_proxy')) {
-      return jsonError('Demasiadas solicitudes al proxy. Intenta de nuevo en un minuto.', 429);
-    }
-    await registerHit(context, 'tv_proxy');
-
     const { searchParams } = new URL(context.request.url);
     let targetUrl = (searchParams.get('url') || '').trim();
 
