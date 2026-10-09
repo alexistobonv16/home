@@ -83,6 +83,7 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 /* Ambient glow backgrounds (Ultra-optimized GPU gradients, zero filter overhead) */
@@ -1494,14 +1495,14 @@ html, body {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  background: rgba(3, 7, 18, 0.96);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: #030712;
+  contain: strict;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  transform: translateY(20px) scale(0.99);
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(16px);
+  will-change: opacity, transform;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -1513,7 +1514,7 @@ html, body {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
 }
 
 .fs-backdrop-blur {
@@ -1651,10 +1652,10 @@ html, body {
 
 .fs-artwork-glow {
   position: absolute;
-  inset: -12px;
+  inset: -10px;
   border-radius: 28px;
   background: radial-gradient(circle, var(--accent-cyan-glow) 0%, transparent 70%);
-  filter: blur(25px);
+  box-shadow: 0 0 35px var(--accent-cyan-glow);
   opacity: 0.8;
   z-index: 0;
   pointer-events: none;
@@ -2174,7 +2175,7 @@ html, body {
 
 /* Fullscreen Player Light Theme */
 [data-theme="light"] .fullscreen-player-overlay {
-  background: rgba(248, 250, 252, 0.96);
+  background: #f8fafc;
 }
 
 [data-theme="light"] .fs-ambient-glow {
@@ -2617,9 +2618,7 @@ html, body {
 
   /* Fullscreen Player on Mobile */
   .fullscreen-player-overlay {
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease !important;
     transform: translateY(100%) !important;
   }
 
@@ -2646,7 +2645,7 @@ html, body {
   }
 
   .fs-artwork-glow {
-    filter: blur(18px);
+    box-shadow: 0 0 25px var(--accent-cyan-glow);
     opacity: 0.7;
   }
 

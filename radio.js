@@ -1008,7 +1008,7 @@
     const dataArray = new Uint8Array(bufferLength);
 
     function renderFrame() {
-      if (window.innerWidth <= 680 || document.hidden || !isPlaying) {
+      if (window.innerWidth <= 680 || document.hidden || !isPlaying || isFullscreenPlayerOpen) {
         stopVisualizer();
         drawIdleVisualizer();
         return;
@@ -1031,7 +1031,6 @@
       canvasCtx.stroke();
 
       let hasData = false;
-
       if (analyser && isAudioContextConnected) {
         analyser.getByteFrequencyData(dataArray);
         for (let i = 0; i < bufferLength; i++) {
@@ -1046,35 +1045,42 @@
       const barCount = 18;
       const barWidth = Math.max(2, Math.floor((width - barCount * 2) / barCount));
       const usableHeight = height - 4;
-      let x = 2;
 
-      for (let i = 0; i < barCount; i++) {
-        let barHeight = 0;
-
-        if (hasData) {
+      const heights = new Float32Array(barCount);
+      if (hasData) {
+        for (let i = 0; i < barCount; i++) {
           const dataIndex = Math.floor(i * (bufferLength / barCount));
-          barHeight = Math.max(2, (dataArray[dataIndex] / 255) * usableHeight);
-        } else {
-          // Synthetic wave animation when stream has no CORS permissions for raw PCM
-          const time = Date.now() * 0.0035;
+          heights[i] = Math.max(2, (dataArray[dataIndex] / 255) * usableHeight);
+        }
+      } else {
+        const time = Date.now() * 0.0035;
+        for (let i = 0; i < barCount; i++) {
           const wave = Math.sin(time + i * 0.35) * 0.5 + 0.5;
           const wave2 = Math.cos(time * 0.8 + i * 0.25) * 0.5 + 0.5;
-          barHeight = Math.max(3, (wave * 0.65 + wave2 * 0.35) * usableHeight);
+          heights[i] = Math.max(3, (wave * 0.65 + wave2 * 0.35) * usableHeight);
         }
+      }
 
-        // Gradient for bars (Cyan -> Sky Blue -> Violet)
-        const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
-        grad.addColorStop(0, '#00f0ff');
-        grad.addColorStop(0.5, '#38bdf8');
-        grad.addColorStop(1, '#a855f7');
+      // Batch 1: Bars with cached linear gradient
+      const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
+      grad.addColorStop(0, '#00f0ff');
+      grad.addColorStop(0.5, '#38bdf8');
+      grad.addColorStop(1, '#a855f7');
+      canvasCtx.fillStyle = grad;
 
-        canvasCtx.fillStyle = grad;
-        canvasCtx.fillRect(x, height - barHeight - 1, barWidth, barHeight);
+      let x = 2;
+      for (let i = 0; i < barCount; i++) {
+        const h = heights[i];
+        canvasCtx.fillRect(x, height - h - 1, barWidth, h);
+        x += barWidth + 2;
+      }
 
-        // Glowing cap dot
-        canvasCtx.fillStyle = '#ffffff';
-        canvasCtx.fillRect(x, height - barHeight - 2, barWidth, 1.5);
-
+      // Batch 2: Glowing caps with white fill
+      canvasCtx.fillStyle = '#ffffff';
+      x = 2;
+      for (let i = 0; i < barCount; i++) {
+        const h = heights[i];
+        canvasCtx.fillRect(x, height - h - 2, barWidth, 1.5);
         x += barWidth + 2;
       }
     }
@@ -2191,6 +2197,7 @@
   function openFullscreenPlayer() {
     if (!fsOverlay) return;
     isFullscreenPlayerOpen = true;
+    stopVisualizer();
     fsOverlay.classList.add('open');
     fsOverlay.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -2208,6 +2215,9 @@
     fsOverlay.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     stopFsVisualizer();
+    if (isPlaying && window.innerWidth > 680) {
+      startVisualizer();
+    }
   }
 
   function toggleFullscreenPlayer() {
@@ -2338,41 +2348,49 @@
       const barWidth = Math.max(3, Math.floor((width - totalSpacing) / barCount));
       const usableHeight = height - 6;
       const startX = Math.max(0, Math.floor((width - (barCount * barWidth + totalSpacing)) / 2));
-      let x = startX;
 
-      for (let i = 0; i < barCount; i++) {
-        let barHeight = 0;
-
-        if (hasData) {
+      const heights = new Float32Array(barCount);
+      if (hasData) {
+        for (let i = 0; i < barCount; i++) {
           const dataIndex = Math.floor(i * (bufferLength / barCount));
-          barHeight = Math.max(3, (dataArray[dataIndex] / 255) * usableHeight);
-        } else {
-          // High-energy cyber synth wave when WebAudio PCM isn't cross-origin enabled
-          const time = Date.now() * 0.0038;
+          heights[i] = Math.max(3, (dataArray[dataIndex] / 255) * usableHeight);
+        }
+      } else {
+        const time = Date.now() * 0.0038;
+        for (let i = 0; i < barCount; i++) {
           const wave1 = Math.sin(time + i * 0.28) * 0.5 + 0.5;
           const wave2 = Math.cos(time * 0.75 + i * 0.18) * 0.5 + 0.5;
           const wave3 = Math.sin(time * 1.3 - i * 0.12) * 0.3 + 0.3;
-          barHeight = Math.max(4, (wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2) * usableHeight);
+          heights[i] = Math.max(4, (wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2) * usableHeight);
         }
+      }
 
-        const grad = fsCanvasCtx.createLinearGradient(0, height, 0, 0);
-        if (isLight) {
-          grad.addColorStop(0, '#0284c7');
-          grad.addColorStop(0.5, '#3b82f6');
-          grad.addColorStop(1, '#7c3aed');
-        } else {
-          grad.addColorStop(0, '#00f0ff');
-          grad.addColorStop(0.5, '#38bdf8');
-          grad.addColorStop(1, '#a855f7');
-        }
+      // Pass 1: Render all spectrum bars with cached linear gradient
+      const grad = fsCanvasCtx.createLinearGradient(0, height, 0, 0);
+      if (isLight) {
+        grad.addColorStop(0, '#0284c7');
+        grad.addColorStop(0.5, '#3b82f6');
+        grad.addColorStop(1, '#7c3aed');
+      } else {
+        grad.addColorStop(0, '#00f0ff');
+        grad.addColorStop(0.5, '#38bdf8');
+        grad.addColorStop(1, '#a855f7');
+      }
+      fsCanvasCtx.fillStyle = grad;
 
-        fsCanvasCtx.fillStyle = grad;
-        fsCanvasCtx.fillRect(x, height - barHeight - 2, barWidth, barHeight);
+      let x = startX;
+      for (let i = 0; i < barCount; i++) {
+        const h = heights[i];
+        fsCanvasCtx.fillRect(x, height - h - 2, barWidth, h);
+        x += barWidth + barSpacing;
+      }
 
-        // Glowing peak cap dot
-        fsCanvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
-        fsCanvasCtx.fillRect(x, height - barHeight - 4, barWidth, 2);
-
+      // Pass 2: Render all peak caps with single fillStyle
+      fsCanvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
+      x = startX;
+      for (let i = 0; i < barCount; i++) {
+        const h = heights[i];
+        fsCanvasCtx.fillRect(x, height - h - 4, barWidth, 2);
         x += barWidth + barSpacing;
       }
     }
