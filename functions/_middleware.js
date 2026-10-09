@@ -15,9 +15,16 @@ export async function onRequest(context) {
   // 1. SUBDOMINIO: radio.alexistobon.com
   // -------------------------------------------------------------
   if (hostname === 'radio.alexistobon.com') {
-    // Rutas de navegación principales de la app de Radio
-    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/radio' || url.pathname === '/radio/' || url.pathname === '/radio.html') {
-      const assetUrl = new URL('/radio.html', url.origin);
+    // Si acceden con el path redundante /radio o /radio.html, redirige limpiamente a la raíz /
+    if (url.pathname === '/radio' || url.pathname === '/radio/' || url.pathname === '/radio.html') {
+      const target = new URL('/', url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
+    }
+
+    // Raíz de la app de Radio: sirve el asset canonical /radio sin 308 redirect
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+      const assetUrl = new URL('/radio', url.origin);
       assetUrl.search = url.search;
       return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
     }
@@ -42,9 +49,16 @@ export async function onRequest(context) {
   // 2. SUBDOMINIO: tv.alexistobon.com
   // -------------------------------------------------------------
   if (hostname === 'tv.alexistobon.com') {
-    // Rutas de navegación principales de la app de TV
-    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/tv' || url.pathname === '/tv/' || url.pathname === '/tv.html') {
-      const assetUrl = new URL('/tv.html', url.origin);
+    // Si acceden con el path redundante /tv o /tv.html, redirige limpiamente a la raíz /
+    if (url.pathname === '/tv' || url.pathname === '/tv/' || url.pathname === '/tv.html') {
+      const target = new URL('/', url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
+    }
+
+    // Raíz de la app de TV: sirve el asset canonical /tv sin 308 redirect
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+      const assetUrl = new URL('/tv', url.origin);
       assetUrl.search = url.search;
       return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
     }
