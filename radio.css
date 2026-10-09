@@ -85,29 +85,27 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Ambient glow backgrounds */
+/* Ambient glow backgrounds (Ultra-optimized GPU gradients, zero filter overhead) */
 .ambient-glow {
   position: fixed;
   pointer-events: none;
   z-index: 0;
   border-radius: 50%;
-  filter: blur(140px);
   opacity: 0.35;
   transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  will-change: opacity;
 }
 .glow-cyan {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, var(--accent-cyan), transparent 70%);
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.22) 0%, rgba(0, 240, 255, 0.08) 38%, transparent 70%);
   top: -150px;
   left: 10%;
 }
 .glow-violet {
-  width: 550px;
-  height: 550px;
-  background: radial-gradient(circle, var(--accent-violet), transparent 70%);
+  width: 580px;
+  height: 580px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, rgba(139, 92, 246, 0.08) 38%, transparent 70%);
   bottom: -100px;
   right: 5%;
 }
@@ -116,10 +114,9 @@ html, body {
   position: fixed;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(56, 189, 248, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.035) 1px, transparent 1px);
+    linear-gradient(rgba(56, 189, 248, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.02) 1px, transparent 1px);
   background-size: 44px 44px;
-  mask-image: radial-gradient(circle at 50% 35%, black 45%, transparent 90%);
   pointer-events: none;
   z-index: 1;
 }
@@ -140,7 +137,6 @@ html, body {
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
   background: var(--bg-card);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   margin-bottom: 1.75rem;
@@ -268,7 +264,6 @@ html, body {
    ========================================================================== */
 .tuner-deck {
   background: var(--bg-card);
-  backdrop-filter: blur(24px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 1.5rem 1.75rem;
@@ -540,9 +535,9 @@ html, body {
   left: 0;
   right: 0;
   z-index: 999;
-  background: rgba(3, 7, 18, 0.88);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(3, 7, 18, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-top: 1px solid var(--border-color);
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.65);
   padding: 0.65rem 1.75rem;
@@ -984,13 +979,12 @@ html, body {
   padding: 0.75rem 1rem 0.75rem 2.75rem;
   border-radius: var(--radius-md);
   background: var(--bg-card);
-  backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   font-family: var(--font-main);
   font-size: 0.9rem;
   outline: none;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .search-input:focus {
@@ -1151,7 +1145,6 @@ html, body {
 
 .station-card {
   background: var(--bg-card);
-  backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.15rem;
@@ -1160,7 +1153,8 @@ html, body {
   gap: 1rem;
   position: relative;
   cursor: pointer;
-  transition: all var(--transition-normal);
+  contain: content;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .station-card:hover {
@@ -1500,9 +1494,9 @@ html, body {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  background: rgba(3, 7, 18, 0.94);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(3, 7, 18, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1536,9 +1530,8 @@ html, body {
   transform: translate(-50%, -50%);
   width: 550px;
   height: 550px;
-  background: radial-gradient(circle, var(--accent-cyan-glow) 0%, rgba(139, 92, 246, 0.15) 45%, transparent 70%);
+  background: radial-gradient(circle, var(--accent-cyan-glow) 0%, rgba(139, 92, 246, 0.15) 35%, transparent 68%);
   pointer-events: none;
-  filter: blur(90px);
   z-index: 0;
   opacity: 0.85;
   transition: background 0.6s ease;
@@ -2637,7 +2630,6 @@ html, body {
   .fs-ambient-glow {
     width: 320px;
     height: 320px;
-    filter: blur(60px);
     opacity: 0.65;
   }
 

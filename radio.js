@@ -824,6 +824,15 @@
     updateTelemetryDisplay();
     updateCardPlayingState();
     updateDocumentTitle();
+    if (playing) {
+      if (window.innerWidth > 680) startVisualizer();
+      if (isFullscreenPlayerOpen) startFsVisualizer();
+    } else {
+      stopVisualizer();
+      drawIdleVisualizer();
+      stopFsVisualizer();
+      drawIdleFsVisualizer();
+    }
   }
 
   function setBufferingState(buffering) {
@@ -958,6 +967,22 @@
     }
   }
 
+  function drawIdleVisualizer() {
+    if (!canvas || !canvasCtx) return;
+    const width = canvas.width;
+    const height = canvas.height;
+    if (width <= 0 || height <= 0) return;
+    canvasCtx.clearRect(0, 0, width, height);
+    canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.1)';
+    canvasCtx.lineWidth = 1;
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(0, height / 2);
+    canvasCtx.lineTo(width, height / 2);
+    canvasCtx.stroke();
+    canvasCtx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+    canvasCtx.fillRect(0, height / 2, width, 1.5);
+  }
+
   function stopVisualizer() {
     if (animFrameId) {
       cancelAnimationFrame(animFrameId);
@@ -974,12 +999,18 @@
       return;
     }
 
+    if (!isPlaying) {
+      drawIdleVisualizer();
+      return;
+    }
+
     const bufferLength = analyser ? analyser.frequencyBinCount : 32;
     const dataArray = new Uint8Array(bufferLength);
 
     function renderFrame() {
-      if (window.innerWidth <= 680 || document.hidden) {
+      if (window.innerWidth <= 680 || document.hidden || !isPlaying) {
         stopVisualizer();
+        drawIdleVisualizer();
         return;
       }
 
@@ -999,58 +1030,52 @@
       canvasCtx.lineTo(width, height / 2);
       canvasCtx.stroke();
 
-      if (isPlaying) {
-        let hasData = false;
+      let hasData = false;
 
-        if (analyser && isAudioContextConnected) {
-          analyser.getByteFrequencyData(dataArray);
-          for (let i = 0; i < bufferLength; i++) {
-            if (dataArray[i] > 0) {
-              hasData = true;
-              break;
-            }
+      if (analyser && isAudioContextConnected) {
+        analyser.getByteFrequencyData(dataArray);
+        for (let i = 0; i < bufferLength; i++) {
+          if (dataArray[i] > 0) {
+            hasData = true;
+            break;
           }
         }
+      }
 
-        // Draw compact frequency bars for mini canvas
-        const barCount = 18;
-        const barWidth = Math.max(2, Math.floor((width - barCount * 2) / barCount));
-        const usableHeight = height - 4;
-        let x = 2;
+      // Draw compact frequency bars for mini canvas
+      const barCount = 18;
+      const barWidth = Math.max(2, Math.floor((width - barCount * 2) / barCount));
+      const usableHeight = height - 4;
+      let x = 2;
 
-        for (let i = 0; i < barCount; i++) {
-          let barHeight = 0;
+      for (let i = 0; i < barCount; i++) {
+        let barHeight = 0;
 
-          if (hasData) {
-            const dataIndex = Math.floor(i * (bufferLength / barCount));
-            barHeight = Math.max(2, (dataArray[dataIndex] / 255) * usableHeight);
-          } else {
-            // Synthetic wave animation when stream has no CORS permissions for raw PCM
-            const time = Date.now() * 0.0035;
-            const wave = Math.sin(time + i * 0.35) * 0.5 + 0.5;
-            const wave2 = Math.cos(time * 0.8 + i * 0.25) * 0.5 + 0.5;
-            barHeight = Math.max(3, (wave * 0.65 + wave2 * 0.35) * usableHeight);
-          }
-
-          // Gradient for bars (Cyan -> Sky Blue -> Violet)
-          const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
-          grad.addColorStop(0, '#00f0ff');
-          grad.addColorStop(0.5, '#38bdf8');
-          grad.addColorStop(1, '#a855f7');
-
-          canvasCtx.fillStyle = grad;
-          canvasCtx.fillRect(x, height - barHeight - 1, barWidth, barHeight);
-
-          // Glowing cap dot
-          canvasCtx.fillStyle = '#ffffff';
-          canvasCtx.fillRect(x, height - barHeight - 2, barWidth, 1.5);
-
-          x += barWidth + 2;
+        if (hasData) {
+          const dataIndex = Math.floor(i * (bufferLength / barCount));
+          barHeight = Math.max(2, (dataArray[dataIndex] / 255) * usableHeight);
+        } else {
+          // Synthetic wave animation when stream has no CORS permissions for raw PCM
+          const time = Date.now() * 0.0035;
+          const wave = Math.sin(time + i * 0.35) * 0.5 + 0.5;
+          const wave2 = Math.cos(time * 0.8 + i * 0.25) * 0.5 + 0.5;
+          barHeight = Math.max(3, (wave * 0.65 + wave2 * 0.35) * usableHeight);
         }
-      } else {
-        // Idle flat baseline
-        canvasCtx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-        canvasCtx.fillRect(0, height / 2, width, 1.5);
+
+        // Gradient for bars (Cyan -> Sky Blue -> Violet)
+        const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
+        grad.addColorStop(0, '#00f0ff');
+        grad.addColorStop(0.5, '#38bdf8');
+        grad.addColorStop(1, '#a855f7');
+
+        canvasCtx.fillStyle = grad;
+        canvasCtx.fillRect(x, height - barHeight - 1, barWidth, barHeight);
+
+        // Glowing cap dot
+        canvasCtx.fillStyle = '#ffffff';
+        canvasCtx.fillRect(x, height - barHeight - 2, barWidth, 1.5);
+
+        x += barWidth + 2;
       }
     }
 
@@ -2243,17 +2268,40 @@
     }
   }
 
+  function drawIdleFsVisualizer() {
+    if (!fsVisualizerCanvas || !fsCanvasCtx) return;
+    const width = fsVisualizerCanvas.width;
+    const height = fsVisualizerCanvas.height;
+    if (width <= 0 || height <= 0) return;
+    fsCanvasCtx.clearRect(0, 0, width, height);
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    fsCanvasCtx.strokeStyle = isLight ? 'rgba(2, 132, 199, 0.12)' : 'rgba(56, 189, 248, 0.12)';
+    fsCanvasCtx.lineWidth = 1;
+    fsCanvasCtx.beginPath();
+    fsCanvasCtx.moveTo(0, height / 2);
+    fsCanvasCtx.lineTo(width, height / 2);
+    fsCanvasCtx.stroke();
+    fsCanvasCtx.fillStyle = isLight ? 'rgba(2, 132, 199, 0.25)' : 'rgba(56, 189, 248, 0.25)';
+    fsCanvasCtx.fillRect(0, height / 2 - 1, width, 2);
+  }
+
   function startFsVisualizer() {
     if (!fsVisualizerCanvas || !fsCanvasCtx) return;
     stopFsVisualizer();
     resizeFsCanvas();
 
+    if (!isPlaying) {
+      drawIdleFsVisualizer();
+      return;
+    }
+
     const bufferLength = analyser ? analyser.frequencyBinCount : 64;
     const dataArray = new Uint8Array(bufferLength);
 
     function renderFsFrame() {
-      if (!isFullscreenPlayerOpen) {
+      if (!isFullscreenPlayerOpen || document.hidden || !isPlaying) {
         stopFsVisualizer();
+        drawIdleFsVisualizer();
         return;
       }
 
@@ -2273,65 +2321,59 @@
       fsCanvasCtx.lineTo(width, height / 2);
       fsCanvasCtx.stroke();
 
-      if (isPlaying) {
-        let hasData = false;
-        if (analyser && isAudioContextConnected) {
-          analyser.getByteFrequencyData(dataArray);
-          for (let i = 0; i < bufferLength; i++) {
-            if (dataArray[i] > 0) {
-              hasData = true;
-              break;
-            }
+      let hasData = false;
+      if (analyser && isAudioContextConnected) {
+        analyser.getByteFrequencyData(dataArray);
+        for (let i = 0; i < bufferLength; i++) {
+          if (dataArray[i] > 0) {
+            hasData = true;
+            break;
           }
         }
+      }
 
-        const barCount = window.innerWidth <= 680 ? 28 : 42;
-        const barSpacing = 3;
-        const totalSpacing = (barCount - 1) * barSpacing;
-        const barWidth = Math.max(3, Math.floor((width - totalSpacing) / barCount));
-        const usableHeight = height - 6;
-        const startX = Math.max(0, Math.floor((width - (barCount * barWidth + totalSpacing)) / 2));
-        let x = startX;
+      const barCount = window.innerWidth <= 680 ? 28 : 42;
+      const barSpacing = 3;
+      const totalSpacing = (barCount - 1) * barSpacing;
+      const barWidth = Math.max(3, Math.floor((width - totalSpacing) / barCount));
+      const usableHeight = height - 6;
+      const startX = Math.max(0, Math.floor((width - (barCount * barWidth + totalSpacing)) / 2));
+      let x = startX;
 
-        for (let i = 0; i < barCount; i++) {
-          let barHeight = 0;
+      for (let i = 0; i < barCount; i++) {
+        let barHeight = 0;
 
-          if (hasData) {
-            const dataIndex = Math.floor(i * (bufferLength / barCount));
-            barHeight = Math.max(3, (dataArray[dataIndex] / 255) * usableHeight);
-          } else {
-            // High-energy cyber synth wave when WebAudio PCM isn't cross-origin enabled
-            const time = Date.now() * 0.0038;
-            const wave1 = Math.sin(time + i * 0.28) * 0.5 + 0.5;
-            const wave2 = Math.cos(time * 0.75 + i * 0.18) * 0.5 + 0.5;
-            const wave3 = Math.sin(time * 1.3 - i * 0.12) * 0.3 + 0.3;
-            barHeight = Math.max(4, (wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2) * usableHeight);
-          }
-
-          const grad = fsCanvasCtx.createLinearGradient(0, height, 0, 0);
-          if (isLight) {
-            grad.addColorStop(0, '#0284c7');
-            grad.addColorStop(0.5, '#3b82f6');
-            grad.addColorStop(1, '#7c3aed');
-          } else {
-            grad.addColorStop(0, '#00f0ff');
-            grad.addColorStop(0.5, '#38bdf8');
-            grad.addColorStop(1, '#a855f7');
-          }
-
-          fsCanvasCtx.fillStyle = grad;
-          fsCanvasCtx.fillRect(x, height - barHeight - 2, barWidth, barHeight);
-
-          // Glowing peak cap dot
-          fsCanvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
-          fsCanvasCtx.fillRect(x, height - barHeight - 4, barWidth, 2);
-
-          x += barWidth + barSpacing;
+        if (hasData) {
+          const dataIndex = Math.floor(i * (bufferLength / barCount));
+          barHeight = Math.max(3, (dataArray[dataIndex] / 255) * usableHeight);
+        } else {
+          // High-energy cyber synth wave when WebAudio PCM isn't cross-origin enabled
+          const time = Date.now() * 0.0038;
+          const wave1 = Math.sin(time + i * 0.28) * 0.5 + 0.5;
+          const wave2 = Math.cos(time * 0.75 + i * 0.18) * 0.5 + 0.5;
+          const wave3 = Math.sin(time * 1.3 - i * 0.12) * 0.3 + 0.3;
+          barHeight = Math.max(4, (wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2) * usableHeight);
         }
-      } else {
-        // Idle flat baseline
-        fsCanvasCtx.fillStyle = isLight ? 'rgba(2, 132, 199, 0.25)' : 'rgba(56, 189, 248, 0.25)';
-        fsCanvasCtx.fillRect(0, height / 2 - 1, width, 2);
+
+        const grad = fsCanvasCtx.createLinearGradient(0, height, 0, 0);
+        if (isLight) {
+          grad.addColorStop(0, '#0284c7');
+          grad.addColorStop(0.5, '#3b82f6');
+          grad.addColorStop(1, '#7c3aed');
+        } else {
+          grad.addColorStop(0, '#00f0ff');
+          grad.addColorStop(0.5, '#38bdf8');
+          grad.addColorStop(1, '#a855f7');
+        }
+
+        fsCanvasCtx.fillStyle = grad;
+        fsCanvasCtx.fillRect(x, height - barHeight - 2, barWidth, barHeight);
+
+        // Glowing peak cap dot
+        fsCanvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
+        fsCanvasCtx.fillRect(x, height - barHeight - 4, barWidth, 2);
+
+        x += barWidth + barSpacing;
       }
     }
 
