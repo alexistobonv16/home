@@ -252,8 +252,6 @@
   const fsTelemetrySpeed = document.getElementById('fs-telemetry-speed');
   const fsTelemetryData = document.getElementById('fs-telemetry-data');
   const fsProxyIndicator = document.getElementById('fs-proxy-indicator');
-  const fsVisualizerCanvas = document.getElementById('fs-visualizer-canvas');
-  const fsCanvasCtx = fsVisualizerCanvas ? fsVisualizerCanvas.getContext('2d') : null;
   const fsSleepBtn = document.getElementById('fs-sleep-btn');
   const fsSleepBadge = document.getElementById('fs-sleep-badge');
   const fsProxyBtn = document.getElementById('fs-proxy-btn');
@@ -2513,143 +2511,16 @@
   document.addEventListener('fullscreenchange', syncBrowserFullscreenIcons);
   document.addEventListener('webkitfullscreenchange', syncBrowserFullscreenIcons);
 
-  // Fullscreen Audio Spectrum Visualizer
+  // Fullscreen Visualizer (Cleanly retired for minimalist Now Playing view)
   function stopFsVisualizer() {
     if (fsAnimFrameId) {
       cancelAnimationFrame(fsAnimFrameId);
       fsAnimFrameId = null;
     }
   }
-
-  function resizeFsCanvas() {
-    if (!fsVisualizerCanvas || !fsVisualizerCanvas.parentElement) return;
-    const rect = fsVisualizerCanvas.parentElement.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    if (rect.width > 0 && rect.height > 0) {
-      fsVisualizerCanvas.width = Math.round(rect.width * dpr);
-      fsVisualizerCanvas.height = Math.round(rect.height * dpr);
-    }
-  }
-
-  function drawIdleFsVisualizer() {
-    if (!fsVisualizerCanvas || !fsCanvasCtx) return;
-    const width = fsVisualizerCanvas.width;
-    const height = fsVisualizerCanvas.height;
-    if (width <= 0 || height <= 0) return;
-    fsCanvasCtx.clearRect(0, 0, width, height);
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    fsCanvasCtx.strokeStyle = isLight ? 'rgba(2, 132, 199, 0.12)' : 'rgba(56, 189, 248, 0.12)';
-    fsCanvasCtx.lineWidth = 1;
-    fsCanvasCtx.beginPath();
-    fsCanvasCtx.moveTo(0, height / 2);
-    fsCanvasCtx.lineTo(width, height / 2);
-    fsCanvasCtx.stroke();
-    fsCanvasCtx.fillStyle = isLight ? 'rgba(2, 132, 199, 0.25)' : 'rgba(56, 189, 248, 0.25)';
-    fsCanvasCtx.fillRect(0, height / 2 - 1, width, 2);
-  }
-
-  function startFsVisualizer() {
-    if (!fsVisualizerCanvas || !fsCanvasCtx) return;
-    stopFsVisualizer();
-    resizeFsCanvas();
-
-    if (!isPlaying) {
-      drawIdleFsVisualizer();
-      return;
-    }
-
-    const bufferLength = analyser ? analyser.frequencyBinCount : 64;
-    const dataArray = new Uint8Array(bufferLength);
-
-    function renderFsFrame() {
-      if (!isFullscreenPlayerOpen || document.hidden || !isPlaying) {
-        stopFsVisualizer();
-        drawIdleFsVisualizer();
-        return;
-      }
-
-      fsAnimFrameId = requestAnimationFrame(renderFsFrame);
-
-      const width = fsVisualizerCanvas.width;
-      const height = fsVisualizerCanvas.height;
-      if (width <= 0 || height <= 0) return;
-
-      fsCanvasCtx.clearRect(0, 0, width, height);
-
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      fsCanvasCtx.strokeStyle = isLight ? 'rgba(2, 132, 199, 0.12)' : 'rgba(56, 189, 248, 0.12)';
-      fsCanvasCtx.lineWidth = 1;
-      fsCanvasCtx.beginPath();
-      fsCanvasCtx.moveTo(0, height / 2);
-      fsCanvasCtx.lineTo(width, height / 2);
-      fsCanvasCtx.stroke();
-
-      let hasData = false;
-      if (analyser && isAudioContextConnected) {
-        analyser.getByteFrequencyData(dataArray);
-        for (let i = 0; i < bufferLength; i++) {
-          if (dataArray[i] > 0) {
-            hasData = true;
-            break;
-          }
-        }
-      }
-
-      const barCount = window.innerWidth <= 680 ? 28 : 42;
-      const barSpacing = 3;
-      const totalSpacing = (barCount - 1) * barSpacing;
-      const barWidth = Math.max(3, Math.floor((width - totalSpacing) / barCount));
-      const usableHeight = height - 6;
-      const startX = Math.max(0, Math.floor((width - (barCount * barWidth + totalSpacing)) / 2));
-
-      const heights = new Float32Array(barCount);
-      if (hasData) {
-        for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.floor(i * (bufferLength / barCount));
-          heights[i] = Math.max(3, (dataArray[dataIndex] / 255) * usableHeight);
-        }
-      } else {
-        const time = Date.now() * 0.0038;
-        for (let i = 0; i < barCount; i++) {
-          const wave1 = Math.sin(time + i * 0.28) * 0.5 + 0.5;
-          const wave2 = Math.cos(time * 0.75 + i * 0.18) * 0.5 + 0.5;
-          const wave3 = Math.sin(time * 1.3 - i * 0.12) * 0.3 + 0.3;
-          heights[i] = Math.max(4, (wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2) * usableHeight);
-        }
-      }
-
-      // Pass 1: Render all spectrum bars with cached linear gradient
-      const grad = fsCanvasCtx.createLinearGradient(0, height, 0, 0);
-      if (isLight) {
-        grad.addColorStop(0, '#0284c7');
-        grad.addColorStop(0.5, '#3b82f6');
-        grad.addColorStop(1, '#7c3aed');
-      } else {
-        grad.addColorStop(0, '#00f0ff');
-        grad.addColorStop(0.5, '#38bdf8');
-        grad.addColorStop(1, '#a855f7');
-      }
-      fsCanvasCtx.fillStyle = grad;
-
-      let x = startX;
-      for (let i = 0; i < barCount; i++) {
-        const h = heights[i];
-        fsCanvasCtx.fillRect(x, height - h - 2, barWidth, h);
-        x += barWidth + barSpacing;
-      }
-
-      // Pass 2: Render all peak caps with single fillStyle
-      fsCanvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
-      x = startX;
-      for (let i = 0; i < barCount; i++) {
-        const h = heights[i];
-        fsCanvasCtx.fillRect(x, height - h - 4, barWidth, 2);
-        x += barWidth + barSpacing;
-      }
-    }
-
-    renderFsFrame();
-  }
+  function resizeFsCanvas() {}
+  function drawIdleFsVisualizer() {}
+  function startFsVisualizer() {}
 
   // Fullscreen Player Event Listeners
   if (fullscreenPlayerBtn) {
