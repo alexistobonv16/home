@@ -371,18 +371,8 @@
         if (card.classList.contains('playing')) card.classList.remove('playing');
       }
 
-      if (isThisCard && currentBitrateKbps) {
-        const meta = card.querySelector('.station-card-meta');
-        if (meta) {
-          let brTag = meta.querySelector('.highlight-bitrate');
-          if (!brTag) {
-            brTag = document.createElement('span');
-            brTag.className = 'badge-tag highlight-bitrate';
-            meta.appendChild(brTag);
-          }
-          brTag.textContent = `${currentBitrateKbps} kbps`;
-        }
-      }
+      const brTag = card.querySelector('.highlight-bitrate');
+      if (brTag) brTag.remove();
     });
   }
 
@@ -1559,7 +1549,6 @@
               <span class="badge-tag">${escapeHtml(s.freq || 'WEB')}</span>
               <span class="badge-tag">${escapeHtml(s.genre || 'Música')}</span>
               <span class="badge-tag ${sFmt.badgeClass}">${sFmt.ext}</span>
-              ${isCurrent && currentBitrateKbps ? `<span class="badge-tag highlight-bitrate">${currentBitrateKbps} kbps</span>` : ''}
             </div>
           </div>
 
