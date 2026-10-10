@@ -1203,20 +1203,83 @@
     }
   }
 
+  const clientArtworkCache = new Map();
+
+  async function searchArtworkClient(artist, title) {
+    const cacheKey = `${artist || ''}:::${title || ''}`.toLowerCase().trim();
+    if (clientArtworkCache.has(cacheKey)) {
+      return clientArtworkCache.get(cacheKey);
+    }
+
+    const cleanArtist = (artist || '').replace(/\s*(feat\.?|ft\.?|&|\/).*$/i, '').trim();
+    const queries = [
+      `${artist || ''} ${title || ''}`.trim(),
+      cleanArtist && cleanArtist !== artist ? `${cleanArtist} ${title || ''}`.trim() : null,
+      title || ''
+    ].filter(Boolean);
+
+    // 1. Motor 1: Apple Music (iTunes Search)
+    for (const q of queries) {
+      try {
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.results && data.results.length > 0) {
+            const track = data.results[0];
+            const art100 = track.artworkUrl100 || '';
+            const resObj = {
+              artwork: art100.replace(/\b\d+x\d+\b/, '600x600'),
+              artwork300: art100.replace(/\b\d+x\d+\b/, '300x300'),
+              artwork100: art100,
+              album: track.collectionName || '',
+              appleMusicUrl: track.trackViewUrl || null
+            };
+            clientArtworkCache.set(cacheKey, resObj);
+            return resObj;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Motor 2: Deezer API fallback
+    for (const q of queries) {
+      try {
+        const res = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data && data.data.length > 0) {
+            const item = data.data[0];
+            const alb = item.album || {};
+            const resObj = {
+              artwork: alb.cover_xl || alb.cover_big || alb.cover_medium || '',
+              artwork300: alb.cover_medium || alb.cover_big || '',
+              artwork100: alb.cover_small || alb.cover_medium || '',
+              album: alb.title || '',
+              appleMusicUrl: null
+            };
+            clientArtworkCache.set(cacheKey, resObj);
+            return resObj;
+          }
+        }
+      } catch (e) {}
+    }
+    return null;
+  }
+
   function startMetadataPolling() {
     stopMetadataPolling();
 
-    // Consulta inicial tras 1.5s
+    // Consulta inicial ultra rápida (250ms tras iniciar reproducción)
     setTimeout(() => {
       if (isPlaying) fetchStationMetadata();
-    }, 1500);
+    }, 250);
 
-    // Sondeo periódico cada 12 segundos
+    // Sondeo periódico cada 10 segundos
     metadataPollingTimer = setInterval(() => {
       if (isPlaying && !document.hidden) {
         fetchStationMetadata();
       }
-    }, 12000);
+    }, 10000);
   }
 
   function stopMetadataPolling() {
@@ -1248,38 +1311,37 @@
       }
     }
 
-    // 2. Carátula oficial de Apple Music en alta resolución
-    if (song.artwork && isNewSong) {
-      const img = new Image();
-      img.src = song.artwork;
-      img.onload = () => {
-        if (nowPlayingSong && nowPlayingSong.artwork === song.artwork) {
-          if (fsStationLogo) {
-            fsStationLogo.src = song.artwork;
-            fsStationLogo.style.borderRadius = '24px';
+    // 2. Carga progresiva instantánea de carátula
+    const instantCover = song.artwork100 || song.artwork300 || song.artwork;
+    if (instantCover) {
+      // Inmediato: mostrar carátula ligera (5KB, responde en ~30ms sin bloquear)
+      if (bottomBarLogo && (isNewSong || bottomBarLogo.src !== instantCover)) {
+        bottomBarLogo.src = instantCover;
+      }
+      if (fsStationLogo && (isNewSong || fsStationLogo.src !== instantCover)) {
+        fsStationLogo.src = instantCover;
+        fsStationLogo.style.borderRadius = '24px';
+      }
+
+      // En paralelo: precargar versión en Alta Definición (600x600 o 1000x1000)
+      if (song.artwork && song.artwork !== instantCover) {
+        const hdImg = new Image();
+        hdImg.src = song.artwork;
+        hdImg.onload = () => {
+          if (nowPlayingSong && (nowPlayingSong.title === song.title || nowPlayingSong.artwork === song.artwork)) {
+            if (fsStationLogo) fsStationLogo.src = song.artwork;
+            if (bottomBarLogo) bottomBarLogo.src = song.artwork300 || song.artwork;
           }
-          if (bottomBarLogo) {
-            bottomBarLogo.src = song.artwork100 || song.artwork;
-          }
-        }
-      };
+        };
+      }
     } else if (!song.artwork && (song.title || song.artist)) {
-      // Fallback directo desde el navegador a la API de Apple
-      const q = encodeURIComponent(`${song.artist || ''} ${song.title || ''}`.trim());
-      fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=1`)
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.results && data.results.length > 0) {
-            const track = data.results[0];
-            const hd = (track.artworkUrl100 || '').replace('100x100bb.jpg', '600x600bb.jpg');
-            song.artwork = hd;
-            song.artwork100 = track.artworkUrl100 || '';
-            song.album = track.collectionName || song.album;
-            song.appleMusicUrl = track.trackViewUrl || song.appleMusicUrl;
-            applyNowPlayingMetadata(song);
-          }
-        })
-        .catch(() => {});
+      // Si el servidor no trajo carátula, resolver de inmediato desde el navegador (Apple + Deezer)
+      searchArtworkClient(song.artist, song.title).then(enriched => {
+        if (enriched && nowPlayingSong && nowPlayingSong.title === song.title) {
+          Object.assign(nowPlayingSong, enriched);
+          applyNowPlayingMetadata(nowPlayingSong);
+        }
+      });
     }
 
     // 3. Barra inferior
@@ -1409,9 +1471,10 @@
     if (!station) return;
     const fallback = getStationFallbackSvg(station.name, station.genre);
 
-    if (nowPlayingSong && nowPlayingSong.artwork) {
+    const activeCover = nowPlayingSong ? (nowPlayingSong.artwork || nowPlayingSong.artwork300 || nowPlayingSong.artwork100) : null;
+    if (activeCover) {
       if (fsStationLogo) {
-        fsStationLogo.src = nowPlayingSong.artwork;
+        fsStationLogo.src = activeCover;
         fsStationLogo.onerror = () => { fsStationLogo.src = station.logo || fallback; };
         fsStationLogo.alt = `${nowPlayingSong.title} - ${nowPlayingSong.artist}`;
       }

@@ -581,6 +581,7 @@ html, body {
   background: #02050e;
   border: 1px solid var(--border-color);
   flex-shrink: 0;
+  transition: opacity 0.25s ease;
 }
 
 .bottom-bar-meta {
@@ -1672,6 +1673,7 @@ html, body {
   background: #02050e;
   border: 2px solid var(--border-color);
   box-shadow: 0 16px 45px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.25s ease, border-radius 0.3s ease;
 }
 
 .fs-info-group {
