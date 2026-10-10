@@ -152,15 +152,11 @@ async function searchAppleMusic(artist, title, rawTitle) {
   for (const query of queries) {
     try {
       const u = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=1`;
-      const res = await fetch(u, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
-          'Accept': 'application/json'
-        }
-      });
+      const res = await fetch(u);
       if (!res.ok) continue;
 
-      const data = await res.json();
+      const text = await res.text();
+      const data = JSON.parse(text);
       if (data && data.results && data.results.length > 0) {
         const track = data.results[0];
         const artworkHd = (track.artworkUrl100 || '').replace('100x100bb.jpg', '600x600bb.jpg');

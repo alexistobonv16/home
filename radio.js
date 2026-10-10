@@ -1275,6 +1275,23 @@
           }
         }
       };
+    } else if (!song.artwork && (song.title || song.artist)) {
+      // Fallback directo desde el navegador a la API de Apple
+      const q = encodeURIComponent(`${song.artist || ''} ${song.title || ''}`.trim());
+      fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=1`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.results && data.results.length > 0) {
+            const track = data.results[0];
+            const hd = (track.artworkUrl100 || '').replace('100x100bb.jpg', '600x600bb.jpg');
+            song.artwork = hd;
+            song.artwork100 = track.artworkUrl100 || '';
+            song.album = track.collectionName || song.album;
+            song.appleMusicUrl = track.trackViewUrl || song.appleMusicUrl;
+            applyNowPlayingMetadata(song);
+          }
+        })
+        .catch(() => {});
     }
 
     // 3. Barra inferior
