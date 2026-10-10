@@ -264,8 +264,17 @@
   const fsNextBtn = document.getElementById('fs-next-btn');
   const fsMuteBtn = document.getElementById('fs-mute-btn');
   const fsVolumeSlider = document.getElementById('fs-volume-slider');
+  const fsSongCard = document.getElementById('fs-song-card');
+  const fsSongTitle = document.getElementById('fs-song-title');
+  const fsSongArtist = document.getElementById('fs-song-artist');
+  const fsAppleLink = document.getElementById('fs-apple-link');
 
   let isFullscreenPlayerOpen = false;
+
+  // Real-Time Now Playing & Apple Music Metadata State
+  let nowPlayingSong = null;
+  let metadataPollingTimer = null;
+  let isMetadataFetching = false;
 
   // =========================================================================
   // STORAGE & INITIALIZATION
@@ -661,6 +670,8 @@
     if (!isProxyRetry) {
       currentPlaybackToken++;
       hasAttemptedProxyForCurrent = false;
+      stopMetadataPolling();
+      clearNowPlayingMetadata();
     }
     const token = currentPlaybackToken;
 
@@ -757,6 +768,21 @@
         }
       });
 
+      if (Hls.Events.FRAG_PARSING_METADATA) {
+        hls.on(Hls.Events.FRAG_PARSING_METADATA, (event, data) => {
+          if (token !== currentPlaybackToken || !data || !data.samples) return;
+          for (const sample of data.samples) {
+            if (sample.data) {
+              const rawText = decodeId3Text(sample.data);
+              if (rawText && rawText.length > 3) {
+                fetchStationMetadata(rawText);
+                break;
+              }
+            }
+          }
+        });
+      }
+
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (token !== currentPlaybackToken) return;
         if (data.fatal) {
@@ -827,11 +853,13 @@
     if (playing) {
       if (window.innerWidth > 680) startVisualizer();
       if (isFullscreenPlayerOpen) startFsVisualizer();
+      startMetadataPolling();
     } else {
       stopVisualizer();
       drawIdleVisualizer();
       stopFsVisualizer();
       drawIdleFsVisualizer();
+      stopMetadataPolling();
     }
   }
 
@@ -880,8 +908,9 @@
 
   function updateDocumentTitle() {
     if (document.hidden) {
-      // User switched to another tab: prioritize station name so it is immediately visible in narrow tabs
-      if (currentStation && isPlaying) {
+      if (nowPlayingSong && nowPlayingSong.title && isPlaying) {
+        document.title = `▶ ${nowPlayingSong.title} - ${nowPlayingSong.artist} • Alexis Radio`;
+      } else if (currentStation && isPlaying) {
         document.title = `▶ ${currentStation.name} • Alexis Radio`;
       } else if (currentStation && isBuffering) {
         document.title = `⏳ ${currentStation.name} • Alexis Radio`;
@@ -891,8 +920,11 @@
         document.title = DEFAULT_DOCUMENT_TITLE;
       }
     } else {
-      // User returned inside the window/tab: restore normal full title
-      document.title = DEFAULT_DOCUMENT_TITLE;
+      if (nowPlayingSong && nowPlayingSong.title && isPlaying) {
+        document.title = `🎵 ${nowPlayingSong.title} - ${nowPlayingSong.artist} | Alexis Radio`;
+      } else {
+        document.title = DEFAULT_DOCUMENT_TITLE;
+      }
     }
   }
 
@@ -900,8 +932,13 @@
     updateDocumentTitle();
     if (document.hidden) {
       stopVisualizer();
-    } else if (window.innerWidth > 680) {
-      startVisualizer();
+    } else {
+      if (window.innerWidth > 680 && isPlaying && !isFullscreenPlayerOpen) {
+        startVisualizer();
+      }
+      if (isPlaying) {
+        fetchStationMetadata();
+      }
     }
   });
 
@@ -1089,25 +1126,199 @@
   }
 
   // =========================================================================
-  // MEDIA SESSION API (Lockscreen Controls)
+  // MEDIA SESSION API (Lockscreen Controls & Album Art)
   // =========================================================================
-  function updateMediaSession(station) {
+  function updateMediaSession(station, songData = null) {
     if ('mediaSession' in navigator && station) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: station.name,
-        artist: 'Alexis Radio // ' + (station.genre || 'En Vivo'),
-        album: station.freq || 'Online Stream',
-        artwork: [
-          { src: station.logo || '/tv-icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: station.logo || '/tv-icon-512.png', sizes: '512x512', type: 'image/png' }
-        ]
-      });
+      if (songData && songData.title) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: songData.title,
+          artist: `${songData.artist} • ${station.name}`,
+          album: songData.album || station.name,
+          artwork: songData.artwork ? [
+            { src: songData.artwork, sizes: '600x600', type: 'image/jpeg' },
+            { src: songData.artwork100 || songData.artwork, sizes: '100x100', type: 'image/jpeg' }
+          ] : [
+            { src: station.logo || '/radio-icon-192.png', sizes: '192x192', type: 'image/png' }
+          ]
+        });
+      } else {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: station.name,
+          artist: 'Alexis Radio // ' + (station.genre || 'En Vivo'),
+          album: station.freq || 'Online Stream',
+          artwork: [
+            { src: station.logo || '/radio-icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: station.logo || '/radio-icon-512.png', sizes: '512x512', type: 'image/png' }
+          ]
+        });
+      }
 
       navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
       navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
       navigator.mediaSession.setActionHandler('previoustrack', () => playPrevStation());
       navigator.mediaSession.setActionHandler('nexttrack', () => playNextStation());
     }
+  }
+
+  // =========================================================================
+  // REAL-TIME NOW PLAYING & APPLE MUSIC METADATA ENGINE
+  // =========================================================================
+  function decodeId3Text(data) {
+    if (!data || data.length < 4) return null;
+    try {
+      const uint8 = new Uint8Array(data);
+      let str = '';
+      for (let i = 0; i < uint8.length; i++) {
+        const c = uint8[i];
+        if (c >= 32 && c <= 126) {
+          str += String.fromCharCode(c);
+        } else if (c >= 160 && c <= 255) {
+          str += String.fromCharCode(c);
+        }
+      }
+      const match = str.match(/(?:TIT2|TPE1|TXXX|StreamTitle=)\s*([A-Za-z0-9\s\-_.,'’"&!/()]+)/i);
+      if (match && match[1] && match[1].trim().length > 3) {
+        return match[1].trim();
+      }
+      const trimmed = str.replace(/\s+/g, ' ').trim();
+      if (trimmed.length > 4 && trimmed.includes(' - ')) {
+        return trimmed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async function fetchStationMetadata(forceQuery = null) {
+    if (!currentStation || !isPlaying || isMetadataFetching) return;
+    isMetadataFetching = true;
+
+    try {
+      let apiUrl = `/api/radio-metadata?url=${encodeURIComponent(currentStation.url)}&name=${encodeURIComponent(currentStation.name)}`;
+      if (forceQuery) {
+        apiUrl += `&query=${encodeURIComponent(forceQuery)}`;
+      }
+
+      const res = await fetch(apiUrl);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data && data.success && data.hasSong && data.title) {
+        applyNowPlayingMetadata(data);
+      } else {
+        clearNowPlayingMetadata();
+      }
+    } catch (err) {
+      // Silencioso
+    } finally {
+      isMetadataFetching = false;
+    }
+  }
+
+  function startMetadataPolling() {
+    stopMetadataPolling();
+
+    // Consulta inicial tras 1.5s
+    setTimeout(() => {
+      if (isPlaying) fetchStationMetadata();
+    }, 1500);
+
+    // Sondeo periódico cada 12 segundos
+    metadataPollingTimer = setInterval(() => {
+      if (isPlaying && !document.hidden) {
+        fetchStationMetadata();
+      }
+    }, 12000);
+  }
+
+  function stopMetadataPolling() {
+    if (metadataPollingTimer) {
+      clearInterval(metadataPollingTimer);
+      metadataPollingTimer = null;
+    }
+    isMetadataFetching = false;
+  }
+
+  function applyNowPlayingMetadata(song) {
+    if (!song || !currentStation) return;
+    const isNewSong = !nowPlayingSong || nowPlayingSong.title !== song.title || nowPlayingSong.artist !== song.artist;
+    nowPlayingSong = song;
+
+    // 1. Tarjeta en Fullscreen Player
+    if (fsSongCard && fsSongTitle && fsSongArtist) {
+      fsSongTitle.textContent = song.title;
+      fsSongArtist.textContent = song.artist + (song.album ? ` • ${song.album}` : '');
+      fsSongCard.style.display = 'flex';
+    }
+
+    if (fsAppleLink) {
+      if (song.appleMusicUrl) {
+        fsAppleLink.href = song.appleMusicUrl;
+        fsAppleLink.style.display = 'inline-flex';
+      } else {
+        fsAppleLink.style.display = 'none';
+      }
+    }
+
+    // 2. Carátula oficial de Apple Music en alta resolución
+    if (song.artwork && isNewSong) {
+      const img = new Image();
+      img.src = song.artwork;
+      img.onload = () => {
+        if (nowPlayingSong && nowPlayingSong.artwork === song.artwork) {
+          if (fsStationLogo) {
+            fsStationLogo.src = song.artwork;
+            fsStationLogo.style.borderRadius = '24px';
+          }
+          if (bottomBarLogo) {
+            bottomBarLogo.src = song.artwork100 || song.artwork;
+          }
+        }
+      };
+    }
+
+    // 3. Barra inferior
+    if (bottomBarName) {
+      bottomBarName.textContent = `${song.title} — ${song.artist}`;
+      bottomBarName.title = `${song.title} — ${song.artist} (${currentStation.name})`;
+    }
+    if (bottomBarFreq) {
+      bottomBarFreq.textContent = currentStation.name;
+    }
+
+    // 4. MediaSession & Bloqueo de pantalla
+    updateMediaSession(currentStation, song);
+
+    // 5. Título de pestaña
+    updateDocumentTitle();
+  }
+
+  function clearNowPlayingMetadata() {
+    if (!nowPlayingSong) return;
+    nowPlayingSong = null;
+
+    if (fsSongCard) {
+      fsSongCard.style.display = 'none';
+    }
+
+    if (currentStation) {
+      const fallback = getStationFallbackSvg(currentStation.name, currentStation.genre);
+      if (fsStationLogo) {
+        fsStationLogo.src = currentStation.logo || fallback;
+      }
+      if (bottomBarLogo) {
+        bottomBarLogo.src = currentStation.logo || fallback;
+      }
+      if (bottomBarName) {
+        bottomBarName.textContent = currentStation.name;
+        bottomBarName.title = currentStation.name;
+      }
+      if (bottomBarFreq) {
+        bottomBarFreq.textContent = currentStation.freq || currentStation.genre || 'WEB STREAM';
+      }
+      updateMediaSession(currentStation);
+    }
+    updateDocumentTitle();
   }
 
   // =========================================================================
@@ -1193,11 +1404,36 @@
     if (!station) return;
     const fallback = getStationFallbackSvg(station.name, station.genre);
 
-    if (fsStationLogo) {
-      fsStationLogo.src = station.logo || fallback;
-      fsStationLogo.onerror = () => { fsStationLogo.src = fallback; };
-      fsStationLogo.alt = station.name;
+    if (nowPlayingSong && nowPlayingSong.artwork) {
+      if (fsStationLogo) {
+        fsStationLogo.src = nowPlayingSong.artwork;
+        fsStationLogo.onerror = () => { fsStationLogo.src = station.logo || fallback; };
+        fsStationLogo.alt = `${nowPlayingSong.title} - ${nowPlayingSong.artist}`;
+      }
+      if (fsSongCard && fsSongTitle && fsSongArtist) {
+        fsSongTitle.textContent = nowPlayingSong.title;
+        fsSongArtist.textContent = nowPlayingSong.artist + (nowPlayingSong.album ? ` • ${nowPlayingSong.album}` : '');
+        fsSongCard.style.display = 'flex';
+      }
+      if (fsAppleLink) {
+        if (nowPlayingSong.appleMusicUrl) {
+          fsAppleLink.href = nowPlayingSong.appleMusicUrl;
+          fsAppleLink.style.display = 'inline-flex';
+        } else {
+          fsAppleLink.style.display = 'none';
+        }
+      }
+    } else {
+      if (fsStationLogo) {
+        fsStationLogo.src = station.logo || fallback;
+        fsStationLogo.onerror = () => { fsStationLogo.src = fallback; };
+        fsStationLogo.alt = station.name;
+      }
+      if (fsSongCard) {
+        fsSongCard.style.display = 'none';
+      }
     }
+
     if (fsStationName) {
       fsStationName.textContent = station.name;
     }

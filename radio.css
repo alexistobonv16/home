@@ -1720,6 +1720,103 @@ html, body {
   word-break: break-word;
 }
 
+/* Real-Time Now Playing (Apple Music Track & Artist) */
+.fs-song-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  max-width: 92%;
+  animation: modal-enter 0.25s ease-out;
+  contain: content;
+}
+
+.fs-song-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+}
+
+.fs-song-eq-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.fs-song-eq-bars span {
+  width: 2.5px;
+  background: var(--accent-cyan);
+  border-radius: 1px;
+  animation: song-eq-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.fs-song-eq-bars span:nth-child(1) { height: 4px; animation-delay: 0s; }
+.fs-song-eq-bars span:nth-child(2) { height: 9px; animation-delay: 0.2s; }
+.fs-song-eq-bars span:nth-child(3) { height: 6px; animation-delay: 0.4s; }
+
+@keyframes song-eq-pulse {
+  0% { height: 3px; }
+  100% { height: 10px; }
+}
+
+.fs-song-title {
+  font-size: clamp(1.15rem, 3.2vw, 1.7rem);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+.fs-song-artist {
+  font-size: clamp(0.82rem, 1.8vw, 1.05rem);
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.fs-apple-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #ff2d55;
+  background: rgba(255, 45, 85, 0.12);
+  border: 1px solid rgba(255, 45, 85, 0.35);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  margin-top: 0.2rem;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.fs-apple-link:hover {
+  background: rgba(255, 45, 85, 0.25);
+  border-color: #ff2d55;
+  transform: scale(1.05);
+}
+
+[data-theme="light"] .fs-song-card {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .fs-song-title {
+  color: #0f172a;
+}
+
 .fs-telemetry-row {
   display: flex;
   align-items: center;
