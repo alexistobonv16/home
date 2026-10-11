@@ -2496,14 +2496,32 @@
   // FULLSCREEN PLAYER CONTROLLER (Modo Pantalla Completa / Now Playing)
   // =========================================================================
   let fsAnimFrameId = null;
+  let hasPushedFullscreenHistory = false;
+
+  // Limpiar cualquier estado residual de pantalla completa si el usuario recargó la página
+  if (window.history && history.state && history.state.fullscreenPlayer) {
+    try {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    } catch (e) {}
+  }
 
   function openFullscreenPlayer() {
     if (!fsOverlay) return;
+    const wasAlreadyOpen = isFullscreenPlayerOpen;
     isFullscreenPlayerOpen = true;
     stopVisualizer();
     fsOverlay.classList.add('open');
     fsOverlay.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
+
+    // Registrar estado en el historial para que el gesto "Atrás" en celular cierre esta vista y vuelva a las emisoras
+    if (!wasAlreadyOpen && !hasPushedFullscreenHistory && window.history && typeof history.pushState === 'function') {
+      try {
+        history.pushState({ fullscreenPlayer: true }, '', window.location.pathname + window.location.search);
+        hasPushedFullscreenHistory = true;
+      } catch (e) {}
+    }
+
     if (currentStation) {
       updateFullscreenPlayer(currentStation);
     }
@@ -2511,8 +2529,9 @@
     startFsVisualizer();
   }
 
-  function closeFullscreenPlayer() {
-    if (!fsOverlay) return;
+  function closeFullscreenPlayer(fromPopState = false) {
+    if (!fsOverlay || !isFullscreenPlayerOpen) return;
+    const isPop = (fromPopState === true);
     isFullscreenPlayerOpen = false;
     fsOverlay.classList.remove('open');
     fsOverlay.setAttribute('aria-hidden', 'true');
@@ -2521,7 +2540,25 @@
     if (isPlaying && window.innerWidth > 680) {
       startVisualizer();
     }
+
+    if (isPop) {
+      hasPushedFullscreenHistory = false;
+    } else if (hasPushedFullscreenHistory) {
+      hasPushedFullscreenHistory = false;
+      if (window.history && history.state && history.state.fullscreenPlayer) {
+        try {
+          history.back();
+        } catch (e) {}
+      }
+    }
   }
+
+  // Interceptar el gesto o botón "Atrás" del navegador / móvil
+  window.addEventListener('popstate', () => {
+    if (isFullscreenPlayerOpen) {
+      closeFullscreenPlayer(true);
+    }
+  });
 
   function toggleFullscreenPlayer() {
     if (isFullscreenPlayerOpen) {
