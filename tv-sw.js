@@ -3,7 +3,7 @@
  * Enables offline shell, installability, and fast asset loading
  */
 
-const CACHE_NAME = 'alexis-tv-cache-v15';
+const CACHE_NAME = 'alexis-tv-cache-v16';
 const SHELL_ASSETS = [
   '/',
   '/tv.webmanifest',
