@@ -3,7 +3,7 @@
  * Enables offline shell, installability, and fast asset loading
  */
 
-const CACHE_NAME = 'alexis-tv-cache-v13';
+const CACHE_NAME = 'alexis-tv-cache-v14';
 const SHELL_ASSETS = [
   '/',
   '/tv',
