@@ -1,7 +1,6 @@
-const CACHE_NAME = 'alexis-radio-v13';
+const CACHE_NAME = 'alexis-radio-v14';
 const STATIC_ASSETS = [
   '/',
-  '/radio.html',
   '/radio.css',
   '/radio.js',
   '/radio.webmanifest',
@@ -47,9 +46,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isNav = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
+  const fetchReq = isNav ? new Request(event.request, { cache: 'no-cache' }) : event.request;
+
   // Network-First for HTML, JS and CSS to ensure instant updates
   event.respondWith(
-    fetch(event.request)
+    fetch(fetchReq)
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
           const responseClone = networkResponse.clone();

@@ -2,6 +2,24 @@
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
+  <script>
+    (function() {
+      var h = location.hostname.toLowerCase();
+      if (h === 'tv.alexistobon.com' || h === 'radio.alexistobon.com') {
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+          }).finally(function() {
+            if (!location.search.includes('_bust=')) {
+              location.replace('/?_bust=' + Date.now());
+            }
+          });
+        } else if (!location.search.includes('_bust=')) {
+          location.replace('/?_bust=' + Date.now());
+        }
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alexis Tobón | Software Architect & Proyectos en Vivo</title>
   <meta name="description" content="Página de inicio y portafolio de Alexis Tobón. Explora e interactúa en directo con proyectos de producción como NotiTec (notitec.co) y Mis Gastos (gastos.alexistobon.com).">

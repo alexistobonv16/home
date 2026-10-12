@@ -3,11 +3,9 @@
  * Enables offline shell, installability, and fast asset loading
  */
 
-const CACHE_NAME = 'alexis-tv-cache-v14';
+const CACHE_NAME = 'alexis-tv-cache-v15';
 const SHELL_ASSETS = [
   '/',
-  '/tv',
-  '/tv.html',
   '/tv.webmanifest',
   '/tv-icon.svg',
   '/tv-icon-192.png',
@@ -56,9 +54,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isNav = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
+  const fetchReq = isNav ? new Request(event.request, { cache: 'no-cache' }) : event.request;
+
   // Network-first with cache fallback for HTML and app shell
   event.respondWith(
-    fetch(event.request)
+    fetch(fetchReq)
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();

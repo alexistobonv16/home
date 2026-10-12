@@ -7,6 +7,24 @@
  *                            y sirve el portfolio principal en la raíz.
  */
 
+async function serveSubdomainRoot(context, assetPath) {
+  const url = new URL(context.request.url);
+  const assetUrl = new URL(assetPath, url.origin);
+  const res = await context.env.ASSETS.fetch(new Request(assetUrl.toString(), {
+    method: 'GET',
+    headers: { 'Accept': 'text/html,application/xhtml+xml' }
+  }));
+  const headers = new Headers(res.headers);
+  headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  headers.set('Pragma', 'no-cache');
+  headers.set('Expires', '0');
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers
+  });
+}
+
 export async function onRequest(context) {
   const url = new URL(context.request.url);
   const hostname = url.hostname.toLowerCase();
@@ -22,23 +40,21 @@ export async function onRequest(context) {
       return Response.redirect(target.toString(), 301);
     }
 
-    // Raíz de la app de Radio: sirve el asset canonical /radio sin 308 redirect
+    // Raíz de la app de Radio: sirve el asset canonical /radio sin 308 redirect ni caché cruzado
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      const assetUrl = new URL('/radio', url.origin);
-      assetUrl.search = url.search;
-      return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
+      return serveSubdomainRoot(context, '/radio');
     }
 
     // Alias estándar de PWA Manifest
     if (url.pathname === '/manifest.webmanifest' || url.pathname === '/manifest.json') {
       const assetUrl = new URL('/radio.webmanifest', url.origin);
-      return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
+      return context.env.ASSETS.fetch(new Request(assetUrl.toString()));
     }
 
     // Alias estándar de Service Worker
     if (url.pathname === '/sw.js') {
       const assetUrl = new URL('/radio-sw.js', url.origin);
-      return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
+      return context.env.ASSETS.fetch(new Request(assetUrl.toString()));
     }
 
     // API endpoints y recursos estáticos pasan directamente
@@ -56,11 +72,9 @@ export async function onRequest(context) {
       return Response.redirect(target.toString(), 301);
     }
 
-    // Raíz de la app de TV: sirve el asset canonical /tv sin 308 redirect
+    // Raíz de la app de TV: sirve el asset canonical /tv sin 308 redirect ni caché cruzado
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      const assetUrl = new URL('/tv', url.origin);
-      assetUrl.search = url.search;
-      return context.env.ASSETS.fetch(new Request(assetUrl, context.request));
+      return serveSubdomainRoot(context, '/tv');
     }
 
     // Alias estándar de PWA Manifest
