@@ -273,6 +273,8 @@
   let nowPlayingSong = null;
   let metadataPollingTimer = null;
   let isMetadataFetching = false;
+  let consecutiveNoSongCount = 0;
+  let lastSongTimestamp = 0;
 
   // =========================================================================
   // STORAGE & INITIALIZATION
@@ -660,6 +662,8 @@
       hasAttemptedProxyForCurrent = false;
       stopMetadataPolling();
       clearNowPlayingMetadata();
+      consecutiveNoSongCount = 0;
+      lastSongTimestamp = 0;
     }
     const token = currentPlaybackToken;
 
@@ -1179,6 +1183,14 @@
 
   async function fetchStationMetadata(forceQuery = null) {
     if (!currentStation || !isPlaying || isMetadataFetching) return;
+
+    // Si es un stream HLS y NO tenemos un forceQuery (etiqueta ID3 de fragmento), no sondear el endpoint ICY.
+    // Los manifiestos .m3u8 no contienen cabeceras ICY y su sondeo vacío borraría la canción detectada por HLS ID3.
+    const isHlsStation = (hls !== null) || (currentStation.url && currentStation.url.includes('.m3u8'));
+    if (!forceQuery && isHlsStation) {
+      return;
+    }
+
     isMetadataFetching = true;
 
     try {
@@ -1192,9 +1204,22 @@
       const data = await res.json();
 
       if (data && data.success && data.hasSong && data.title) {
+        consecutiveNoSongCount = 0;
+        lastSongTimestamp = Date.now();
         applyNowPlayingMetadata(data);
       } else {
-        clearNowPlayingMetadata();
+        // Debounce / Periodo de gracia para evitar que el nombre de la canción desaparezca y aparezca
+        // (por jingles, menciones de estación, comerciales, cortes breves o fallos temporales de lectura ICY).
+        if (nowPlayingSong) {
+          consecutiveNoSongCount++;
+          const timeSinceSong = Date.now() - lastSongTimestamp;
+          // Solo limpiar si han pasado al menos 6 sondeos consecutivos vacíos (~60 segundos)
+          // Y han pasado al menos 75 segundos desde que se detectó la canción.
+          if (consecutiveNoSongCount >= 6 && timeSinceSong > 75000) {
+            clearNowPlayingMetadata();
+            consecutiveNoSongCount = 0;
+          }
+        }
       }
     } catch (err) {
       // Silencioso

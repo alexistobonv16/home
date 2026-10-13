@@ -333,6 +333,14 @@ export async function onRequestGet(context) {
     return new Response(JSON.stringify({ success: false, error: 'Host bloqueado' }), { status: 403, headers: corsHeaders });
   }
 
+  // Si es un stream HLS (.m3u8) y no viene una consulta directa (ID3), no intentar leer ICY
+  if (!directQuery && (parsed.pathname.endsWith('.m3u8') || targetUrl.toLowerCase().includes('.m3u8'))) {
+    return new Response(JSON.stringify({ success: true, hasSong: false, isHls: true }), {
+      status: 200,
+      headers: corsHeaders
+    });
+  }
+
   // Chequeo en caché de stream en memoria (Devuelve en 5-10ms)
   const streamCacheKey = (targetUrl + (stationName ? '::' + stationName : '')).toLowerCase();
   if (!directQuery && stationMetadataCache.has(streamCacheKey)) {
@@ -352,7 +360,7 @@ export async function onRequestGet(context) {
       if (isBlockedHostname(u.hostname)) break;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3200);
+      const timeoutId = setTimeout(() => controller.abort(), 4500);
 
       const res = await fetch(currentUrl, {
         headers: {
@@ -374,7 +382,7 @@ export async function onRequestGet(context) {
 
       const metaintHeader = parseInt(res.headers.get('icy-metaint') || '0', 10);
       if (metaintHeader > 0 && res.body) {
-        rawStreamTitle = await extractIcyTitleFromStream(res, metaintHeader, 2800);
+        rawStreamTitle = await extractIcyTitleFromStream(res, metaintHeader, 4000);
       }
       break;
     } catch (e) {
@@ -415,7 +423,8 @@ export async function onRequestGet(context) {
     rawTitle: rawStreamTitle || null
   };
 
-  stationMetadataCache.set(streamCacheKey, { data: noSongData, timestamp: Date.now() });
+  // Guardar en caché negativo con TTL corto (4s) para no bloquear reintentos si fue un hipo momentáneo
+  stationMetadataCache.set(streamCacheKey, { data: noSongData, timestamp: Date.now() - (STREAM_CACHE_TTL_MS - 4000) });
 
   return new Response(JSON.stringify(noSongData), { status: 200, headers: corsHeaders });
 }
