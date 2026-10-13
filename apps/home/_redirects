@@ -1,0 +1,9 @@
+/tv https://tv.alexistobon.com 301
+/tv/* https://tv.alexistobon.com 301
+/radio https://radio.alexistobon.com 301
+/radio/* https://radio.alexistobon.com 301
+/default-config.json / 301
+/wrangler.jsonc /404.html 404
+/package.json /404.html 404
+/README.md /404.html 404
+/.gitignore /404.html 404

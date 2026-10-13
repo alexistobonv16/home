@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function() {
+      var h = location.hostname.toLowerCase();
+      if (h === 'tv.alexistobon.com' || h === 'radio.alexistobon.com') {
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+          }).finally(function() {
+            if (!location.search.includes('_bust=')) {
+              location.replace('/?_bust=' + Date.now());
+            }
+          });
+        } else if (!location.search.includes('_bust=')) {
+          location.replace('/?_bust=' + Date.now());
+        }
+      }
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alexis Tobón | Software Architect & Proyectos en Vivo</title>
+  <meta name="description" content="Página de inicio y portafolio de Alexis Tobón. Explora e interactúa en directo con proyectos de producción como NotiTec (notitec.co) y Mis Gastos (gastos.alexistobon.com).">
+  
+  <!-- Open Graph / Meta Social -->
+  <meta property="og:title" content="Alexis Tobón | Software Architect & Proyectos en Vivo">
+  <meta property="og:description" content="Explora en directo NotiTec (notitec.co) y Mis Gastos (gastos.alexistobon.com) creados por Alexis Tobón.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://alexistobon.com">
+  <meta property="og:image" content="https://alexistobon.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Alexis Tobón - Proyectos y Portafolio en Vivo">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Alexis Tobón | Software Architect & Proyectos en Vivo">
+  <meta name="twitter:description" content="Explora en directo NotiTec y Mis Gastos creados por Alexis Tobón.">
+  <meta name="twitter:image" content="https://alexistobon.com/og-image.png">
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Alexis Tobón",
+    "url": "https://alexistobon.com",
+    "jobTitle": "Full Stack Developer & Software Architect",
+    "image": "https://alexistobon.com/og-image.png",
+    "sameAs": [
+      "https://github.com/alexistobonv16",
+      "https://linkedin.com/in/alexistobon"
+    ],
+    "knowsAbout": ["Web Architecture", "Astro", "React", "Cloudflare", "Tailwind CSS", "PWA", "TypeScript"]
+  }
+  </script>
+  
+  <!-- Favicon SVG -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2310b981'/%3E%3Cpath d='M9 22L16 8l7 14h-3.8l-3.2-6.5L12.8 22H9z' fill='%23ffffff'/%3E%3C/svg%3E">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=5.1">
+</head>
+<body>
+  <!-- Ambient Cosmic Background & HUD Grid -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-pattern"></div>
+
+  <!-- Floating Aero-Command Header -->
+  <header class="site-header">
+    <div class="container">
+      <div class="header-inner">
+        <a href="#inicio" class="brand-logo" aria-label="Alexis Tobón Inicio">
+          <span class="logo-avatar">AT</span>
+          <span class="brand-text">
+            <span class="brand-name">Alexis Tobón</span>
+            <span class="brand-domain">alexistobon.com</span>
+          </span>
+        </a>
+
+        <nav class="nav-menu" aria-label="Navegación principal">
+          <a href="#proyectos" class="nav-link">Proyectos</a>
+          <a href="https://radio.alexistobon.com" class="nav-link" style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--accent-cyan);"><span style="font-size: 0.9em;">📻</span> Radio</a>
+          <a href="#articulos" class="nav-link">Artículos</a>
+          <a href="#sobre-mi" class="nav-link">Sobre Mí</a>
+          <a href="#contacto" class="nav-link">Contacto</a>
+        </nav>
+
+        <div class="header-actions">
+          <!-- Command Palette Trigger -->
+          <button id="cmd-k-trigger" class="cmd-k-badge" title="Abrir paleta de comandos (Ctrl + K)">
+            <svg class="cmd-search-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span class="cmd-k-text">Buscar</span>
+            <kbd class="cmd-k-key">Ctrl K</kbd>
+          </button>
+
+          <!-- Live Telemetry Status Pill -->
+          <div class="status-badge" title="Disponible para colaborar en proyectos">
+            <span class="status-dot"></span>
+            <span class="status-text">ONLINE</span>
+          </div>
+
+          <!-- Digital Card & QR Trigger -->
+          <button id="qr-modal-trigger" class="btn-icon" aria-label="Tarjeta digital y QR" title="Compartir perfil y código QR">
+            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          </button>
+
+          <!-- Theme Toggle -->
+          <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="12" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section (Mission Command) -->
+    <section id="inicio" class="hero-section">
+      <div class="container hero-container">
+        <div class="hero-content">
+          <div class="hero-eyebrow">
+            <span class="tag-accent">Alexis Tobón</span>
+            <span class="separator">•</span>
+            <span>Software Architect</span>
+          </div>
+          <h1 class="hero-title">
+            Construyendo soluciones <br class="hidden-mobile">
+            digitales que <span class="gradient-text">impactan</span>.
+          </h1>
+          <p class="hero-subtitle">
+            Espacio personal de ingeniería y productos digitales. Explora e interactúa <strong>en tiempo real</strong> con mis plataformas en producción: medios tecnológicos, arquitectura web y herramientas cotidianas.
+          </p>
+          <div class="hero-cta-group">
+            <a href="#proyectos" class="btn btn-primary">
+              <span>Explorar proyectos en vivo</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </a>
+            <a href="#contacto" class="btn btn-secondary">
+              <span>Iniciar Contacto</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-stats">
+          <div class="stat-card">
+            <span class="stat-number">02+</span>
+            <span class="stat-label">Plataformas en Producción</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">Arquitectura en Tiempo Real</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number">24/7</span>
+            <span class="stat-label">Disponibilidad & Resiliencia</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Projects Section with Live Interactive Cyber Mockups -->
+    <section id="proyectos" class="projects-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Directo & En Producción</span>
+          <h2 class="section-title">Proyectos Destacados</h2>
+          <p class="section-subtitle">
+            Interactúa directamente con las aplicaciones a continuación mediante los visores en tiempo real. Alterna entre vista de escritorio y móvil, recarga o explora a pantalla completa.
+          </p>
+        </div>
+
+        <div class="projects-list">
+
+          <!-- PROJECT 1: NotiTec -->
+          <article class="project-showcase" id="project-notitec">
+            <div class="project-info">
+              <div class="project-meta-top">
+                <div class="meta-left-group">
+                  <span class="badge badge-brand">Medio Digital</span>
+                  <span class="status-live-pill">
+                    <span class="pulse-dot"></span> Online
+                  </span>
+                </div>
+                <div class="ping-badge" data-ping-url="https://www.notitec.co" title="Latencia medida en tiempo real">
+                  <span class="ping-dot"></span>
+                  <span class="ping-val">Ping...</span>
+                </div>
+              </div>
+              <h3 class="project-title">
+                <a href="https://www.notitec.co" target="_blank" rel="noopener noreferrer">NotiTec</a>
+              </h3>
+              <p class="project-domain">notitec.co</p>
+              <p class="project-description">
+                Portal digital enfocado en noticias, análisis y divulgación sobre ciencia, tecnología, inteligencia artificial e innovación, redactadas de manera clara y accesible para toda la comunidad hispanohablante.
+              </p>
+              
+              <div class="project-tech-tags">
+                <span class="tag">Astro</span>
+                <span class="tag">SEO Optimizado</span>
+                <span class="tag">Responsive Web</span>
+                <span class="tag">Vercel</span>
+                <span class="tag">Edge Delivery</span>
+              </div>
+
+              <div class="project-links">
+                <a href="https://www.notitec.co" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
+                  <span>Visitar notitec.co</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+                <button class="btn btn-ghost open-fullscreen-btn" data-url="https://www.notitec.co" data-title="NotiTec - notitec.co">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                  <span>Pantalla Completa</span>
+                </button>
+              </div>
+
+              <div class="preview-tips">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span>Usa los controles del navegador para alternar entre vista móvil y escritorio.</span>
+              </div>
+            </div>
+
+            <!-- Live Browser Mockup -->
+            <div class="browser-mockup-wrapper">
+              <div class="browser-window" data-project="notitec" data-view="desktop">
+                <!-- Window Chrome / Header -->
+                <div class="browser-header">
+                  <div class="window-dots">
+                    <span class="dot dot-close"></span>
+                    <span class="dot dot-minimize"></span>
+                    <span class="dot dot-maximize"></span>
+                  </div>
+
+                  <div class="browser-address-bar">
+                    <svg class="ssl-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span class="url-text">https://www.notitec.co/</span>
+                    <button class="copy-url-btn" data-copy="https://www.notitec.co/" title="Copiar enlace">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                  </div>
+
+                  <div class="browser-controls">
+                    <!-- View toggle: Desktop vs Mobile -->
+                    <div class="device-toggle-group">
+                      <button class="device-btn active" data-view-target="desktop" title="Vista Escritorio">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                      </button>
+                      <button class="device-btn" data-view-target="mobile" title="Vista Móvil">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                      </button>
+                    </div>
+
+                    <!-- Reload iframe -->
+                    <button class="control-btn reload-btn" title="Recargar vista en vivo">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    </button>
+
+                    <!-- Expand fullscreen modal -->
+                    <button class="control-btn open-fullscreen-btn" data-url="https://www.notitec.co" data-title="NotiTec - notitec.co" title="Abrir en pantalla completa">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Browser Screen / Iframe Container -->
+                <div class="browser-viewport">
+                  <!-- Loading overlay -->
+                  <div class="iframe-loader">
+                    <div class="spinner"></div>
+                    <span>Cargando notitec.co en vivo...</span>
+                  </div>
+
+                  <!-- Interactive scroll barrier/overlay -->
+                  <div class="interaction-barrier" title="Toca o haz clic para interactuar con la página">
+                    <div class="barrier-pill">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m10 15 5-3-5-3v6Z"/></svg>
+                      <span>Toca para navegar aquí</span>
+                    </div>
+                  </div>
+
+                  <!-- Floating exit interaction button -->
+                  <button class="interactive-exit-btn" title="Pausar navegación interactiva y volver al scroll de la página">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Pausar interacción</span>
+                  </button>
+
+                  <!-- Scaled Iframe -->
+                  <div class="iframe-scaler">
+                    <iframe 
+                      src="https://www.notitec.co/" 
+                      class="preview-iframe" 
+                      loading="lazy" 
+                      title="Vista en directo de NotiTec"
+                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms">
+                    </iframe>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+
+          <!-- PROJECT 2: Mis Gastos -->
+          <article class="project-showcase reversed" id="project-gastos">
+            <div class="project-info">
+              <div class="project-meta-top">
+                <div class="meta-left-group">
+                  <span class="badge badge-emerald">Finanzas & PWA</span>
+                  <span class="status-live-pill">
+                    <span class="pulse-dot"></span> Online
+                  </span>
+                </div>
+                <div class="ping-badge" data-ping-url="https://gastos.alexistobon.com" title="Latencia medida en tiempo real">
+                  <span class="ping-dot"></span>
+                  <span class="ping-val">Ping...</span>
+                </div>
+              </div>
+              <h3 class="project-title">
+                <a href="https://gastos.alexistobon.com" target="_blank" rel="noopener noreferrer">Mis Gastos</a>
+              </h3>
+              <p class="project-domain">gastos.alexistobon.com</p>
+              <p class="project-description">
+                Aplicación web progresiva (PWA) privada para finanzas personales y control de presupuestos. Diseñada para un registro rápido de transacciones, métricas de ahorro y funcionamiento offline con máxima privacidad.
+              </p>
+              
+              <div class="project-tech-tags">
+                <span class="tag">React</span>
+                <span class="tag">Vite & PWA</span>
+                <span class="tag">Tailwind CSS</span>
+                <span class="tag">Cloudflare</span>
+                <span class="tag">Bóveda Privada</span>
+              </div>
+
+              <div class="project-links">
+                <a href="https://gastos.alexistobon.com" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
+                  <span>Abrir gastos.alexistobon.com</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+                <button class="btn btn-ghost open-fullscreen-btn" data-url="https://gastos.alexistobon.com" data-title="Mis Gastos - gastos.alexistobon.com">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                  <span>Pantalla Completa</span>
+                </button>
+              </div>
+
+              <div class="preview-tips">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span>Por ser una PWA móvil, puedes probarla en modo smartphone con el botón de teléfono superior.</span>
+              </div>
+            </div>
+
+            <!-- Live Browser Mockup -->
+            <div class="browser-mockup-wrapper">
+              <div class="browser-window" data-project="gastos" data-default-view="desktop" data-view="desktop">
+                <!-- Window Chrome / Header -->
+                <div class="browser-header">
+                  <div class="window-dots">
+                    <span class="dot dot-close"></span>
+                    <span class="dot dot-minimize"></span>
+                    <span class="dot dot-maximize"></span>
+                  </div>
+
+                  <div class="browser-address-bar">
+                    <svg class="ssl-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span class="url-text">https://gastos.alexistobon.com/</span>
+                    <button class="copy-url-btn" data-copy="https://gastos.alexistobon.com/" title="Copiar enlace">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                  </div>
+
+                  <div class="browser-controls">
+                    <!-- View toggle: Desktop vs Mobile -->
+                    <div class="device-toggle-group">
+                      <button class="device-btn active" data-view-target="desktop" title="Vista Escritorio">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                      </button>
+                      <button class="device-btn" data-view-target="mobile" title="Vista Móvil (PWA)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                      </button>
+                    </div>
+
+                    <!-- Reload iframe -->
+                    <button class="control-btn reload-btn" title="Recargar vista en vivo">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    </button>
+
+                    <!-- Expand fullscreen modal -->
+                    <button class="control-btn open-fullscreen-btn" data-url="https://gastos.alexistobon.com" data-title="Mis Gastos - gastos.alexistobon.com" title="Abrir en pantalla completa">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Browser Screen / Iframe Container -->
+                <div class="browser-viewport">
+                  <!-- Loading overlay -->
+                  <div class="iframe-loader">
+                    <div class="spinner"></div>
+                    <span>Cargando gastos.alexistobon.com...</span>
+                  </div>
+
+                  <!-- Interactive scroll barrier/overlay -->
+                  <div class="interaction-barrier" title="Toca o haz clic para interactuar con la página">
+                    <div class="barrier-pill">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m10 15 5-3-5-3v6Z"/></svg>
+                      <span>Toca para navegar aquí</span>
+                    </div>
+                  </div>
+
+                  <!-- Floating exit interaction button -->
+                  <button class="interactive-exit-btn" title="Pausar navegación interactiva y volver al scroll de la página">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Pausar interacción</span>
+                  </button>
+
+                  <!-- Scaled Iframe -->
+                  <div class="iframe-scaler">
+                    <iframe 
+                      src="https://gastos.alexistobon.com/" 
+                      class="preview-iframe" 
+                      loading="lazy" 
+                      title="Vista en directo de Mis Gastos"
+                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms">
+                    </iframe>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: NotiTec Recent Articles Feed -->
+    <section id="articulos" class="articles-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-tag">Divulgación & Actualidad</span>
+          <h2 class="section-title">Lo más reciente en NotiTec</h2>
+          <p class="section-subtitle">
+            Artículos, análisis y novedades sobre inteligencia artificial, hardware y tecnología publicados en notitec.co.
+          </p>
+        </div>
+
+        <div id="articles-grid" class="articles-grid">
+          <!-- Live/Pre-rendered Cards -->
+          <article class="article-card">
+            <div class="article-card-header">
+              <span class="badge badge-brand">Inteligencia Artificial</span>
+              <time class="article-date">24 Ago 2026</time>
+            </div>
+            <h3 class="article-title">
+              <a href="https://notitec.co/noticias/huawei-pura-x-view-el-movil-que-rompe-con-las-pantallas-alargadas-y-apuesta-por-un-formato-1695/" target="_blank" rel="noopener noreferrer">
+                Huawei Pura X View: el móvil que rompe con las pantallas alargadas y apuesta por un formato 16:9,5
+              </a>
+            </h3>
+            <p class="article-excerpt">
+              Huawei acaba de sorprender con un smartphone completamente diferente a lo habitual que abandona las pantallas alargadas para apostar por un formato ancho.
+            </p>
+            <div class="article-footer">
+              <a href="https://notitec.co/noticias/huawei-pura-x-view-el-movil-que-rompe-con-las-pantallas-alargadas-y-apuesta-por-un-formato-1695/" target="_blank" rel="noopener noreferrer" class="article-link">
+                <span>Leer artículo completo</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+          </article>
+
+          <article class="article-card">
+            <div class="article-card-header">
+              <span class="badge badge-brand">Inteligencia Artificial</span>
+              <time class="article-date">24 Ago 2026</time>
+            </div>
+            <h3 class="article-title">
+              <a href="https://notitec.co/noticias/no-sabia-que-necesitaba-una-camara-de-vigilancia-hasta-que-probe-la-ring-spotlight-luego-descubri-que-es-un-caballo-de-troya/" target="_blank" rel="noopener noreferrer">
+                No sabía que necesitaba una cámara de vigilancia hasta que probé la Ring Spotlight
+              </a>
+            </h3>
+            <p class="article-excerpt">
+              Análisis sobre cómo la tecnología para el hogar inteligente y las cámaras de seguridad conectadas cambian la privacidad y la convivencia diaria.
+            </p>
+            <div class="article-footer">
+              <a href="https://notitec.co/noticias/no-sabia-que-necesitaba-una-camara-de-vigilancia-hasta-que-probe-la-ring-spotlight-luego-descubri-que-es-un-caballo-de-troya/" target="_blank" rel="noopener noreferrer" class="article-link">
+                <span>Leer artículo completo</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+          </article>
+
+          <article class="article-card">
+            <div class="article-card-header">
+              <span class="badge badge-brand">Videojuegos</span>
+              <time class="article-date">23 Ago 2026</time>
+            </div>
+            <h3 class="article-title">
+              <a href="https://notitec.co/noticias/cyberpunk-2077-lleva-casi-seis-anos-encerrando-a-los-jugadores-en-night-city-uno-ha-encontrado-una-forma-de-escapar/" target="_blank" rel="noopener noreferrer">
+                ‘Cyberpunk 2077’ lleva casi seis años encerrando a los jugadores en Night City
+              </a>
+            </h3>
+            <p class="article-excerpt">
+              Los mundos abiertos tienen una curiosa contradicción: cuanto más consiguen convencernos de ir a cualquier parte, más buscamos probar sus límites.
+            </p>
+            <div class="article-footer">
+              <a href="https://notitec.co/noticias/cyberpunk-2077-lleva-casi-seis-anos-encerrando-a-los-jugadores-en-night-city-uno-ha-encontrado-una-forma-de-escapar/" target="_blank" rel="noopener noreferrer" class="article-link">
+                <span>Leer artículo completo</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </a>
+            </div>
+          </article>
+        </div>
+
+        <div class="articles-cta-center">
+          <a href="https://www.notitec.co" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+            <span>Explorar todos los artículos en notitec.co</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section (Core Dossier & Stack) -->
+    <section id="sobre-mi" class="about-section">
+      <div class="container">
+        <div class="about-card">
+          <div class="about-grid">
+            <div class="about-text-content">
+              <span class="section-tag">Desarrollo & Filosofía</span>
+              <h2 class="about-title">Ingeniería de software orientada a rendimiento e impacto real</h2>
+              <p>
+                Soy <strong>Alexis Tobón</strong>, desarrollador de software y arquitecto de productos web enfocado en la construcción de plataformas escalables, sistemas interactivos y experiencias de usuario de alta fidelidad.
+              </p>
+              <p>
+                Desde la creación y optimización de medios técnicos como <strong>NotiTec</strong> hasta el despliegue de aplicaciones progresivas como <strong>Mis Gastos</strong>, combino rendimiento en el borde (*Edge*), diseño intuitivo y arquitectura limpia.
+              </p>
+              <div class="skills-chips">
+                <span class="skill-chip">JavaScript (ESNext)</span>
+                <span class="skill-chip">TypeScript</span>
+                <span class="skill-chip">React & Vite</span>
+                <span class="skill-chip">Astro SSR & SSG</span>
+                <span class="skill-chip">Tailwind CSS</span>
+                <span class="skill-chip">Cloudflare Workers & KV</span>
+                <span class="skill-chip">Vercel Edge</span>
+                <span class="skill-chip">PWA & Offline-First</span>
+                <span class="skill-chip">REST APIs & Architecture</span>
+              </div>
+            </div>
+
+            <div class="about-links-box">
+              <h3>Canales Directos</h3>
+              <p>¿Tienes una propuesta técnica, proyecto de desarrollo o colaboración? Conectemos:</p>
+              <ul class="contact-links-list">
+                <li>
+                  <a href="mailto:admin@alexistobon.com" class="contact-link-item">
+                    <div class="contact-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    </div>
+                    <div>
+                      <span class="contact-label">Correo Electrónico</span>
+                      <span class="contact-value">admin@alexistobon.com</span>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="https://github.com/alexistobonv16" target="_blank" rel="noopener noreferrer" class="contact-link-item">
+                    <div class="contact-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                    </div>
+                    <div>
+                      <span class="contact-label">GitHub</span>
+                      <span class="contact-value">github.com/alexistobonv16</span>
+                    </div>
+                  </a>
+                </li>
+                <li>
+                  <a href="https://linkedin.com/in/alexistobon" target="_blank" rel="noopener noreferrer" class="contact-link-item">
+                    <div class="contact-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                    </div>
+                    <div>
+                      <span class="contact-label">LinkedIn</span>
+                      <span class="contact-value">linkedin.com/in/alexistobon</span>
+                    </div>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Contact Form Section (Console) -->
+    <section id="contacto" class="contact-section">
+      <div class="container contact-container">
+        <div class="contact-header">
+          <span class="section-tag">Canal Directo de Transmisión</span>
+          <h2 class="section-title">¿Tienes un proyecto en mente?</h2>
+          <p class="section-subtitle">
+            Escríbeme directamente para propuestas de arquitectura, desarrollo web, consultoría técnica o colaboraciones.
+          </p>
+        </div>
+
+        <div class="contact-box-wrapper">
+          <form id="contact-form" class="contact-form" novalidate>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="contact-name" class="form-label">Nombre o Empresa</label>
+                <input type="text" id="contact-name" name="name" class="form-input" placeholder="Tu nombre" required>
+              </div>
+              <div class="form-group">
+                <label for="contact-email" class="form-label">Correo Electrónico</label>
+                <input type="email" id="contact-email" name="email" class="form-input" placeholder="tu@correo.com" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="contact-subject" class="form-label">Asunto / Tipo de Proyecto</label>
+              <select id="contact-subject" name="subject" class="form-select">
+                <option value="Desarrollo Web / Producto">Desarrollo Web / Producto Digital</option>
+                <option value="Colaboración en NotiTec">Colaboración en NotiTec</option>
+                <option value="Consulta sobre Mis Gastos">Consulta sobre Mis Gastos</option>
+                <option value="Propuesta Freelance / Laboral">Propuesta Freelance / Laboral</option>
+                <option value="Consulta General">Otro tema</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="contact-message" class="form-label">Mensaje</label>
+              <textarea id="contact-message" name="message" class="form-textarea" rows="4" placeholder="Cuéntame sobre los requerimientos, objetivo o alcance..." required></textarea>
+            </div>
+
+            <div class="form-submit-row">
+              <button type="submit" id="contact-submit-btn" class="btn btn-primary btn-large">
+                <span class="btn-text">Enviar Mensaje</span>
+                <svg class="send-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                <div class="spinner btn-spinner" style="display: none;"></div>
+              </button>
+              <span class="form-direct-note">o escribe a <a href="mailto:admin@alexistobon.com" class="direct-email-link">admin@alexistobon.com</a></span>
+            </div>
+
+            <div id="form-feedback" class="form-feedback" style="display: none;"></div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="brand-name">alexistobon.com</span>
+        <span class="footer-copy">© <span id="current-year"></span> Alexis Tobón. Ingeniería & Desarrollo de Software.</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://www.notitec.co" target="_blank" rel="noopener noreferrer">NotiTec</a>
+        <a href="https://gastos.alexistobon.com" target="_blank" rel="noopener noreferrer">Mis Gastos</a>
+        <a href="#articulos">Artículos</a>
+        <a href="#inicio">Volver arriba ↑</a>
+        <a href="/admin" title="Panel de Administración" class="footer-admin-link">⚙ Admin</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Command Palette Modal (Ctrl + K) -->
+  <div id="cmd-palette-modal" class="cmd-palette-modal" aria-hidden="true" role="dialog">
+    <div class="cmd-palette-backdrop"></div>
+    <div class="cmd-palette-dialog">
+      <div class="cmd-palette-input-wrap">
+        <svg class="cmd-search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="cmd-palette-input" placeholder="Buscar proyecto, sección o acción (ej. 'gastos', 'tema')..." autocomplete="off" spellcheck="false">
+        <kbd class="cmd-palette-esc">ESC</kbd>
+      </div>
+
+      <div id="cmd-palette-results" class="cmd-palette-results">
+        <!-- Injected dynamically by script.js -->
+      </div>
+
+      <div class="cmd-palette-footer">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> navegar</span>
+        <span><kbd>↵</kbd> ejecutar</span>
+        <span><kbd>ESC</kbd> cerrar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Live Modal Viewer -->
+  <div id="fullscreen-modal" class="fullscreen-modal" aria-hidden="true" role="dialog">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-info">
+          <div class="window-dots">
+            <span class="dot dot-close modal-close-trigger"></span>
+            <span class="dot dot-minimize"></span>
+            <span class="dot dot-maximize"></span>
+          </div>
+          <span id="modal-project-title" class="modal-title">Visor en Vivo</span>
+          <span class="status-live-pill"><span class="pulse-dot"></span> Vivo</span>
+        </div>
+
+        <div class="modal-address-bar">
+          <svg class="ssl-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span id="modal-url-display" class="url-text">https://...</span>
+        </div>
+
+        <div class="modal-actions">
+          <button id="modal-reload-btn" class="control-btn" title="Recargar vista">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
+          <a id="modal-external-link" href="#" target="_blank" rel="noopener noreferrer" class="control-btn" title="Abrir en pestaña nueva">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </a>
+          <button id="modal-close-btn" class="control-btn modal-close-btn" title="Cerrar visor (Esc)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div id="modal-loader" class="iframe-loader">
+          <div class="spinner"></div>
+          <span>Cargando en vivo...</span>
+        </div>
+        <iframe id="modal-iframe" src="" title="Visor modal en directo" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR & Digital Business Card Modal -->
+  <div id="qr-modal" class="qr-modal" aria-hidden="true" role="dialog">
+    <div class="qr-modal-backdrop" id="qr-backdrop"></div>
+    <div class="qr-modal-dialog">
+      <div class="qr-modal-header">
+        <div class="qr-modal-title-group">
+          <span class="qr-badge">Tarjeta Digital</span>
+          <h3 class="qr-modal-title">Alexis Tobón</h3>
+          <p class="qr-subtitle">Desarrollador Full Stack & Emprendedor</p>
+        </div>
+        <button id="qr-close-btn" class="control-btn modal-close-btn" aria-label="Cerrar modal (Esc)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="qr-modal-body">
+        <div class="qr-code-container">
+          <img id="qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=https%3A%2F%2Falexistobon.com&color=030712&bgcolor=ffffff" alt="Código QR alexistobon.com" width="200" height="200" loading="lazy">
+        </div>
+        <p class="qr-caption">Escanea para abrir <strong>alexistobon.com</strong> en tu móvil o comparte este perfil profesional.</p>
+        
+        <div class="qr-actions-grid">
+          <button id="download-vcard-btn" class="btn btn-outline qr-action-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>Guardar Contacto (.vcf)</span>
+          </button>
+          <a id="share-whatsapp-btn" href="https://api.whatsapp.com/send?text=Te%20comparto%20el%20portafolio%20y%20proyectos%20en%20vivo%20de%20Alexis%20Tob%C3%B3n%3A%20https%3A%2F%2Falexistobon.com" target="_blank" rel="noopener noreferrer" class="btn btn-emerald qr-action-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.311.045-.698.059-1.146-.086-.301-.097-.689-.253-1.222-.486-2.272-.991-3.755-3.324-3.869-3.475-.114-.153-.925-1.23-.925-2.347 0-1.118.585-1.668.793-1.897.208-.229.456-.287.608-.287.152 0 .304.002.436.009.141.008.33-.053.516.395.191.462.651 1.59.708 1.705.057.115.096.25.019.403-.077.153-.115.249-.228.383-.114.135-.24.3-.343.403-.115.114-.234.238-.101.467.133.229.591.974 1.268 1.577.873.777 1.609 1.018 1.838 1.132.229.114.363.095.497-.058.134-.153.573-.669.725-.898.152-.229.305-.191.514-.114.21.076 1.332.629 1.56.743.229.115.381.172.438.267.056.096.056.554-.088.959z"/></svg>
+            <span>Compartir en WhatsApp</span>
+          </a>
+          <button id="copy-portfolio-btn" class="btn btn-ghost qr-action-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copiar Enlace</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" role="alert" aria-live="polite">
+    <span id="toast-message">Copiado al portapapeles</span>
+  </div>
+
+  <script src="script.js?v=4"></script>
+</body>
+</html>

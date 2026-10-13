@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "alexistobon-radio",
+  "compatibility_date": "2026-09-07",
+  "pages_build_output_dir": ".",
+  "kv_namespaces": [
+    {
+      "binding": "HOME_KV",
+      "id": "87ada93483c043d98b531e4d7a76bb34"
+    }
+  ]
+}
