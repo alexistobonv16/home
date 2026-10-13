@@ -1,14 +1,14 @@
 {
-  "name": "Alexis TV | Streaming Privado",
+  "id": "/",
+  "name": "Alexis TV",
   "short_name": "Alexis TV",
   "description": "Reproductor personal de TV en vivo y listas M3U/M3U8 con Picture-in-Picture y sincronización en la nube.",
   "start_url": "/",
   "scope": "/",
-  "id": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#070b14",
   "theme_color": "#070b14",
-  "orientation": "any",
   "categories": ["entertainment", "video"],
   "icons": [
     {
@@ -18,16 +18,22 @@
       "purpose": "any"
     },
     {
+      "src": "/tv-icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/tv-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/tv-icon.svg",
-      "sizes": "512x512 192x192 128x128 64x64 any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/tv-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

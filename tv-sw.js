@@ -3,13 +3,15 @@
  * Enables offline shell, installability, and fast asset loading
  */
 
-const CACHE_NAME = 'alexis-tv-cache-v16';
+const CACHE_NAME = 'alexis-tv-cache-v17';
 const SHELL_ASSETS = [
   '/',
   '/tv.webmanifest',
   '/tv-icon.svg',
   '/tv-icon-192.png',
-  '/tv-icon-512.png'
+  '/tv-icon-512.png',
+  '/tv-icon-maskable-192.png',
+  '/tv-icon-maskable-512.png'
 ];
 
 self.addEventListener('install', (event) => {

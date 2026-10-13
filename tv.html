@@ -10,8 +10,9 @@
   <!-- PWA & Mobile Web App Meta -->
   <link rel="manifest" href="/tv.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="/tv-icon-192.png">
-  <link rel="icon" type="image/svg+xml" href="/tv-icon.svg">
+  <link rel="icon" type="image/png" sizes="512x512" href="/tv-icon-512.png">
   <link rel="apple-touch-icon" href="/tv-icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="/tv-icon.svg">
   <meta name="theme-color" content="#070b14">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3460,6 +3461,13 @@
       <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 0.9rem;">
         <p>Instala Alexis TV como una aplicación nativa en tu dispositivo para disfrutar de pantalla completa, acceso rápido y modo Picture-in-Picture continuo.</p>
 
+        <div id="tv-native-prompt-wrap" style="display: none;">
+          <button id="tv-prompt-install-btn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.75rem 1rem; font-size: 0.95rem; font-weight: 700; gap: 0.5rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Instalar Aplicación Ahora</span>
+          </button>
+        </div>
+
         <div style="background: rgba(255, 255, 255, 0.04); padding: 0.9rem; border-radius: 10px; border: 1px solid var(--border-color);">
           <strong style="color: var(--accent-cyan); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
             📱 iPhone / iPad (Safari)
@@ -3868,7 +3876,21 @@
       }
     });
 
+    // Capture beforeinstallprompt early so it is never missed before DOMContentLoaded
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      state.deferredPrompt = e;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (pwaInstallBtn && !isStandalone) {
+        pwaInstallBtn.style.display = 'flex';
+      }
+      const nativeWrap = document.getElementById('tv-native-prompt-wrap');
+      if (nativeWrap) nativeWrap.style.display = 'block';
+    });
+
     window.openInstallModal = function() {
+      const nativeWrap = document.getElementById('tv-native-prompt-wrap');
+      if (nativeWrap) nativeWrap.style.display = state.deferredPrompt ? 'block' : 'none';
       document.getElementById('install-modal').classList.add('active');
     };
     window.closeInstallModal = function() {
@@ -3908,29 +3930,30 @@
         });
       }
 
-      // Handle beforeinstallprompt for PWA installation
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        state.deferredPrompt = e;
-        if (pwaInstallBtn && !isStandalone) {
-          pwaInstallBtn.style.display = 'flex';
+      async function triggerNativeInstall() {
+        if (state.deferredPrompt) {
+          state.deferredPrompt.prompt();
+          const choice = await state.deferredPrompt.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            showToast('¡Instalando Alexis TV!');
+            if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+            closeInstallModal();
+          }
+          state.deferredPrompt = null;
+          const nativeWrap = document.getElementById('tv-native-prompt-wrap');
+          if (nativeWrap) nativeWrap.style.display = 'none';
+        } else {
+          openInstallModal();
         }
-      });
+      }
 
       if (pwaInstallBtn) {
-        pwaInstallBtn.addEventListener('click', async () => {
-          if (state.deferredPrompt) {
-            state.deferredPrompt.prompt();
-            const choice = await state.deferredPrompt.userChoice;
-            if (choice.outcome === 'accepted') {
-              showToast('¡Instalando Alexis TV!');
-              pwaInstallBtn.style.display = 'none';
-            }
-            state.deferredPrompt = null;
-          } else {
-            openInstallModal();
-          }
-        });
+        pwaInstallBtn.addEventListener('click', triggerNativeInstall);
+      }
+
+      const tvPromptInstallBtn = document.getElementById('tv-prompt-install-btn');
+      if (tvPromptInstallBtn) {
+        tvPromptInstallBtn.addEventListener('click', triggerNativeInstall);
       }
 
       window.addEventListener('appinstalled', () => {
