@@ -1209,13 +1209,14 @@
         applyNowPlayingMetadata(data);
       } else {
         // Debounce / Periodo de gracia para evitar que el nombre de la canción desaparezca y aparezca
-        // (por jingles, menciones de estación, comerciales, cortes breves o fallos temporales de lectura ICY).
+        // (por jingles, menciones de estación, comerciales, cortes breves o pausas temporales de lectura ICY).
         if (nowPlayingSong) {
           consecutiveNoSongCount++;
           const timeSinceSong = Date.now() - lastSongTimestamp;
-          // Solo limpiar si han pasado al menos 6 sondeos consecutivos vacíos (~60 segundos)
-          // Y han pasado al menos 75 segundos desde que se detectó la canción.
-          if (consecutiveNoSongCount >= 6 && timeSinceSong > 75000) {
+          // Periodo de gracia extendido: una canción promedio en radio dura entre 3 y 4.5 minutos.
+          // Las emisoras Icecast no re-envían cabeceras ICY mientras la misma pista sigue sonando.
+          // Mantener la canción visible para evitar que desaparezca y aparezca constantemente.
+          if (consecutiveNoSongCount >= 24 && timeSinceSong > 270000) {
             clearNowPlayingMetadata();
             consecutiveNoSongCount = 0;
           }

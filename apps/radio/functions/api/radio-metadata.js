@@ -417,14 +417,23 @@ export async function onRequestGet(context) {
     return new Response(JSON.stringify(resultData), { status: 200, headers: corsHeaders });
   }
 
+  // Si no capturó título en este intento pero la emisora tenía una canción válida en los últimos 3 minutos (180s),
+  // mantener esa canción activa para evitar que el título desaparezca y aparezca constantemente.
+  if (stationMetadataCache.has(streamCacheKey)) {
+    const prev = stationMetadataCache.get(streamCacheKey);
+    if (prev && prev.data && prev.data.hasSong && (Date.now() - prev.timestamp < 180000)) {
+      return new Response(JSON.stringify(prev.data), { status: 200, headers: corsHeaders });
+    }
+  }
+
   const noSongData = {
     success: true,
     hasSong: false,
     rawTitle: rawStreamTitle || null
   };
 
-  // Guardar en caché negativo con TTL corto (4s) para no bloquear reintentos si fue un hipo momentáneo
-  stationMetadataCache.set(streamCacheKey, { data: noSongData, timestamp: Date.now() - (STREAM_CACHE_TTL_MS - 4000) });
+  // Guardar en caché negativo con TTL corto (5s) para no bloquear reintentos si fue un hipo momentáneo
+  stationMetadataCache.set(streamCacheKey, { data: noSongData, timestamp: Date.now() - (STREAM_CACHE_TTL_MS - 5000) });
 
   return new Response(JSON.stringify(noSongData), { status: 200, headers: corsHeaders });
 }

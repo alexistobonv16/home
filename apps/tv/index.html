@@ -357,7 +357,7 @@
       justify-content: space-between;
       padding: 0 1.25rem;
       gap: 1rem;
-      z-index: 600 !important;
+      z-index: 1050 !important;
       flex-shrink: 0;
     }
 
@@ -409,6 +409,7 @@
       position: relative;
       display: inline-flex;
       align-items: center;
+      z-index: 1055;
     }
 
     .header-hamburger-btn {
@@ -432,6 +433,7 @@
       top: calc(100% + 10px);
       right: 0;
       min-width: 235px;
+      max-width: calc(100vw - 24px);
       background: rgba(15, 23, 42, 0.96);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
@@ -442,7 +444,7 @@
       display: none;
       flex-direction: column;
       gap: 0.18rem;
-      z-index: 600;
+      z-index: 1100;
     }
 
     .header-dropdown-menu.open {
@@ -1959,7 +1961,7 @@
 
       .tv-header {
         position: relative;
-        z-index: 600 !important;
+        z-index: 1050 !important;
       }
 
       .tv-container {
