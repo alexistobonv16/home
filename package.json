@@ -8,7 +8,8 @@
     "deploy:home": "npx wrangler pages deploy apps/home --project-name=alexistobon-home --commit-dirty=true",
     "deploy:tv": "npx wrangler pages deploy apps/tv --project-name=alexistobon-tv --commit-dirty=true",
     "deploy:radio": "npx wrangler pages deploy apps/radio --project-name=alexistobon-radio --commit-dirty=true",
-    "deploy:all": "npm run deploy:home; npm run deploy:tv; npm run deploy:radio"
+    "deploy:landing": "npx wrangler pages deploy . --project-name=alexistobon-landing --commit-dirty=true --cwd=apps/landing",
+    "deploy:all": "npm run deploy:home; npm run deploy:tv; npm run deploy:radio; npm run deploy:landing"
   },
   "keywords": ["portfolio", "showcase", "notitec", "mis-gastos", "alexis-tobon"],
   "author": "Alexis Tobón",

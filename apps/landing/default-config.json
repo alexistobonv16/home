@@ -1,0 +1,73 @@
+{
+  "adminPin": "1234",
+  "brand": {
+    "name": "Alexis TI Soluciones",
+    "logoText": "Alexis TI",
+    "logoUrl": "",
+    "tagline": "Soporte Técnico y Servicios de TI para Empresas y Profesionales"
+  },
+  "hero": {
+    "badge": "Soporte TI Profesional & Confiable",
+    "title": "Soluciones de TI y Soporte Técnico que Mantienen tu Negocio Activo",
+    "subtitle": "Mantenimiento preventivo y correctivo, cableado y redes Wi-Fi de alta velocidad, servidores y ciberseguridad. Respuesta inmediata en sitio y soporte remoto.",
+    "primaryCtaText": "Solicitar Soporte por WhatsApp",
+    "secondaryCtaText": "Conocer Servicios",
+    "statusIndicator": "Técnico disponible ahora"
+  },
+  "stats": [
+    { "value": "+10 años", "label": "Experiencia en TI" },
+    { "value": "< 15 min", "label": "Tiempo de respuesta remota" },
+    { "value": "99.9%", "label": "Continuidad operativa" },
+    { "value": "100%", "label": "Garantía de servicio" }
+  ],
+  "services": [
+    {
+      "id": "s1",
+      "icon": "wrench",
+      "title": "Mantenimiento y Reparación de Equipos",
+      "description": "Limpieza física profunda, optimización de velocidad, cambio de discos mecánicos a SSD, ampliación de memoria RAM y solución de fallas en laptops, PCs y All-in-One."
+    },
+    {
+      "id": "s2",
+      "icon": "wifi",
+      "title": "Redes, Wi-Fi y Cableado Estructurado",
+      "description": "Instalación de puntos de red Cat6/Cat6A, routers profesionales (Ubiquiti / MikroTik), eliminación de zonas sin cobertura y configuración de redes para invitados."
+    },
+    {
+      "id": "s3",
+      "icon": "shield",
+      "title": "Ciberseguridad y Copias de Seguridad",
+      "description": "Eliminación de virus y malware, protección contra ransomware, configuración de copias de respaldo automáticas en la nube (NAS / Google Drive / OneDrive)."
+    },
+    {
+      "id": "s4",
+      "icon": "server",
+      "title": "Servidores y Almacenamiento Centralizado",
+      "description": "Implementación de servidores locales Windows / Linux, servidores NAS para compartir archivos entre oficinas y gestión de usuarios y permisos."
+    },
+    {
+      "id": "s5",
+      "icon": "monitor",
+      "title": "Mesa de Ayuda y Soporte Remoto",
+      "description": "Atención técnica al instante vía AnyDesk / TeamViewer para resolver problemas de software, configuración de correos, impresoras en red y VPN."
+    },
+    {
+      "id": "s6",
+      "icon": "cpu",
+      "title": "Consultoría y Compra de Tecnología",
+      "description": "Asesoría para adquisición inteligente de hardware, licenciamiento oficial de software y optimización del presupuesto tecnológico de tu empresa."
+    }
+  ],
+  "contact": {
+    "email": "soporte@alexistobon.com",
+    "phone": "+57 300 123 4567",
+    "whatsapp": "573001234567",
+    "whatsappMessage": "Hola Alexis, necesito soporte técnico con un equipo o red.",
+    "location": "Medellín, Colombia (Cobertura local y soporte remoto global)",
+    "schedule": "Lunes a Sábado: 8:00 AM – 6:00 PM (Emergencias 24/7)"
+  },
+  "footer": {
+    "about": "Servicios especializados de infraestructura, mantenimiento y soporte técnico de tecnologías de información para empresas, oficinas y hogares.",
+    "copyright": "© 2026 Alexis Tobón. Todos los derechos reservados."
+  }
+}
