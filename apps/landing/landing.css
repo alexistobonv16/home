@@ -899,27 +899,205 @@ body {
 
 /* Responsive */
 @media (max-width: 900px) {
-  .contact-box {
-    grid-template-columns: 1fr;
-    padding: 2.5rem 1.75rem;
-  }
   .nav-links {
     display: none;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 680px) {
+  .nav-container {
+    height: 58px;
+  }
+
+  .brand {
+    gap: 0.55rem;
+    max-width: calc(100vw - 80px);
+  }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    line-height: 1.2;
+  }
+
+  /* En móvil el botón flotante de WhatsApp ya cubre el contacto directo, evitando saturar la barra superior */
+  .header-whatsapp-btn {
+    display: none !important;
+  }
+
+  .container {
+    padding: 0 1.15rem;
+  }
+
   .hero-section {
-    padding: 3.5rem 0 3rem;
+    padding: 2.75rem 0 2rem;
   }
-  .services-grid {
-    grid-template-columns: 1fr;
+
+  .hero-badge {
+    font-size: 0.78rem;
+    padding: 0.28rem 0.8rem;
+    margin-bottom: 1.15rem;
   }
+
+  .hero-title {
+    font-size: clamp(1.8rem, 6.8vw, 2.45rem);
+    line-height: 1.22;
+    margin-bottom: 1rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.98rem;
+    line-height: 1.6;
+    margin-bottom: 1.6rem;
+  }
+
   .hero-ctas {
     flex-direction: column;
     width: 100%;
+    gap: 0.75rem;
+    margin-bottom: 2.25rem;
   }
+
   .hero-ctas .btn {
     width: 100%;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    padding: 1.15rem 0.85rem;
+    margin-top: 1rem;
+    border-radius: 16px;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-align: center;
+  }
+
+  .services-section {
+    padding: 3.5rem 0 2.5rem;
+  }
+
+  .section-header {
+    margin-bottom: 2rem;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr;
+    gap: 1.15rem;
+  }
+
+  .service-card {
+    padding: 1.6rem 1.35rem;
+    border-radius: 16px;
+  }
+
+  .service-icon-box {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+  }
+
+  .service-title {
+    font-size: 1.18rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .service-desc {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .why-section {
+    padding: 3.5rem 0 2.5rem;
+  }
+
+  .why-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .why-card {
+    padding: 1.35rem;
+    border-radius: 14px;
+  }
+
+  .why-num {
+    font-size: 1.85rem;
+  }
+
+  .contact-section {
+    padding: 3.5rem 0 3rem;
+  }
+
+  .contact-box {
+    grid-template-columns: 1fr;
+    padding: 1.85rem 1.25rem;
+    gap: 1.85rem;
+    border-radius: 18px;
+  }
+
+  .contact-info-title {
+    font-size: 1.45rem;
+  }
+
+  .contact-info-desc {
+    font-size: 0.92rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .contact-item {
+    font-size: 0.92rem;
+    gap: 0.75rem;
+  }
+
+  .contact-icon-pill {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+  }
+
+  .contact-action-card {
+    padding: 1.6rem 1.25rem;
+  }
+
+  .site-footer {
+    padding: 2.75rem 0 1.5rem;
+  }
+
+  .footer-top {
+    flex-direction: column;
+    gap: 1.75rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .floating-whatsapp {
+    bottom: 20px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
   }
 }
