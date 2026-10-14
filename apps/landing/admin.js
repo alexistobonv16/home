@@ -54,6 +54,17 @@
     });
   }
 
+  // Theme Toggle Button
+  const adminThemeToggle = document.getElementById('admin-theme-toggle');
+  if (adminThemeToggle) {
+    adminThemeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('landing_theme', next);
+    });
+  }
+
   // Tab Switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {

@@ -163,6 +163,17 @@
     }
   }
 
+  // Theme Toggle Button
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('landing_theme', next);
+    });
+  }
+
   // Ejecución inmediata
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', fetchLiveConfig);
