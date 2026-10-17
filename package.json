@@ -6,7 +6,7 @@
     "dev": "npx serve -l 3000 .",
     "start": "npx serve -l 3000 .",
     "deploy:home": "npx wrangler pages deploy apps/home --project-name=alexistobon-home --commit-dirty=true",
-    "deploy:tv": "npx wrangler pages deploy apps/tv --project-name=alexistobon-tv --commit-dirty=true",
+    "deploy:tv": "npx wrangler pages deploy . --project-name=alexistobon-tv --commit-dirty=true --cwd=apps/tv",
     "deploy:radio": "npx wrangler pages deploy apps/radio --project-name=alexistobon-radio --commit-dirty=true",
     "deploy:landing": "npx wrangler pages deploy . --project-name=alexistobon-landing --commit-dirty=true --cwd=apps/landing",
     "deploy:all": "npm run deploy:home; npm run deploy:tv; npm run deploy:radio; npm run deploy:landing"
