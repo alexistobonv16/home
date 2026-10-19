@@ -1,0 +1,314 @@
+/* ==========================================================================
+   Alexis TV · Gestor Estético de Listas M3U (gestor-listas.css)
+   ========================================================================== */
+
+/* Diálogo principal */
+.dialogo-gestor {
+  width: min(94vw, 720px);
+  max-height: 88vh;
+  margin: auto;
+  border-radius: 1.25rem;
+  border: 1px solid #1f2730;
+  background: #0d1117;
+  color: #e2e8f0;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(61, 220, 132, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dialogo-gestor::backdrop {
+  background: rgba(3, 5, 8, 0.8);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* Cabecera del modal */
+.gestor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 1.4rem;
+  border-bottom: 1px solid #1f2730;
+  background: linear-gradient(180deg, #131922 0%, #0d1117 100%);
+}
+
+.gestor-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.gestor-header-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: rgba(61, 220, 132, 0.12);
+  border: 1px solid rgba(61, 220, 132, 0.25);
+  color: #3ddc84;
+}
+
+/* Barra de herramientas */
+.gestor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.4rem;
+  border-bottom: 1px solid #1f2730;
+  background: #090c10;
+}
+
+.gestor-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Formulario desplegable */
+.gestor-form-box {
+  padding: 1.25rem 1.4rem;
+  border-bottom: 1px solid #1f2730;
+  background: #111620;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.gestor-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.gestor-tab-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: 1px solid #1f2730;
+  background: #0d1117;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gestor-tab-btn.activo {
+  border-color: #3ddc84;
+  background: rgba(61, 220, 132, 0.1);
+  color: #3ddc84;
+}
+
+.gestor-input-group {
+  margin-bottom: 0.85rem;
+}
+
+.gestor-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+
+.gestor-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  border-radius: 0.6rem;
+  border: 1px solid #1f2730;
+  background: #090c10;
+  color: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.gestor-input:focus {
+  outline: none;
+  border-color: #3ddc84;
+  box-shadow: 0 0 0 3px rgba(61, 220, 132, 0.15);
+}
+
+.gestor-dropzone {
+  border: 2px dashed #1f2730;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  background: #090c10;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gestor-dropzone:hover, .gestor-dropzone.dragover {
+  border-color: #3ddc84;
+  background: rgba(61, 220, 132, 0.05);
+}
+
+/* Lista de tarjetas */
+.gestor-lista-container {
+  padding: 1.15rem 1.4rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.gestor-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 0.85rem;
+  border: 1px solid #1f2730;
+  background: #111620;
+  transition: all 0.2s ease;
+}
+
+.gestor-card:hover {
+  border-color: #2e3b48;
+  background: #131924;
+}
+
+.gestor-card.activa {
+  border-color: #3ddc84;
+  background: rgba(61, 220, 132, 0.05);
+  box-shadow: 0 0 15px -3px rgba(61, 220, 132, 0.12);
+}
+
+.gestor-card-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.gestor-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gestor-card-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge-activa {
+  background: rgba(61, 220, 132, 0.15);
+  color: #3ddc84;
+  border: 1px solid rgba(61, 220, 132, 0.3);
+}
+
+.badge-oficial {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.badge-url {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.gestor-card-meta {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gestor-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.btn-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #1f2730;
+  background: #0d1117;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-card-action:hover {
+  background: #1f2730;
+  color: #fff;
+  border-color: #3ddc84;
+}
+
+.btn-card-activar {
+  background: #3ddc84;
+  color: #07090d;
+  font-weight: 700;
+  border-color: #3ddc84;
+}
+
+.btn-card-activar:hover {
+  background: #50e393;
+  color: #07090d;
+}
+
+.btn-card-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+/* Selector de lista activa en sidebar */
+.barra-lista-activa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid #1f2730;
+  background: rgba(13, 17, 23, 0.95);
+}
+
+.selector-lista-activa {
+  background: transparent;
+  border: none;
+  color: #3ddc84;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0;
+  outline: none;
+  max-width: 220px;
+}
+
+.selector-lista-activa option {
+  background: #0d1117;
+  color: #fff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

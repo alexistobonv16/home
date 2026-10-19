@@ -938,10 +938,10 @@ const CANALES_PARTIDO_HOY = [
     if (a && !esGrupoOficial(a) && new URL(a.href, location.href).origin !== location.origin) e.preventDefault();
   }, true);
 
-  document.querySelector('#unirme-whatsapp').addEventListener('click', () => {
+  document.querySelector('#unirme-whatsapp')?.addEventListener('click', () => {
     Analitica.evento('clic_whatsapp', { accion: 'unirse_grupo', canal: estado.actual?.nombre || '' });
   });
-  document.querySelector('#compartir-partido').addEventListener('click', async () => {
+  document.querySelector('#compartir-partido')?.addEventListener('click', async () => {
     Analitica.evento('clic_whatsapp', { accion: 'compartir_app', canal: estado.actual?.nombre || '' });
     const url = new URL(location.origin + location.pathname);
     url.search = '?utm_source=whatsapp&utm_medium=boton_compartir&utm_campaign=viral_app';
@@ -2439,7 +2439,7 @@ const CANALES_PARTIDO_HOY = [
   ver(senalInicial, { origen: 'auto' });
   // Las guías remotas se cargan a petición; no compiten con el arranque del video.
   pintarAgenda(); // lo guardado en el dispositivo se ve al instante
-  alVerSeccion('#agenda', () => agenda.iniciar()); // TheSportsDB solo cuando la agenda está en pantalla
+  if (dom.agenda) alVerSeccion('#agenda', () => agenda.iniciar()); // TheSportsDB solo cuando la agenda está en pantalla
   if (typeof inicial === 'string' && inicial) {
     dom.inputLista.value = inicial;
     cargar(inicial);
