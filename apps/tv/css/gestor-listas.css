@@ -411,6 +411,7 @@
   padding: 0.35rem;
   max-height: 250px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .desplegable-item {
@@ -443,7 +444,7 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  min-w: 0;
+  min-width: 0;
   flex: 1;
 }
 
@@ -451,6 +452,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .desplegable-item-conteo {

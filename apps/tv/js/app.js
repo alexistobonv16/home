@@ -360,7 +360,7 @@ const CANALES_PARTIDO_HOY = [
     actualizarFicha();
   }).catch(() => { /* Las fuentes permanecen sin verificar y disponibles. */ });
   const epg = new GuiaEPG({ memoria: Memoria, onCambio: alCambiarEpg });
-  const agenda = new AgendaFutbol({ memoria: Memoria, onCambio: () => pintarAgenda() });
+  const agenda = typeof AgendaFutbol !== 'undefined' ? new AgendaFutbol({ memoria: Memoria, onCambio: () => pintarAgenda() }) : null;
 
   /* ---------------- 2. Utilidades ---------------- */
 
@@ -695,8 +695,9 @@ const CANALES_PARTIDO_HOY = [
 
   // El titular solo anuncia un partido si la agenda tiene uno en juego
   function actualizarModoChile() {
+    if (!agenda || typeof AgendaFutbol === 'undefined') return;
     const t = Date.now();
-    const vivo = agenda.hoy(t).find((e) => AgendaFutbol.estadoReal(e, t) === 'vivo');
+    const vivo = agenda.hoy(t)?.find((e) => AgendaFutbol.estadoReal(e, t) === 'vivo');
     const tit = document.querySelector('#titulo-partido-hoy');
     if (tit) tit.textContent = vivo ? `En juego: ${vivo.local} vs ${vivo.visita}` : 'Señales en vivo';
     document.querySelector('#partido-hoy')?.classList.toggle('modo-partido', !!vivo);
@@ -752,9 +753,9 @@ const CANALES_PARTIDO_HOY = [
       // Nombre corto para el selector («ESPN 2», no «ESPN 2 Latin America (1080p)»).
       if (nombre) nombre.textContent = c ? c.nombre.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+Latin America.*$/i, '') : 'Sin señal';
       boton.dataset.estado = c && salud?.ok ? 'activa' : comprobacionEnCurso ? 'verificando' : c ? 'disponible' : 'sin-senal';
-      indicador.textContent = c && salud?.ok ? 'Activa' : comprobacionEnCurso ? 'Verificando' : c ? 'Disponible' : 'Sin señal';
+      if (indicador) indicador.textContent = c && salud?.ok ? 'Activa' : comprobacionEnCurso ? 'Verificando' : c ? 'Disponible' : 'Sin señal';
     });
-    estadoSenales.textContent = '';
+    if (estadoSenales) estadoSenales.textContent = '';
   }
 
   function servidoresDelCanal(canal = estado.actual) {
@@ -879,9 +880,10 @@ const CANALES_PARTIDO_HOY = [
   botonesSenal.forEach((boton, i) => boton.addEventListener('click', () => {
     if (senalesPartido[i] && esHlsInterno(senalesPartido[i])) ver(senalesPartido[i]);
   }));
-  avisoRespaldo.addEventListener('click', siguienteSenal);
-  document.querySelector('#chat-cambiar-servidor').addEventListener('click', () => {
-    document.querySelector('#chat-oferta-servidor').hidden = true;
+  avisoRespaldo?.addEventListener('click', siguienteSenal);
+  document.querySelector('#chat-cambiar-servidor')?.addEventListener('click', () => {
+    const oferta = document.querySelector('#chat-oferta-servidor');
+    if (oferta) oferta.hidden = true;
     if (estado.actual) {
       fallosCadena.add(estado.actual.url);
       siguienteSenal();
@@ -890,13 +892,17 @@ const CANALES_PARTIDO_HOY = [
   window.addEventListener('golstream:reportar-corte', () => {
     const siguiente = buscarRespaldo(estado.actual);
     const oferta = document.querySelector('#chat-oferta-servidor');
-    document.querySelector('#chat-oferta-texto').textContent = siguiente
-      ? `¿Se cortó? Puedes cambiar ahora a ${siguiente.nombre}.`
-      : 'No hay otra señal verificada disponible. Vuelve a comprobar las señales.';
-    document.querySelector('#chat-cambiar-servidor').hidden = !siguiente;
-    oferta.hidden = false;
+    const texto = document.querySelector('#chat-oferta-texto');
+    const btn = document.querySelector('#chat-cambiar-servidor');
+    if (texto) {
+      texto.textContent = siguiente
+        ? `¿Se cortó? Puedes cambiar ahora a ${siguiente.nombre}.`
+        : 'No hay otra señal verificada disponible. Vuelve a comprobar las señales.';
+    }
+    if (btn) btn.hidden = !siguiente;
+    if (oferta) oferta.hidden = false;
   });
-  document.querySelector('#reverificar-senales').addEventListener('click', () => {
+  document.querySelector('#reverificar-senales')?.addEventListener('click', () => {
     cancelarRespaldo(); fallosCadena.clear();
     for (const [url, salud] of saludDestacados) if (!salud.ok) saludDestacados.delete(url);
     if (prioridadVideo) { toast('Pausa el video para comprobar las señales sin consumir su conexión.'); return; }
@@ -1892,7 +1898,8 @@ const CANALES_PARTIDO_HOY = [
      algún canal de las listas abiertas: botón para verlo ahí. Si no figura en la TV abierta,
      se indica quién tiene los derechos (sin enlaces). */
 
-  const { estadoReal, coincidePrograma } = AgendaFutbol;
+  const estadoReal = typeof AgendaFutbol !== 'undefined' ? AgendaFutbol.estadoReal : () => null;
+  const coincidePrograma = typeof AgendaFutbol !== 'undefined' ? AgendaFutbol.coincidePrograma : () => false;
   const fmtDia = new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short' });
   const agendaUi = {
     plegada: Memoria.leer('agendaPlegada', false) === true,
@@ -1916,6 +1923,7 @@ const CANALES_PARTIDO_HOY = [
 
   /** Cruza los partidos con la guía: ¿qué canal tiene en su programación «Local vs Visita»? */
   function calcularTransmisiones(eventos) {
+    if (!agenda || typeof AgendaFutbol === 'undefined') return;
     const clave = `${epg.version}|${agenda.version}|${estado.version}|${fuentesGlobales().length}`;
     if (clave === agendaUi.claveTv) return;
     agendaUi.claveTv = clave;
@@ -1925,7 +1933,7 @@ const CANALES_PARTIDO_HOY = [
     const canales = canalesParaAgenda().filter((c) => epg.enlazar(c));
     for (const ev of eventos) {
       const desde = ev.inicio - 30 * 60_000;
-      const hasta = ev.inicio + AgendaFutbol.CFG.duracionMs;
+      const hasta = ev.inicio + (AgendaFutbol.CFG?.duracionMs || 7200000);
       const porGuia = new Map(); // un canal de la guía puede estar en varias listas: se muestra una vez
       for (const c of canales) {
         const claveGuia = epg.enlazar(c);
@@ -2011,6 +2019,7 @@ const CANALES_PARTIDO_HOY = [
   }
 
   function pintarAgenda() {
+    if (!agenda || !dom.agenda) return;
     const t = Date.now();
     const hoy = agenda.hoy(t);
     const proximos = agenda.proximos(t);
@@ -2303,21 +2312,27 @@ const CANALES_PARTIDO_HOY = [
     toast(valor ? 'Proxy CORS guardado. Usa ↻ en una fuente para volver a intentar.' : 'Proxy CORS desactivado.', 'ok');
   });
 
-  // Agenda de fútbol chileno.
-  dom.btnAgendaPlegar.addEventListener('click', () => {
-    agendaUi.plegada = !agendaUi.plegada;
-    Memoria.guardar('agendaPlegada', agendaUi.plegada || null);
-    pintarAgenda();
-  });
-  dom.btnAgendaActualizar.addEventListener('click', () => agenda.actualizar({ completa: true }).catch(() => {}));
-  dom.agenda.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-accion="ver-partido"]');
-    const opcion = b && agendaUi.tv.get(b.dataset.evento)?.[Number(b.dataset.indice)];
-    if (!opcion) return;
-    const ev = agenda.hoy().concat(agenda.proximos()).find((x) => x.id === b.dataset.evento);
-    Analitica.evento('ver_partido', { partido: ev ? `${ev.local} vs ${ev.visita}` : '', canal: opcion.canal.nombre });
-    ver(opcion.canal);
-  });
+  // Agenda de fútbol chileno (si existe en la página).
+  if (dom.btnAgendaPlegar) {
+    dom.btnAgendaPlegar.addEventListener('click', () => {
+      agendaUi.plegada = !agendaUi.plegada;
+      Memoria.guardar('agendaPlegada', agendaUi.plegada || null);
+      pintarAgenda();
+    });
+  }
+  if (dom.btnAgendaActualizar && agenda) {
+    dom.btnAgendaActualizar.addEventListener('click', () => agenda.actualizar({ completa: true }).catch(() => {}));
+  }
+  if (dom.agenda && agenda) {
+    dom.agenda.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-accion="ver-partido"]');
+      const opcion = b && agendaUi.tv.get(b.dataset.evento)?.[Number(b.dataset.indice)];
+      if (!opcion) return;
+      const ev = agenda.hoy().concat(agenda.proximos()).find((x) => x.id === b.dataset.evento);
+      Analitica.evento('ver_partido', { partido: ev ? `${ev.local} vs ${ev.visita}` : '', canal: opcion.canal.nombre });
+      ver(opcion.canal);
+    });
+  }
 
   // La guía y la agenda avanzan con la hora: se actualiza cada minuto lo que se ve en pantalla.
   setInterval(() => {
@@ -2378,9 +2393,9 @@ const CANALES_PARTIDO_HOY = [
   if (volumen >= 0 && volumen <= 1 && Memoria.leer('volumen') !== null) dom.video.volume = volumen;
   dom.video.addEventListener('volumechange', () => Memoria.guardar('volumen', Math.round(dom.video.volume * 100) / 100));
   const activarSonido = document.querySelector('#activar-sonido');
-  const actualizarSonido = () => { activarSonido.hidden = !dom.video.muted && dom.video.volume > 0; };
+  const actualizarSonido = () => { if (activarSonido) activarSonido.hidden = !dom.video.muted && dom.video.volume > 0; };
   dom.video.addEventListener('volumechange', actualizarSonido);
-  activarSonido.addEventListener('click', () => {
+  activarSonido?.addEventListener('click', () => {
     dom.video.muted = false;
     dom.video.volume = 1.0;
     actualizarSonido();
@@ -2473,7 +2488,7 @@ const CANALES_PARTIDO_HOY = [
   dom.video.playsInline = true;
   capa('reposo');
   pintarAgenda();
-  if (dom.agenda) alVerSeccion('#agenda', () => agenda.iniciar());
+  if (dom.agenda && agenda) alVerSeccion('#agenda', () => agenda.iniciar());
   if (typeof inicial === 'string' && inicial) {
     dom.inputLista.value = inicial;
     cargar(inicial);
