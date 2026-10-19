@@ -1,25 +1,19 @@
 /* =============================================================
-   GolStream IPTV · player.js
-   Reproductor sobre HLS.js con manejo de errores:
-
-   - HLS (.m3u8) con hls.js en Chrome, Edge, Firefox y Android;
-     HLS nativo en Safari / iPhone.
-   - MP4 / WebM / audio directo con el <video> del navegador.
-   - Explica por qué falló un stream: CORS, 403 (geobloqueo),
-     404 (enlace muerto), formato no compatible, contenido mixto…
-   - Reintentos con espera creciente ante cortes en plena emisión
-     y recuperación de errores de decodificación.
-   - Vigilancia de arranque (no llega video) y de congelamiento.
-   - Controles para teclado: pausa (con salto al directo),
-     silencio, pantalla completa y Picture-in-Picture.
+   GolStream / Alexis TV · player.js
+   Reproductor híbrido con soporte para:
+   - HLS estándar (.m3u8) acelerado por hardware (MSE).
+   - Vía B: Decodificador WebAssembly H.264 (FFmpeg WASM)
+     a Canvas para señales entrelazadas PAFF sin cuadros IDR (Win+, etc.)
+   - Decodificador WebAssembly MPEG-2 para señales SD.
+   - Decodificador WebAudio MP2 (mpg123) y Dolby AC-3 / E-AC-3.
    ============================================================= */
 (function (global) {
   'use strict';
 
   const CFG = {
-    timeoutArranqueMs: 12_000, // sin cuadros en 12 s se pasa al respaldo: esperar más solo retiene al usuario frente a negro
-    timeoutCongeladoMs: 12_000, // margen de recuperación antes de abandonar la señal
-    maxReintentosRed: 3,        // reintentos ante cortes durante la emisión
+    timeoutArranqueMs: 14_000,
+    timeoutCongeladoMs: 14_000,
+    maxReintentosRed: 3,
   };
 
   /* hls.js: se carga local o desde CDN con fallback */
@@ -58,41 +52,50 @@
     return ios || (/Safari/.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Android/.test(ua));
   };
 
-  // Estimación de ancho de banda de la sesión anterior: el siguiente canal arranca en la calidad
-  // correcta en vez de partir de los 500 kbps por defecto de hls.js (menos saltos al cambiar de canal).
   const BW_CLAVE = 'golstream.bw';
   let anchoBanda = 0;
   try { anchoBanda = Number(global.localStorage?.getItem(BW_CLAVE)) || 0; } catch { /* sin memoria */ }
 
   const NOMBRE_FORMATO = { dash: 'DASH (.mpd)', ts: 'MPEG-TS (.ts)', flv: 'Flash Video (.flv)' };
 
-  /** Traduce el código HTTP que devolvió el servidor del stream a un motivo entendible. */
   function motivoHttp(codigo) {
-    if (!codigo) return 'no se pudo acceder a la señal; puede ser red, TLS o CORS (causa sin confirmar)';
+    if (!codigo) return 'no se pudo acceder a la señal; puede ser red, TLS o CORS';
     if (codigo === 401 || codigo === 403) return `acceso denegado (${codigo}): puede estar geobloqueado o protegido`;
-    if (codigo === 404 || codigo === 410) return `el recurso no está disponible en esta consulta (${codigo}); la emisión del canal no está confirmada`;
+    if (codigo === 404 || codigo === 410) return `el recurso no está disponible (${codigo})`;
     if (codigo >= 500) return `el servidor del canal tiene problemas (${codigo})`;
     return `respuesta inesperada del servidor (${codigo})`;
   }
 
+  // Carga perezosa del decodificador Dolby AC-3 / E-AC-3
+  let dolbyDecoderPromise = null;
+  function getDolbyDecoder() {
+    if (global.__dolbyDecoder) return Promise.resolve(global.__dolbyDecoder);
+    if (!dolbyDecoderPromise) {
+      dolbyDecoderPromise = import('/js/decode-eac3.js')
+        .then(mod => mod.decoder())
+        .then(dec => {
+          global.__dolbyDecoder = dec;
+          console.log('[Alexis TV] decoder Dolby AC-3/E-AC-3 (ffmpeg wasm) listo');
+          return dec;
+        })
+        .catch(err => {
+          dolbyDecoderPromise = null;
+          console.warn('[Alexis TV] no se pudo cargar el decoder Dolby:', err);
+          return null;
+        });
+    }
+    return dolbyDecoderPromise;
+  }
+
   class ReproductorIPTV {
-    /**
-     * @param {HTMLVideoElement} video
-     * @param {object} ev  Callbacks opcionales:
-     *   onEstado(estado, detalle, canal)
-     *     'cargando' | 'reproduciendo' | 'buffering' | 'reconectando'
-     *     'caido' | 'silenciado' | 'requiere-clic' | 'detenido'
-     *   onCalidades(niveles)   [{ indice, alto, bitrate }]
-     *   onNivel(indice, auto)
-     */
     constructor(video, ev = {}, configHls = {}) {
       this.video = video;
       this.ev = ev;
       this.configHls = configHls;
       this.hls = null;
       this.canal = null;
-      this.sesion = 0;        // invalida callbacks de cargas anteriores
-      this.modo = null;       // 'hls' | 'nativo'
+      this.sesion = 0;
+      this.modo = null; // 'hls' | 'nativo' | 'wasm' | 'mpeg2'
       this.reintentosRed = 0;
       this.recuperacionesMedia = 0;
       this.probadoNativo = false;
@@ -103,17 +106,92 @@
       this.tProgreso = null;
       this.terminal = true;
       this.diagnostico = null;
+
+      // Elementos canvas para decodificación software (Vía B / MPEG-2)
+      this.canvasH264w = document.getElementById('h264w-canvas');
+      this.canvasMpeg2 = document.getElementById('mpeg2-canvas');
+      this.h264wPlayer = null;
+      this.mpeg2Player = null;
+      this.h264wActive = false;
+      this.isMpeg2Decoding = false;
+      this.hasH264Video = false;
+      this.isActualMpeg2Stream = false;
+      this.selectedMp2Pid = null;
+      this.audioCodec = null;
+      this.useWebAudio = false;
+      this.audioCtx = null;
+      this.audioGain = null;
+      this.audioDecoder = null;
+      this.activeAudioSources = [];
+      this.pendingAudioQueue = [];
+      this.vbPending = [];
+      this.vbPendingTimer = null;
+      this.nextAudioTime = 0;
+      this.processedAudioFrags = new Set();
+      this.rawTsRing = new Map();
+
+      this._initDecodificadores();
       this._escucharVideo();
     }
 
-    /** MSE disponible: hls.js puede funcionar (aunque todavía no se haya descargado). */
+    _initDecodificadores() {
+      if (global.H264WasmLivePlayer && this.canvasH264w && !this.h264wPlayer) {
+        try {
+          this.h264wPlayer = new global.H264WasmLivePlayer(this.canvasH264w);
+          global.__h264w = this.h264wPlayer;
+        } catch (e) {
+          console.warn('[Reproductor] No se pudo inicializar H264WasmLivePlayer:', e);
+        }
+      }
+      if (global.Mpeg2LivePlayer && this.canvasMpeg2 && !this.mpeg2Player) {
+        try {
+          this.mpeg2Player = new global.Mpeg2LivePlayer(this.canvasMpeg2);
+        } catch (e) {
+          console.warn('[Reproductor] No se pudo inicializar Mpeg2LivePlayer:', e);
+        }
+      }
+    }
+
+    async _initWebAudio() {
+      if (this.audioCtx && this.audioCtx.state === 'running') return;
+      const AudioContextClass = global.AudioContext || global.webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!this.audioCtx) {
+        this.audioCtx = new AudioContextClass();
+        this.audioGain = this.audioCtx.createGain();
+        this.audioGain.connect(this.audioCtx.destination);
+      }
+      if (this.audioCtx.state === 'suspended') {
+        try { await this.audioCtx.resume(); } catch (e) {}
+      }
+      if (!this.audioDecoder && global['mpg123-decoder'] && global['mpg123-decoder'].MPEGDecoder) {
+        try {
+          this.audioDecoder = new global['mpg123-decoder'].MPEGDecoder();
+          await this.audioDecoder.ready;
+        } catch (e) {
+          console.warn('[Reproductor] Error iniciando mpg123-decoder:', e);
+        }
+      }
+    }
+
+    _stopWebAudio() {
+      if (this.activeAudioSources) {
+        for (const s of this.activeAudioSources) {
+          try { s.stop(); s.disconnect(); } catch (e) {}
+        }
+        this.activeAudioSources = [];
+      }
+      this.pendingAudioQueue = [];
+      this.vbPending = [];
+      this.nextAudioTime = 0;
+    }
+
     get soportaHls() {
       if (global.Hls) return global.Hls.isSupported();
       const MS = global.ManagedMediaSource || global.MediaSource;
       return !!MS?.isTypeSupported?.('video/mp4; codecs="avc1.42E01E,mp4a.40.2"');
     }
 
-    /** Reproduce un canal del parser: { nombre, url, formato, compatible }. */
     cargar(canal) {
       this._limpiar();
       this.intentoCarga = (this.intentoCarga || 0) + 1;
@@ -131,14 +209,16 @@
       this.probadoNativo = false;
       const { url, formato } = canal;
 
-      // Casos que sabemos de antemano que el navegador no puede reproducir.
       if (!canal.compatible && formato !== 'ts') {
         return this._caido(`formato ${NOMBRE_FORMATO[formato] || formato} no compatible con navegadores (sí con VLC)`, 'formato');
       }
 
-      let streamUrl = url;
-      if (location.protocol === 'https:' && url.startsWith('http:')) {
-        streamUrl = `/api/tv/proxy?url=${encodeURIComponent(url)}`;
+      // Iniciar WebAudio durante el gesto del usuario para evitar bloqueos por políticas de autoplay
+      this._initWebAudio().catch(() => {});
+
+      let streamUrl = url ? url.trim() : '';
+      if (streamUrl.startsWith('http://') || location.protocol === 'https:') {
+        streamUrl = `/api/tv/proxy?url=${encodeURIComponent(streamUrl)}`;
       }
 
       this._emit('cargando');
@@ -148,7 +228,7 @@
       if (formato === 'archivo' || formato === 'audio') {
         this._cargarNativo(streamUrl);
       } else if (this._usarHlsNativo()) {
-        this._cargarNativo(streamUrl); // Prioridad nativa en Safari / iOS, MSE en Chrome
+        this._cargarNativo(streamUrl);
       } else if (this.soportaHls) {
         this._cargarHls(streamUrl);
       } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -168,21 +248,28 @@
       if (this.canal) this.cargar(this.canal);
     }
 
-    /** -1 = automática; 0..n = calidad fija. */
     setCalidad(nivel) {
       if (this.hls) this.hls.currentLevel = Number(nivel);
     }
 
-    /* ---------------- Controles (teclado / botones) ---------------- */
+    get hayVideo() {
+      if (this.h264wActive) return true;
+      return !!this.canal && this.video.readyState > 0;
+    }
 
-    get hayVideo() { return !!this.canal && this.video.readyState > 0; }
-
-    /**
-     * Pausa o reanuda. Si se reanuda un canal en vivo tras una pausa larga,
-     * salta al directo (como un televisor) en vez de seguir con retraso.
-     * @returns {boolean|null} true = reproduciendo, false = en pausa, null = no hay video
-     */
     alternarPausa() {
+      if (this.h264wActive && this.h264wPlayer) {
+        if (this.h264wPlayer.active) {
+          this.h264wPlayer.stop();
+          this.video.pause();
+          return false;
+        } else {
+          this.h264wPlayer.start();
+          this.video.play().catch(() => {});
+          if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
+          return true;
+        }
+      }
       const v = this.video;
       if (!this.hayVideo) return null;
       if (!v.paused) {
@@ -195,9 +282,11 @@
       return true;
     }
 
-    /** @returns {boolean} true si quedó en silencio */
     alternarSilencio() {
       this.video.muted = !this.video.muted;
+      if (this.useWebAudio && this.audioGain) {
+        this.audioGain.gain.value = this.video.muted ? 0 : 1;
+      }
       return this.video.muted;
     }
 
@@ -205,10 +294,6 @@
       return !!(document.fullscreenElement || document.webkitFullscreenElement);
     }
 
-    /**
-     * Pantalla completa sobre el contenedor (incluye insignias y botones propios).
-     * En iPhone, donde solo el <video> puede ir a pantalla completa, usa el modo nativo.
-     */
     async alternarPantallaCompleta(contenedor) {
       try {
         if (this.enPantallaCompleta) {
@@ -225,7 +310,6 @@
       }
     }
 
-    /** Picture-in-Picture estándar (Chrome, Edge, Safari 13.1+) o el modo propio de Safari antiguo. */
     get soportaPiP() {
       return (!!document.pictureInPictureEnabled && !this.video.disablePictureInPicture)
         || typeof this.video.webkitSetPresentationMode === 'function';
@@ -235,7 +319,6 @@
       return document.pictureInPictureElement === this.video || this.video.webkitPresentationMode === 'picture-in-picture';
     }
 
-    /** Lanza un Error con .codigo = 'sin-video' si todavía no hay imagen que mostrar. */
     async alternarPiP() {
       const v = this.video;
       if (this.enPiP) {
@@ -254,13 +337,388 @@
       this._emit('detenido');
     }
 
-    /* ---------------- Internos ---------------- */
+    /* ---------------- Vía B & WebAudio Helpers ---------------- */
+
+    _firstPesPts(buf, pid) {
+      if (pid === null || pid === undefined) return null;
+      for (let i = 0; i + 188 <= buf.length; i += 188) {
+        if (buf[i] !== 0x47) continue;
+        if ((((buf[i + 1] & 0x1f) << 8) | buf[i + 2]) !== pid) continue;
+        if ((buf[i + 1] & 0x40) === 0) continue;
+        const afc = (buf[i + 3] >> 4) & 3;
+        let off = i + 4;
+        if (afc === 2 || afc === 3) off += 1 + buf[off];
+        if (off + 14 >= i + 188) continue;
+        if (buf[off] === 0 && buf[off + 1] === 0 && buf[off + 2] === 1) {
+          if ((buf[off + 7] & 0x80) !== 0) {
+            return (((buf[off + 9] >> 1) & 0x07) * 536870912) +
+                   (buf[off + 10] * 4194304) +
+                   (((buf[off + 11] >> 1) & 0x7f) * 32768) +
+                   (buf[off + 12] * 128) +
+                   ((buf[off + 13] >> 1) & 0x7f);
+          }
+        }
+      }
+      return null;
+    }
+
+    _extractMp2FromTs(arrayBuffer, targetPid) {
+      const buf = new Uint8Array(arrayBuffer);
+      let pmtPid = null;
+      let chosenPid = targetPid || this.selectedMp2Pid || null;
+      let videoPid = null;
+
+      for (let i = 0; i < buf.length - 188; i += 188) {
+        if (buf[i] !== 0x47) continue;
+        const pid = ((buf[i + 1] & 0x1f) << 8) | buf[i + 2];
+        const payloadStart = (buf[i + 1] & 0x40) !== 0;
+        if (!payloadStart) continue;
+
+        const adapt = (buf[i + 3] >> 4) & 3;
+        let off = i + 4;
+        if (adapt === 2 || adapt === 3) off += 1 + buf[off];
+        if (off >= i + 188) continue;
+        off += 1 + buf[off];
+        if (off >= i + 188) continue;
+
+        if (pid === 0 && pmtPid === null) {
+          const sectionLen = ((buf[off + 1] & 0x0f) << 8) | buf[off + 2];
+          for (let p = off + 8; p < off + 3 + sectionLen - 4; p += 4) {
+            const progNum = (buf[p] << 8) | buf[p + 1];
+            const progPid = ((buf[p + 2] & 0x1f) << 8) | buf[p + 3];
+            if (progNum !== 0) { pmtPid = progPid; break; }
+          }
+          continue;
+        }
+
+        if (pmtPid !== null && pid === pmtPid) {
+          const sectionLen = ((buf[off + 1] & 0x0f) << 8) | buf[off + 2];
+          const progInfoLen = ((buf[off + 10] & 0x0f) << 8) | buf[off + 11];
+          let p = off + 12 + progInfoLen;
+          const end = off + 3 + sectionLen - 4;
+          while (p < end) {
+            const streamType = buf[p];
+            const elemPid = ((buf[p + 1] & 0x1f) << 8) | buf[p + 2];
+            const esInfoLen = ((buf[p + 3] & 0x0f) << 8) | buf[p + 4];
+            if (videoPid === null && (streamType === 0x1B || streamType === 0x24 || streamType === 0x02)) {
+              videoPid = elemPid;
+            }
+            if (!chosenPid && (streamType === 0x03 || streamType === 0x04 || streamType === 0x81 || streamType === 0x87)) {
+              chosenPid = elemPid;
+            }
+            p += 5 + esInfoLen;
+          }
+          break;
+        }
+      }
+
+      if (chosenPid === null) return { data: null, ptsShift: 0 };
+
+      const chunks = [];
+      for (let i = 0; i < buf.length - 188; i += 188) {
+        if (buf[i] !== 0x47) continue;
+        const pid = ((buf[i + 1] & 0x1f) << 8) | buf[i + 2];
+        if (pid !== chosenPid) continue;
+
+        const adapt = (buf[i + 3] >> 4) & 3;
+        let off = i + 4;
+        if (adapt === 2) continue;
+        if (adapt === 3) off += 1 + buf[off];
+        if (off >= i + 188) continue;
+
+        const payload = buf.subarray(off, i + 188);
+        const payloadStart = (buf[i + 1] & 0x40) !== 0;
+
+        if (payloadStart && payload.length >= 9 && payload[0] === 0 && payload[1] === 0 && payload[2] === 1) {
+          const pesHeaderDataLen = payload[8] || 0;
+          const dataOffset = 9 + pesHeaderDataLen;
+          if (dataOffset < payload.length) {
+            chunks.push(payload.subarray(dataOffset));
+          }
+        } else {
+          chunks.push(payload);
+        }
+      }
+
+      if (!chunks.length) return { data: null, ptsShift: 0 };
+      let totalLen = 0;
+      for (const c of chunks) totalLen += c.length;
+      const merged = new Uint8Array(totalLen);
+      let pos = 0;
+      for (const c of chunks) {
+        merged.set(c, pos);
+        pos += c.length;
+      }
+
+      const vPts = this._firstPesPts(buf, videoPid);
+      const aPts = this._firstPesPts(buf, chosenPid);
+      let ptsShift = 0;
+      if (vPts !== null && aPts !== null) {
+        let d = aPts - vPts;
+        if (d > 4294967296) d -= 8589934592;
+        else if (d < -4294967296) d += 8589934592;
+        const sec = d / 90000;
+        if (isFinite(sec) && Math.abs(sec) <= 3) ptsShift = sec;
+      }
+      return { data: merged, ptsShift };
+    }
+
+    _preprocessTsChunk(buffer) {
+      if (!buffer || buffer.byteLength < 188) return { data: buffer, isMp2: false, isDolby: false };
+      const u8 = new Uint8Array(buffer);
+      let pmtPid = null;
+      let audioPids = new Set();
+      let isMp2 = false;
+      let isDolby = false;
+
+      for (let i = 0; i + 188 <= u8.length; i += 188) {
+        if (u8[i] !== 0x47) continue;
+        const pid = ((u8[i + 1] & 0x1f) << 8) | u8[i + 2];
+        const payloadStart = (u8[i + 1] & 0x40) !== 0;
+        const afc = (u8[i + 3] >> 4) & 3;
+        let offset = i + 4;
+        if (afc === 2 || afc === 3) offset += 1 + u8[i + 4];
+        if (offset >= i + 188) continue;
+        if (payloadStart) offset += 1 + u8[offset];
+        if (offset >= i + 188) continue;
+
+        if (pid === 0 && pmtPid === null) {
+          const sectionLen = ((u8[offset + 1] & 0x0f) << 8) | u8[offset + 2];
+          for (let p = offset + 8; p < offset + 3 + sectionLen - 4; p += 4) {
+            const progNum = (u8[p] << 8) | u8[p + 1];
+            if (progNum !== 0) {
+              pmtPid = ((u8[p + 2] & 0x1f) << 8) | u8[p + 3];
+              break;
+            }
+          }
+        } else if (pmtPid !== null && pid === pmtPid) {
+          const sectionLen = ((u8[offset + 1] & 0x0f) << 8) | u8[offset + 2];
+          const progInfoLen = ((u8[offset + 10] & 0x0f) << 8) | u8[offset + 11];
+          let p = offset + 12 + progInfoLen;
+          const end = offset + 3 + sectionLen - 4;
+          while (p < end) {
+            const streamType = u8[p];
+            const elemPid = ((u8[p + 1] & 0x1f) << 8) | u8[p + 2];
+            const esInfoLen = ((u8[p + 3] & 0x0f) << 8) | u8[p + 4];
+
+            if (streamType === 0x1B || streamType === 0x24) {
+              this.hasH264Video = true;
+              this.isActualMpeg2Stream = false;
+            } else if (streamType === 0x02) {
+              if (!this.hasH264Video) this.isActualMpeg2Stream = true;
+            } else if (streamType === 0x03 || streamType === 0x04) {
+              audioPids.add(elemPid);
+              isMp2 = true;
+            } else if (streamType === 0x81 || streamType === 0x87 || streamType === 0x06) {
+              audioPids.add(elemPid);
+              isDolby = true;
+            }
+            p += 5 + esInfoLen;
+          }
+          break;
+        }
+      }
+
+      if ((!isMp2 && !isDolby) || audioPids.size === 0) {
+        return { data: buffer, isMp2: false, isDolby: false };
+      }
+
+      // Enmascarar paquetes de audio en el buffer enviado a Hls.js MSE para que el navegador no falle
+      const copy = new Uint8Array(u8.length);
+      copy.set(u8);
+      for (let i = 0; i + 188 <= copy.length; i += 188) {
+        if (copy[i] !== 0x47) continue;
+        const pid = ((copy[i + 1] & 0x1f) << 8) | copy[i + 2];
+        if (audioPids.has(pid)) {
+          copy[i + 1] = 0x1f;
+          copy[i + 2] = 0xff;
+          copy[i + 3] = 0x10;
+          copy.fill(0xff, i + 4, i + 188);
+        }
+      }
+      this.useWebAudio = true;
+      return { data: copy.buffer, isMp2, isDolby };
+    }
+
+    _getVbPicPos() {
+      const p = global.__h264w || this.h264wPlayer;
+      const ct = p && p.stats ? p.stats.ct : null;
+      return (typeof ct === 'number' && isFinite(ct)) ? ct : null;
+    }
+
+    _scheduleVbAudioBlock(fragStart, duration, buffer) {
+      if (!this.audioCtx || !this.audioGain || !buffer) return;
+      const aNow = this.audioCtx.currentTime;
+      const picPos = this._getVbPicPos();
+      let timeDelta = null;
+      if (fragStart !== null && !isNaN(fragStart) && picPos !== null) {
+        timeDelta = fragStart - picPos;
+      }
+      if (timeDelta !== null && timeDelta + duration <= 0.05) return;
+
+      const source = this.audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.audioGain);
+      this.activeAudioSources.push(source);
+      source.onended = () => {
+        try { source.disconnect(); } catch (e) {}
+        const idx = this.activeAudioSources.indexOf(source);
+        if (idx !== -1) this.activeAudioSources.splice(idx, 1);
+      };
+
+      let desired, playDur = duration, offset = 0;
+      if (timeDelta === null || isNaN(timeDelta)) {
+        desired = this.nextAudioTime > aNow ? this.nextAudioTime : aNow + 0.03;
+      } else if (timeDelta < 0) {
+        offset = Math.min(-timeDelta, duration - 0.05);
+        playDur = duration - offset;
+        desired = aNow + 0.02;
+      } else {
+        desired = aNow + timeDelta;
+      }
+      let startTime = Math.max(aNow + 0.02, desired);
+      if (this.nextAudioTime > aNow + 0.12 && desired < this.nextAudioTime - 0.12) {
+        startTime = this.nextAudioTime;
+      }
+      source.start(startTime, offset);
+      this.nextAudioTime = startTime + playDur;
+    }
+
+    _scheduleAudioBuffer(buffer, fragStart) {
+      if (!this.audioCtx || !this.audioGain || !buffer) return;
+      const aNow = this.audioCtx.currentTime;
+      const duration = buffer.duration;
+      const source = this.audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.audioGain);
+      this.activeAudioSources.push(source);
+      source.onended = () => {
+        try { source.disconnect(); } catch (e) {}
+        const idx = this.activeAudioSources.indexOf(source);
+        if (idx !== -1) this.activeAudioSources.splice(idx, 1);
+      };
+
+      let startTime = this.nextAudioTime > aNow ? this.nextAudioTime : aNow + 0.03;
+      source.start(startTime, 0);
+      this.nextAudioTime = startTime + duration;
+    }
+
+    _vbPendingTick() {
+      const q = this.vbPending;
+      if (!this.h264wActive || !this.audioCtx || !q || !q.length) return;
+      while (q.length) {
+        const head = q[0];
+        if (head.fragStart === null || isNaN(head.fragStart)) {
+          q.shift();
+          this._scheduleVbAudioBlock(null, head.duration, head.buffer);
+          continue;
+        }
+        const picPos = this._getVbPicPos();
+        if (picPos === null) {
+          if (this.nextAudioTime > this.audioCtx.currentTime) return;
+          q.shift();
+          this._scheduleVbAudioBlock(head.fragStart, head.duration, head.buffer);
+          continue;
+        }
+        if (head.fragStart <= picPos || head.fragStart - picPos <= 0.2) {
+          q.shift();
+          this._scheduleVbAudioBlock(head.fragStart, head.duration, head.buffer);
+          continue;
+        }
+        break;
+      }
+    }
+
+    _ensureVbPendingTimer() {
+      if (this.vbPendingTimer) return;
+      this.vbPendingTimer = setInterval(() => {
+        if (!this.h264wActive) {
+          clearInterval(this.vbPendingTimer);
+          this.vbPendingTimer = null;
+          return;
+        }
+        this._vbPendingTick();
+      }, 150);
+    }
+
+    _activarH264Wasm() {
+      if (this.h264wActive) return;
+      this._initDecodificadores();
+      if (!this.h264wPlayer) {
+        console.warn('[Alexis TV] H264WasmLivePlayer no disponible para Vía B');
+        return;
+      }
+      this.h264wActive = true;
+      this.useWebAudio = true;
+      this.video.muted = true;
+      if (this.canvasH264w) this.canvasH264w.style.display = 'block';
+      if (this.canvasMpeg2) this.canvasMpeg2.style.display = 'none';
+      this.h264wPlayer.start();
+      this.vbPending = [];
+      this._ensureVbPendingTimer();
+      this._initWebAudio().catch(() => {});
+      clearTimeout(this.tArranque);
+      this.tArranque = null;
+      console.log('[Alexis TV] Vía B activado: decodificador WASM H.264 activo para streams entrelazados/PAFF');
+      this._emit('reproduciendo', { viaB: true });
+      if (this.hls) {
+        try { this.hls.startLoad(); } catch (e) {}
+      }
+
+      if (this.h264wWatchdog) clearInterval(this.h264wWatchdog);
+      let lastFrames = this.h264wPlayer?.renderedFrameCount || 0;
+      let stall = 0;
+      this.h264wWatchdog = setInterval(() => {
+        if (!this.h264wActive || this.terminal) {
+          clearInterval(this.h264wWatchdog);
+          this.h264wWatchdog = null;
+          return;
+        }
+        const curFrames = this.h264wPlayer?.renderedFrameCount || 0;
+        if (curFrames === lastFrames) {
+          stall++;
+        } else {
+          stall = 0;
+          lastFrames = curFrames;
+        }
+        if (stall >= 2 && this.hls) {
+          console.warn('[Alexis TV] h264w-watchdog: reanimando hls.startLoad...');
+          try { this.hls.startLoad(); } catch (e) {}
+          if (stall >= 4) {
+            try { this.hls.recoverMediaError(); this.hls.startLoad(); } catch (e) {}
+            stall = 1;
+          }
+        }
+      }, 3000);
+    }
+
+    _activarMpeg2() {
+      if (this.isMpeg2Decoding) return;
+      this._initDecodificadores();
+      if (!this.mpeg2Player) return;
+      this.isMpeg2Decoding = true;
+      this.useWebAudio = true;
+      this.video.muted = true;
+      if (this.canvasMpeg2) this.canvasMpeg2.style.display = 'block';
+      if (this.canvasH264w) this.canvasH264w.style.display = 'none';
+      this.mpeg2Player.start();
+      this._initWebAudio().catch(() => {});
+      clearTimeout(this.tArranque);
+      this.tArranque = null;
+      console.log('[Alexis TV] Decodificador software MPEG-2 activo');
+      this._emit('reproduciendo', { mpeg2: true });
+    }
+
+    /* ---------------- Internos de Reproducción ---------------- */
 
     _vigilarArranque() {
       const sesion = this.sesion;
       clearTimeout(this.tArranque);
       this.tArranque = setTimeout(() => {
-        if (sesion === this.sesion) this._caido('el canal no envió video a tiempo (puede estar fuera del aire)', 'timeout');
+        if (sesion === this.sesion) {
+          if (this.h264wActive && this.h264wPlayer && this.h264wPlayer.renderedFrameCount > 0) return;
+          this._caido('el canal no envió video a tiempo (puede estar fuera del aire)', 'timeout');
+        }
       }, CFG.timeoutArranqueMs);
     }
 
@@ -276,29 +734,86 @@
         return;
       }
       const Hls = global.Hls;
+      const self = this;
+
+      class TolerantMediaErrorController extends Hls.DefaultConfig.errorController {
+        onErrorOut(event, data) {
+          if (self.h264wActive && data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            data.fatal = false;
+            return;
+          }
+          super.onErrorOut(event, data);
+        }
+      }
+
+      class CustomFragLoader extends Hls.DefaultConfig.loader {
+        constructor(config) {
+          super(config);
+          const load = this.load.bind(this);
+          this.load = (context, config, callbacks) => {
+            const origSuccess = callbacks.onSuccess;
+            callbacks.onSuccess = (response, stats, context, networkDetails) => {
+              if (sesion !== self.sesion) return;
+              if (context.frag && response.data) {
+                const processed = self._preprocessTsChunk(response.data);
+                context.frag._rawChunkBuffer = response.data;
+                const ringKey = (context.frag.sn !== undefined && context.frag.sn !== null)
+                  ? context.frag.sn
+                  : (context.frag.start !== undefined ? 's' + context.frag.start : null);
+                if (ringKey !== null) self.rawTsRing.set(ringKey, response.data);
+                if (self.rawTsRing.size > 20) {
+                  const firstKey = self.rawTsRing.keys().next().value;
+                  self.rawTsRing.delete(firstKey);
+                }
+
+                // Alimentar directamente el decoder WASM en cuanto llega el fragmento
+                if (self.h264wActive && self.h264wPlayer) {
+                  const fragStartFeed = (context.frag && typeof context.frag.start === 'number') ? context.frag.start : null;
+                  self.h264wPlayer.pushChunk(response.data, fragStartFeed);
+                }
+
+                const modifiedResponse = Object.assign({}, response, { data: processed.data });
+                return origSuccess(modifiedResponse, stats, context, networkDetails);
+              }
+              origSuccess(response, stats, context, networkDetails);
+            };
+            load(context, config, callbacks);
+          };
+        }
+      }
+
       const movil = !!global.matchMedia?.('(max-width: 1023px)').matches;
       const hls = new Hls({
         enableWorker: true,
+        fLoader: CustomFragLoader,
+        errorController: TolerantMediaErrorController,
         lowLatencyMode: false,
-        liveSyncDurationCount: 4,
-        liveMaxLatencyDurationCount: 8,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        maxBufferHole: 0.5,
-        // Móvil de gama media: menos memoria retenida detrás de la posición actual.
-        backBufferLength: movil ? 10 : 30,
-        manifestLoadingTimeOut: 10000,
-        manifestLoadingMaxRetry: 4,
-        levelLoadingMaxRetry: 4,
+        forceKeyFrameOnDiscontinuity: false,
+        stretchShortVideoTrack: false,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 6,
+        maxBufferLength: 20,
+        maxMaxBufferLength: 40,
+        maxBufferSize: 30 * 1000 * 1000,
+        maxBufferHole: 1.8,
+        backBufferLength: movil ? 10 : 20,
+        liveDurationInfinity: true,
+        highBufferWatchdogPeriod: 2,
+        nudgeOffset: 0.2,
+        nudgeMaxRetry: 6,
+        manifestLoadingTimeOut: 20000,
+        manifestLoadingMaxRetry: 6,
+        manifestLoadingRetryDelay: 500,
+        levelLoadingTimeOut: 20000,
+        levelLoadingMaxRetry: 6,
+        levelLoadingRetryDelay: 500,
+        fragLoadingTimeOut: 20000,
         fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 500,
         startLevel: -1,
-        // No descarga 1080p para un reproductor de 390 px: menos datos, menos cortes en 4G.
         capLevelToPlayerSize: true,
-        // Pide el primer fragmento mientras se prepara el buffer: arranque más corto.
         startFragPrefetch: true,
-        // Añade el segmento al buffer mientras se descarga (fetch por partes): el primer cuadro
-        // aparece antes de terminar de bajar segmentos de 1 MB+ como los de las señales ESPN.
-        progressive: typeof global.ReadableStream === 'function' && typeof global.fetch === 'function',
+        progressive: false,
         ...(anchoBanda > 0 ? { abrEwmaDefaultEstimate: anchoBanda } : {}),
         ...this.configHls,
       });
@@ -315,14 +830,92 @@
         if (sesion === this.sesion) this.ev.onNivel?.(data.level, hls.autoLevelEnabled);
       });
 
-      // El presupuesto de recuperación es por sesión, no se reinicia por fragmento.
+      hls.on(Hls.Events.FRAG_PARSED, async (_e, data) => {
+        if (sesion !== this.sesion) return;
+        const fragObj = (data && data.frag) ? data.frag : null;
+        const ringKey = fragObj
+          ? ((fragObj.sn !== undefined && fragObj.sn !== null) ? fragObj.sn
+            : (fragObj.start !== undefined ? 's' + fragObj.start : null))
+          : null;
+        const ringBuf = (ringKey !== null && this.rawTsRing) ? this.rawTsRing.get(ringKey) : null;
+        const rawTsBuffer = (fragObj && fragObj._rawChunkBuffer) ? fragObj._rawChunkBuffer
+          : (ringBuf || ((data && data.payload && data.payload.buffer) ? data.payload.buffer : null));
+
+        if (this.isActualMpeg2Stream && !this.hasH264Video && this.mpeg2Player) {
+          if (!this.isMpeg2Decoding) this._activarMpeg2();
+          if (rawTsBuffer) this.mpeg2Player.pushChunk(rawTsBuffer);
+        }
+
+        if (this.h264wActive && this.h264wPlayer) {
+          if (rawTsBuffer) {
+            const fragStartFeed = (fragObj && typeof fragObj.start === 'number') ? fragObj.start : null;
+            this.h264wPlayer.pushChunk(rawTsBuffer, fragStartFeed);
+          }
+        }
+
+        if (this.useWebAudio && rawTsBuffer) {
+          if (this.h264wActive && this.h264wPlayer && !this.h264wPlayer.active) return;
+          const fragId = (data && data.frag) ? (data.frag.sn !== undefined ? data.frag.sn : (data.frag.start !== undefined ? data.frag.start : null)) : null;
+          if (fragId !== null && this.processedAudioFrags.has(fragId)) return;
+          if (fragId !== null) this.processedAudioFrags.add(fragId);
+
+          try {
+            const audioExtract = this._extractMp2FromTs(rawTsBuffer, this.selectedMp2Pid);
+            const rawAudio = audioExtract ? audioExtract.data : null;
+            if (rawAudio && rawAudio.length) {
+              await this._initWebAudio();
+              const mainDecoder = (this.audioCodec === 'dolby')
+                ? await getDolbyDecoder()
+                : this.audioDecoder;
+              if (sesion !== this.sesion) return;
+              if (this.audioCtx && mainDecoder) {
+                const decoded = mainDecoder.decode(rawAudio);
+                if (decoded && decoded.channelData && decoded.channelData.length > 0) {
+                  const numChannels = decoded.channelData.length;
+                  const length = decoded.channelData[0].length;
+                  if (length > 0) {
+                    const sampleRate = decoded.sampleRate || 48000;
+                    const audioBuffer = this.audioCtx.createBuffer(numChannels, length, sampleRate);
+                    for (let ch = 0; ch < numChannels; ch++) {
+                      audioBuffer.copyToChannel(decoded.channelData[ch], ch);
+                    }
+                    const fragStart = (data && data.frag && typeof data.frag.start === 'number') ? data.frag.start : null;
+                    const ptsShift = (audioExtract && isFinite(audioExtract.ptsShift)) ? audioExtract.ptsShift : 0;
+                    const audioStart = (fragStart === null || isNaN(fragStart)) ? fragStart : (fragStart + ptsShift);
+
+                    if (this.h264wActive) {
+                      if (audioStart === null || isNaN(audioStart)) {
+                        this._scheduleVbAudioBlock(null, audioBuffer.duration, audioBuffer);
+                      } else {
+                        if (!this.vbPending) this.vbPending = [];
+                        if (this.vbPending.length < 12) {
+                          this.vbPending.push({ fragStart: audioStart, duration: audioBuffer.duration, buffer: audioBuffer });
+                          this._ensureVbPendingTimer();
+                        } else {
+                          this._scheduleVbAudioBlock(audioStart, audioBuffer.duration, audioBuffer);
+                        }
+                      }
+                    } else {
+                      this._scheduleAudioBuffer(audioBuffer, audioStart);
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[Reproductor WebAudio] Error procesando audio:', e);
+          }
+        }
+      });
 
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (sesion === this.sesion) this._errorHls(data, url);
       });
 
-      hls.loadSource(url);
       hls.attachMedia(this.video);
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        if (sesion === this.sesion) hls.loadSource(url);
+      });
     }
 
     _errorHls(data, url) {
@@ -336,7 +929,6 @@
       }
       const ahora = performance.now();
       if (!data.fatal) {
-        // Recupera la misma fuente en silencio, con límite y sin reiniciar en bucle.
         if (this.hls && (this.ultimaRecuperacion == null || ahora - this.ultimaRecuperacion >= 1000)) {
           if (data.type === global.Hls.ErrorTypes.NETWORK_ERROR && this.reintentosRed < CFG.maxReintentosRed) {
             this.ultimaRecuperacion = ahora;
@@ -360,7 +952,6 @@
 
       if (data.type === ErrorTypes.NETWORK_ERROR) {
         if ([401, 403, 404, 410].includes(codigo)) return fallar(motivoHttp(codigo), `http-${codigo}`);
-        // Fallo al pedir el índice del canal: intentar con proxy antes de darlo por muerto
         if (!url.includes('/api/tv/proxy') && (data.details === ErrorDetails.MANIFEST_LOAD_ERROR || data.details === ErrorDetails.MANIFEST_LOAD_TIMEOUT || codigo === 0)) {
           const proxied = `/api/tv/proxy?url=${encodeURIComponent(url)}`;
           console.warn('[IPTV] Reintentando stream con proxy CORS:', proxied);
@@ -373,7 +964,6 @@
             return fallar(motivoHttp(codigo), `http-${codigo}`);
           }
         }
-        // La respuesta no era un .m3u8: quizá es un archivo directo (algunos .php devuelven MP4/MP3).
         if (data.details === ErrorDetails.MANIFEST_PARSING_ERROR) {
           if (!this.probadoNativo) {
             this.probadoNativo = true;
@@ -382,7 +972,6 @@
           }
           return fallar('la respuesta del servidor no es un stream de video válido', 'formato');
         }
-        // Corte en plena emisión → reintento con espera creciente (1 s, 2 s, 4 s).
         if (this.hls && this.reintentosRed < CFG.maxReintentosRed) {
           this.reintentosRed++;
           if (this.diagnostico) this.diagnostico.reconexiones++;
@@ -401,7 +990,16 @@
       }
 
       if (data.type === ErrorTypes.MEDIA_ERROR) {
-        // 1.º recuperar; 2.º cambiar códec de audio y recuperar; después, rendirse.
+        // En modo Vía B, los errores de buffer/decode de MSE se ignoran pues el render se hace en el canvas WASM
+        if (this.h264wActive) return;
+
+        // Si tenemos H264WasmLivePlayer listo (Vía B), activarlo de inmediato ante error de decodificación
+        if (global.H264WasmLivePlayer && this.canvasH264w) {
+          console.log('[Alexis TV] Conmutando automáticamente a Vía B (WASM) por incompatibilidad de decodificación MSE/PAFF');
+          this._activarH264Wasm();
+          return;
+        }
+
         if (this.hls && this.recuperacionesMedia === 0) {
           this.recuperacionesMedia++;
           return this.hls.recoverMediaError();
@@ -429,8 +1027,7 @@
       if (!promesa) return;
       promesa.catch((err) => {
         if (sesion !== this.sesion || this.terminal) return;
-        if (err.name !== 'NotAllowedError') return; // AbortError al cambiar de canal: se ignora
-        // Autoplay con sonido bloqueado: se arranca en silencio (siempre permitido).
+        if (err.name !== 'NotAllowedError') return;
         this.video.muted = true;
         this.video.play()
           .then(() => { if (sesion === this.sesion && !this.terminal) this._emit('silenciado'); })
@@ -439,61 +1036,6 @@
             clearTimeout(this.tArranque);
             this._emit('requiere-clic');
           });
-      });
-    }
-
-    _escucharVideo() {
-      const v = this.video;
-      v.addEventListener('playing', () => {
-        if (this.terminal) return;
-        clearTimeout(this.tCongelado);
-        this.tCongelado = null;
-        if (performance.now() - this.ultimoAvance > 1500) this.progresoConfirmacionMs = 0;
-        this.ultimoAvance = performance.now();
-      });
-
-      const alEsperar = () => {
-        if (!this.canal || this.terminal) return;
-        if (this.inicioBuffer == null && this.diagnostico?.inicioVideoMs != null) {
-          this.inicioBuffer = performance.now();
-          this.diagnostico.congelamientos++;
-        }
-        this._emit('buffering');
-        // waiting/stalled repetidos no amplían el plazo de recuperación.
-        if (this.tCongelado != null) return;
-        const sesion = this.sesion;
-        this.tCongelado = setTimeout(() => {
-          if (sesion === this.sesion) this._caido('la señal se congeló y no se recuperó', 'congelado');
-        }, CFG.timeoutCongeladoMs);
-      };
-      v.addEventListener('waiting', alEsperar);
-      // Safari emite "stalled" cuando la descarga se detiene con el buffer lleno: no es un corte.
-      v.addEventListener('stalled', () => { if (v.readyState < 3) alEsperar(); });
-
-      v.addEventListener('pause', () => {
-        clearTimeout(this.tCongelado); this._cerrarBuffer();
-        this.tCongelado = null;
-        if (!this.terminal && this.diagnostico?.inicioVideoMs != null) {
-          this.pausaUsuario = true;
-          this.hls?.stopLoad();
-        }
-      });
-      v.addEventListener('play', () => {
-        if (this.terminal) return;
-        if (this.pausaUsuario && this.hls) this.hls.startLoad();
-        this.pausaUsuario = false;
-        if (performance.now() - this.ultimoAvance > 1500) this.progresoConfirmacionMs = 0;
-        this.ultimoAvance = performance.now();
-        if (this.diagnostico?.inicioVideoMs == null) this._vigilarArranque();
-      });
-
-      // En modo hls los errores llegan por hls.js; aquí solo el modo nativo.
-      v.addEventListener('error', () => {
-        if (this.modo !== 'nativo' || !this.canal || !v.error) return;
-        const motivo = v.error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
-          ? 'el navegador no pudo abrir el stream (enlace caído, bloqueado o formato no soportado)'
-          : 'error de red o de decodificación al reproducir';
-        this._caido(motivo, 'nativo');
       });
     }
 
@@ -516,25 +1058,30 @@
 
     _medirProgreso() {
       const v = this.video;
-      if (this.terminal || v.paused) return;
+      if (this.terminal) return;
+      if (!this.h264wActive && v.paused) return;
       const ahora = performance.now();
-      const cuadros = v.getVideoPlaybackQuality?.().totalVideoFrames || 0;
-      // Si el navegador nunca reportó cuadros (métrica en 0, posible en HLS nativo de WebKit),
-      // se acepta el avance de currentTime con imagen decodificada en vez de matar un video que sí avanza.
+      const cuadros = this.h264wActive ? (this.h264wPlayer?.renderedFrameCount || 0) : (v.getVideoPlaybackQuality?.().totalVideoFrames || 0);
       if (cuadros > 0) this.cuadrosReportados = true;
-      const sinMetrica = !this.cuadrosReportados && v.videoWidth > 0;
-      if (v.currentTime > this.ultimoTiempo + .05 && v.readyState >= 2 && (cuadros > this.ultimosCuadros || sinMetrica || (v.videoWidth > 0 && !v.getVideoPlaybackQuality) || this.canal?.formato === 'audio')) {
+      const sinMetrica = !this.cuadrosReportados && (v.videoWidth > 0 || (this.h264wActive && cuadros > 0));
+
+      const avanza = this.h264wActive
+        ? (cuadros > this.ultimosCuadros || cuadros > 0)
+        : (v.currentTime > this.ultimoTiempo + .05 && v.readyState >= 2 && (cuadros > this.ultimosCuadros || sinMetrica || (v.videoWidth > 0 && !v.getVideoPlaybackQuality) || this.canal?.formato === 'audio'));
+
+      if (avanza) {
         const intervaloMs = ahora - this.ultimoAvance;
         if (intervaloMs > 1500) this.progresoConfirmacionMs = 0;
         if (this.diagnostico.inicioVideoMs != null && intervaloMs <= 1500) {
-          this.progresoConfirmacionMs += Math.min(intervaloMs, (v.currentTime - this.ultimoTiempo) * 1000);
+          const deltaSec = this.h264wActive ? (intervaloMs / 1000) : (v.currentTime - this.ultimoTiempo);
+          this.progresoConfirmacionMs += Math.min(intervaloMs, deltaSec * 1000);
         }
         if (this.falloRedPendiente) {
           this.falloRedPendiente = false;
           this._emit('recuperado');
         }
         this.ultimosCuadros = cuadros;
-        this.ultimoTiempo = v.currentTime;
+        this.ultimoTiempo = this.h264wActive ? (this._getVbPicPos() || (this.ultimoTiempo + 0.1)) : v.currentTime;
         this.ultimoAvance = ahora;
         this._cerrarBuffer();
         clearTimeout(this.tCongelado);
@@ -546,7 +1093,7 @@
           this._emit('reproduciendo');
         }
         const minimoMs = this.canal?.minimoConfirmacionMs === 60000 ? 60000 : 15000;
-        if (!this.videoConfirmado && this.canal?.formato !== 'audio' && v.videoWidth > 0 && this.progresoConfirmacionMs >= minimoMs) {
+        if (!this.videoConfirmado && (v.videoWidth > 0 || this.h264wActive) && this.progresoConfirmacionMs >= minimoMs) {
           this.videoConfirmado = true;
           this.diagnostico.videoConfirmado15s = true;
           this.ev.onConfirmacionVideo?.(this.canal, { duracionConfirmadaMs: this.progresoConfirmacionMs });
@@ -581,7 +1128,6 @@
       }
     }
 
-    /** Detiene todo y deja el <video> limpio para la siguiente carga. */
     _limpiar() {
       this._finalizarDiagnostico('detenido');
       this.terminal = true;
@@ -591,6 +1137,34 @@
       this.tCongelado = null;
       clearTimeout(this.tReintento);
       clearInterval(this.tProgreso);
+      if (this.vbPendingTimer) {
+        clearInterval(this.vbPendingTimer);
+        this.vbPendingTimer = null;
+      }
+      if (this.h264wPlayer) {
+        try { this.h264wPlayer.stop(); } catch (e) {}
+      }
+      if (this.canvasH264w) {
+        this.canvasH264w.style.display = 'none';
+      }
+      if (this.mpeg2Player) {
+        try { this.mpeg2Player.stop(); } catch (e) {}
+      }
+      if (this.canvasMpeg2) {
+        this.canvasMpeg2.style.display = 'none';
+      }
+      this.h264wActive = false;
+      this.isMpeg2Decoding = false;
+      this.hasH264Video = false;
+      this.isActualMpeg2Stream = false;
+      this.selectedMp2Pid = null;
+      this.useWebAudio = false;
+      this.vbPending = [];
+      this.pendingAudioQueue = [];
+      this.processedAudioFrags.clear();
+      this.rawTsRing.clear();
+      this._stopWebAudio();
+
       this.inicioBuffer = null;
       this.pausaUsuario = false;
       this.falloRedPendiente = false;
@@ -604,6 +1178,25 @@
       this.ev.onCalidades?.([]);
     }
 
+    _escucharVideo() {
+      const v = this.video;
+      v.addEventListener('playing', () => {
+        this._cerrarBuffer();
+        clearTimeout(this.tArranque);
+      });
+      v.addEventListener('waiting', () => {
+        if (!this.terminal && this.diagnostico?.inicioVideoMs != null) {
+          this.inicioBuffer = performance.now();
+          this._emit('buffering');
+        }
+      });
+      v.addEventListener('volumechange', () => {
+        if (this.useWebAudio && this.audioGain) {
+          this.audioGain.gain.value = v.muted ? 0 : (v.volume || 1);
+        }
+      });
+    }
+
     _emit(estado, detalle = {}) {
       if (estado === 'buffering' || estado === 'reconectando') {
         if (this.diagnostico) this.diagnostico.resultado = estado;
@@ -613,7 +1206,6 @@
   }
 
   global.ReproductorIPTV = ReproductorIPTV;
-  // Fuera de Safari/iOS el motor se descarga en paralelo al resto de la página, sin bloquear el HTML.
   if (typeof global.document?.createElement === 'function' && !esSafariOiOS()
     && (global.ManagedMediaSource || global.MediaSource)) cargarMotorHls().catch(() => {});
 })(window);

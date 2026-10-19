@@ -21,7 +21,7 @@
   const LISTA_WIN_PLUS = {
     id: 'pl_win_plus',
     nombre: 'Win +',
-    url: 'http://181.118.152.45:8000/playlist.m3u',
+    url: 'http://190.242.118.68:58008/playlist.m3u',
     tipo: 'url',
     canalesCount: 87,
     oficial: false,
@@ -43,8 +43,7 @@
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Eliminar listas no deseadas o temporales generadas en versiones previas
-            listas = parsed.filter(l => !l.id || !l.id.startsWith('legacy_'));
+            listas = parsed.filter(l => !l.id || !l.id.startsWith('legacy_temp_'));
           }
         }
       } catch (e) {
@@ -62,11 +61,59 @@
         listas.unshift({ ...LISTA_OFICIAL });
       }
 
-      // Asegurar que Win + siempre esté presente
+      // Asegurar que Win + siempre esté presente con su URL activa
       const tieneWin = listas.some(l => l.id === 'pl_win_plus' || l.url === LISTA_WIN_PLUS.url || l.nombre.toLowerCase().trim() === 'win +');
       if (!tieneWin) {
         listas.push({ ...LISTA_WIN_PLUS });
       }
+
+      // Migrar automáticamente todas las listas guardadas en la versión legacy (at_tv_playlists)
+      try {
+        const legacyRaw = localStorage.getItem('at_tv_playlists');
+        if (legacyRaw) {
+          const legacyParsed = JSON.parse(legacyRaw);
+          if (Array.isArray(legacyParsed)) {
+            legacyParsed.forEach(leg => {
+              if (leg && leg.sourceUrl && !listas.some(l => l.url === leg.sourceUrl)) {
+                listas.push({
+                  id: leg.id || ('leg_' + Date.now() + Math.random().toString(36).substring(2, 5)),
+                  nombre: leg.name || 'Lista Legacy',
+                  url: leg.sourceUrl,
+                  tipo: 'url',
+                  canalesCount: leg.channelsCount || (leg.channels ? leg.channels.length : 0),
+                  oficial: false,
+                  activa: false
+                });
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudieron migrar listas legacy:', e);
+      }
+
+      // Detectar si se pasó una lista por parámetro URL (?lista= o ?url=)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const urlParam = params.get('lista') || params.get('url');
+        if (urlParam) {
+          const norm = urlParam.toLowerCase().replace(/\/+$/, '');
+          let encontrada = listas.find(l => l.url && l.url.toLowerCase().replace(/\/+$/, '') === norm);
+          if (!encontrada) {
+            encontrada = {
+              id: 'pl_' + Date.now(),
+              nombre: 'Win + (Activa)',
+              url: urlParam,
+              tipo: 'url',
+              canalesCount: 0,
+              oficial: false,
+              activa: true
+            };
+            listas.push(encontrada);
+          }
+          listas.forEach(l => { l.activa = (l === encontrada); });
+        }
+      } catch (e) {}
 
       // Asegurar que al menos una esté marcada como activa
       if (!listas.some(l => l.activa)) {
@@ -737,6 +784,14 @@
 
       this.actualizarUI();
       this.sincronizarSilenciosoKV();
+
+      // Cargar lista activa al inicio si viene por parámetro URL o no es la oficial
+      const activa = this.obtenerActiva();
+      if (activa && (activa.id !== 'oficial' || new URLSearchParams(window.location.search).has('lista') || new URLSearchParams(window.location.search).has('url'))) {
+        setTimeout(() => {
+          this.activar(activa.id);
+        }, 250);
+      }
     }
   }
 
