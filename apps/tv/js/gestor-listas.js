@@ -1,6 +1,7 @@
 /**
  * Alexis TV · Gestor de Listas M3U (gestor-listas.js)
- * Administrador estético de listas de canales (agregar, editar, eliminar, activar, importar de KV)
+ * Administrador estético flotante de listas de canales (agregar, eliminar, activar, importar de KV)
+ * Anclado directamente al botón naranja del header sin modales gigantes
  */
 (function(global) {
   'use strict';
@@ -31,7 +32,6 @@
   class GestorListas {
     constructor() {
       this.listas = this.cargarListas();
-      this.editandoId = null;
       this.modoFormulario = 'url'; // 'url' | 'archivo'
       this.archivoSeleccionado = null;
     }
@@ -195,21 +195,6 @@
       this.listas.push(nueva);
       this.guardar();
       await this.activar(nueva.id);
-    }
-
-    editar(id, { nombre, url }) {
-      const pl = this.listas.find(l => l.id === id);
-      if (!pl) return;
-
-      pl.nombre = nombre.trim() || pl.nombre;
-      if (url && pl.tipo === 'url') {
-        pl.url = url.trim();
-      }
-      this.guardar();
-
-      if (pl.activa) {
-        this.activar(pl.id);
-      }
     }
 
     eliminar(id) {
@@ -387,12 +372,48 @@
     }
 
     actualizarUI() {
-      this.renderListaCards();
-      this.renderSelectorSidebar();
-      const badge = document.getElementById('badge-total-listas');
-      if (badge) badge.textContent = this.listas.length;
-      const countEl = document.getElementById('gestor-contador-listas');
-      if (countEl) countEl.textContent = `${this.listas.length} lista${this.listas.length === 1 ? '' : 's'} guardada${this.listas.length === 1 ? '' : 's'}`;
+      const activa = this.obtenerActiva();
+
+      // Badge total en el botón del header
+      const badgeTotal = document.getElementById('badge-total-listas');
+      if (badgeTotal) badgeTotal.textContent = this.listas.length;
+
+      // Contador en el menú flotante
+      const flotanteContador = document.getElementById('flotante-contador');
+      if (flotanteContador) {
+        flotanteContador.textContent = `${this.listas.length} lista${this.listas.length === 1 ? '' : 's'}`;
+      }
+
+      // Nombre y conteo de la lista activa en el sidebar
+      const textoActiva = document.getElementById('texto-lista-activa');
+      const badgeConteo = document.getElementById('badge-conteo-lista-activa');
+      if (textoActiva && activa) {
+        textoActiva.textContent = activa.nombre;
+        textoActiva.title = activa.nombre;
+      }
+      if (badgeConteo && activa) {
+        badgeConteo.textContent = activa.canalesCount ? `${activa.canalesCount} ch` : '…';
+      }
+
+      // Info en cabecera
+      const infoLista = document.getElementById('info-lista');
+      if (infoLista && activa) {
+        infoLista.textContent = activa.nombre;
+        infoLista.title = activa.nombre;
+      }
+
+      // Select oculto de fallback
+      const select = document.getElementById('selector-lista-activa');
+      if (select) {
+        select.innerHTML = this.listas.map(l => `
+          <option value="${l.id}" ${l.activa ? 'selected' : ''}>
+            ${escapeHtml(l.nombre)} (${l.canalesCount || '…'} canales)
+          </option>
+        `).join('');
+      }
+
+      // Renderizar listado de items en el menú flotante
+      this.renderMenuFlotante();
     }
 
     actualizarConteoCanales(urlOId, count) {
@@ -409,224 +430,143 @@
       }
     }
 
-    renderSelectorSidebar() {
-      const select = document.getElementById('selector-lista-activa');
-      const activa = this.obtenerActiva();
-
-      // Actualizar el trigger del menú custom
-      const textoActiva = document.getElementById('texto-lista-activa');
-      const badgeConteo = document.getElementById('badge-conteo-lista-activa');
-      const badgeTotal = document.getElementById('desplegable-total-badge');
-      const itemsContainer = document.getElementById('items-desplegable-listas');
-
-      if (textoActiva && activa) {
-        textoActiva.textContent = activa.nombre;
-        textoActiva.title = activa.nombre;
-      }
-      if (badgeConteo && activa) {
-        badgeConteo.textContent = activa.canalesCount ? `${activa.canalesCount} ch` : '…';
-      }
-      if (badgeTotal) {
-        badgeTotal.textContent = this.listas.length;
-      }
-
-      // Renderizar items del dropdown custom
-      if (itemsContainer) {
-        itemsContainer.innerHTML = this.listas.map(l => {
-          const esActiva = (l.id === activa?.id);
-          const badgeTipo = l.oficial ? 'Oficial' : l.tipo === 'archivo' ? 'Archivo' : 'M3U';
-          return `
-            <li class="desplegable-item ${esActiva ? 'activo' : ''}" data-id="${l.id}" role="option" aria-selected="${esActiva}">
-              <div class="desplegable-item-info">
-                <span class="h-2 w-2 rounded-full ${esActiva ? 'bg-cancha shadow-[0_0_8px_#3ddc84]' : 'bg-slate-600'} shrink-0"></span>
-                <span class="desplegable-item-nombre">${escapeHtml(l.nombre)}</span>
-                <span class="text-[9px] text-slate-500 uppercase font-mono px-1 py-0.2 bg-white/5 rounded shrink-0">${badgeTipo}</span>
-              </div>
-              <span class="desplegable-item-conteo">${l.canalesCount ? `${l.canalesCount} ch` : '…'}</span>
-            </li>
-          `;
-        }).join('');
-      }
-
-      // Mantener select oculto sincronizado por si acaso
-      if (select) {
-        select.innerHTML = this.listas.map(l => `
-          <option value="${l.id}" ${l.activa ? 'selected' : ''}>
-            ${escapeHtml(l.nombre)} (${l.canalesCount || '…'} canales)
-          </option>
-        `).join('');
-      }
-    }
-
-    renderListaCards() {
-      const contenedor = document.getElementById('gestor-contenedor-listas');
+    renderMenuFlotante() {
+      const contenedor = document.getElementById('items-menu-flotante');
       if (!contenedor) return;
 
-      contenedor.innerHTML = this.listas.map(pl => {
-        const badgeTipo = pl.oficial 
-          ? '<span class="gestor-card-badge badge-oficial">Oficial</span>' 
-          : pl.tipo === 'archivo' 
-            ? '<span class="gestor-card-badge badge-url">Archivo</span>' 
-            : '<span class="gestor-card-badge badge-url">M3U URL</span>';
+      const activa = this.obtenerActiva();
 
-        const badgeActiva = pl.activa 
-          ? '<span class="gestor-card-badge badge-activa">🟢 En uso</span>' 
-          : '';
-
-        const metaInfo = pl.tipo === 'url' ? (pl.url || '') : 'Archivo subido localmente';
+      contenedor.innerHTML = this.listas.map(l => {
+        const esActiva = (l.id === activa?.id);
+        const badgeClase = l.oficial ? 'badge-oficial' : l.tipo === 'archivo' ? 'badge-archivo' : 'badge-url';
+        const badgeTexto = l.oficial ? 'Oficial' : l.tipo === 'archivo' ? 'Archivo' : 'M3U';
 
         return `
-          <div class="gestor-card ${pl.activa ? 'activa' : ''}" data-id="${pl.id}">
-            <div class="gestor-card-info">
-              <div class="gestor-card-title">
-                <span>${escapeHtml(pl.nombre)}</span>
-                ${badgeActiva}
-                ${badgeTipo}
+          <div class="item-lista-flotante ${esActiva ? 'activo' : ''}" data-id="${l.id}">
+            <button type="button" class="item-lista-clickeable" data-accion="activar" data-id="${l.id}" title="${escapeHtml(l.nombre)}">
+              <span class="punto-estado"></span>
+              <div class="item-lista-textos">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="item-lista-nombre">${escapeHtml(l.nombre)}</span>
+                  <span class="item-badge ${badgeClase}">${badgeTexto}</span>
+                </div>
+                <span class="item-lista-canales">${l.canalesCount ? `${l.canalesCount} canales` : 'Verificar canales'}</span>
               </div>
-              <div class="gestor-card-meta">
-                ${pl.canalesCount ? `<b>${pl.canalesCount} canales</b> · ` : ''}${escapeHtml(metaInfo)}
-              </div>
-            </div>
-            <div class="gestor-card-actions">
-              ${!pl.activa ? `
-                <button type="button" class="btn-card-action btn-card-activar" data-accion="activar" data-id="${pl.id}" title="Cargar esta lista">
-                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                  <span>Activar</span>
-                </button>
-              ` : ''}
-              ${!pl.oficial ? `
-                <button type="button" class="btn-card-action" data-accion="editar" data-id="${pl.id}" title="Editar nombre o URL">
-                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  <span class="sr-only">Editar</span>
-                </button>
-                <button type="button" class="btn-card-action btn-card-danger" data-accion="eliminar" data-id="${pl.id}" title="Eliminar lista">
-                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  <span class="sr-only">Eliminar</span>
-                </button>
-              ` : ''}
-              ${pl.contenido || pl.url ? `
-                <button type="button" class="btn-card-action" data-accion="descargar" data-id="${pl.id}" title="Descargar archivo M3U">
-                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                  <span class="sr-only">Descargar</span>
-                </button>
-              ` : ''}
-            </div>
+            </button>
+            ${!l.oficial ? `
+              <button type="button" class="btn-eliminar-flotante" data-accion="eliminar" data-id="${l.id}" title="Eliminar lista '${escapeHtml(l.nombre)}'">
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            ` : ''}
           </div>
         `;
       }).join('');
     }
 
     iniciarUI() {
-      const dialog = document.getElementById('dialogo-gestor-listas');
       const btnAbrir = document.getElementById('btn-abrir-gestor');
-      const btnAbrirSidebar = document.getElementById('btn-abrir-gestor-sidebar');
-      const btnCerrar = document.getElementById('btn-cerrar-gestor');
-      const btnMostrarForm = document.getElementById('btn-mostrar-formulario');
-      const boxForm = document.getElementById('gestor-form-box');
-      const btnCancelarForm = document.getElementById('btn-cancelar-form');
-      const form = document.getElementById('form-gestor-lista');
-      const selectSidebar = document.getElementById('selector-lista-activa');
-      const btnImportarKV = document.getElementById('btn-importar-kv');
+      const btnSidebar = document.getElementById('btn-sidebar-cambiar-lista');
+      const menuFlotante = document.getElementById('menu-flotante-listas');
+      const chevron = document.getElementById('chevron-menu-listas');
+      const btnCerrar = document.getElementById('btn-cerrar-menu-flotante');
+      const itemsContainer = document.getElementById('items-menu-flotante');
 
-      const tabUrl = document.getElementById('tab-modo-url');
-      const tabArchivo = document.getElementById('tab-modo-archivo');
-      const campoUrl = document.getElementById('campo-modo-url');
-      const campoArchivo = document.getElementById('campo-modo-archivo');
-      const fileInput = document.getElementById('input-archivo-m3u');
-      const dropzone = document.getElementById('dropzone-m3u');
-      const archivoNombre = document.getElementById('nombre-archivo-seleccionado');
+      const btnToggleNueva = document.getElementById('btn-toggle-nueva-lista');
+      const boxForm = document.getElementById('flotante-form-box');
+      const btnCancelarForm = document.getElementById('btn-cancelar-form-flotante');
+      const form = document.getElementById('form-flotante-lista');
+      const inputNombre = document.getElementById('input-flotante-nombre');
+      const inputUrl = document.getElementById('input-flotante-url');
+      const inputFile = document.getElementById('input-flotante-archivo');
+      const labelFile = document.getElementById('flotante-file-name');
+      const tabUrl = document.getElementById('tab-flotante-url');
+      const tabArchivo = document.getElementById('tab-flotante-archivo');
+      const campoUrl = document.getElementById('flotante-campo-url');
+      const campoArchivo = document.getElementById('flotante-campo-archivo');
+      const btnSincronizar = document.getElementById('btn-flotante-sincronizar');
 
-      const abrirModal = () => {
+      const abrirMenu = () => {
         this.actualizarUI();
         if (boxForm) boxForm.hidden = true;
-        this.editandoId = null;
-        if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
-      };
-
-      if (btnAbrir) btnAbrir.addEventListener('click', abrirModal);
-      if (btnAbrirSidebar) btnAbrirSidebar.addEventListener('click', abrirModal);
-      if (btnCerrar && dialog) btnCerrar.addEventListener('click', () => dialog.close());
-
-      // Cerrar al hacer clic en el backdrop
-      if (dialog) {
-        dialog.addEventListener('click', (e) => {
-          if (e.target === dialog) dialog.close();
-        });
-      }
-
-      // Manejador del Desplegable Personalizado
-      const btnToggle = document.getElementById('btn-toggle-desplegable');
-      const menuCustom = document.getElementById('menu-desplegable-listas');
-      const itemsCustom = document.getElementById('items-desplegable-listas');
-      const btnAdminDesplegable = document.getElementById('btn-desplegable-administrar');
-
-      const cerrarDesplegable = () => {
-        if (menuCustom) {
-          menuCustom.hidden = true;
-          menuCustom.style.display = 'none';
+        if (menuFlotante) {
+          menuFlotante.hidden = false;
+          menuFlotante.style.display = 'flex';
         }
-        if (btnToggle) btnToggle.setAttribute('aria-expanded', 'false');
+        if (btnAbrir) btnAbrir.setAttribute('aria-expanded', 'true');
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
       };
 
-      const toggleDesplegable = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!menuCustom) return;
-        const estaAbierto = !menuCustom.hidden && menuCustom.style.display !== 'none';
-        if (estaAbierto) {
-          cerrarDesplegable();
+      const cerrarMenu = () => {
+        if (menuFlotante) {
+          menuFlotante.hidden = true;
+          menuFlotante.style.display = 'none';
+        }
+        if (boxForm) boxForm.hidden = true;
+        if (btnAbrir) btnAbrir.setAttribute('aria-expanded', 'false');
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+      };
+
+      const toggleMenu = (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        if (!menuFlotante) return;
+        const abierto = !menuFlotante.hidden && menuFlotante.style.display !== 'none';
+        if (abierto) {
+          cerrarMenu();
         } else {
-          this.renderSelectorSidebar();
-          menuCustom.hidden = false;
-          menuCustom.style.display = 'block';
-          if (btnToggle) btnToggle.setAttribute('aria-expanded', 'true');
+          abrirMenu();
         }
       };
 
-      if (btnToggle) btnToggle.addEventListener('click', toggleDesplegable);
+      if (btnAbrir) btnAbrir.addEventListener('click', toggleMenu);
+      if (btnSidebar) btnSidebar.addEventListener('click', toggleMenu);
+      if (btnCerrar) btnCerrar.addEventListener('click', (e) => { e.stopPropagation(); cerrarMenu(); });
 
-      if (itemsCustom) {
-        itemsCustom.addEventListener('click', (e) => {
-          const item = e.target.closest('.desplegable-item');
-          if (!item) return;
-          const id = item.dataset.id;
-          if (id) {
-            cerrarDesplegable();
-            this.activar(id);
+      // Cerrar al hacer clic fuera
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#contenedor-menu-listas') && !e.target.closest('#btn-sidebar-cambiar-lista')) {
+          cerrarMenu();
+        }
+      });
+
+      // Cerrar al presionar Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          cerrarMenu();
+        }
+      });
+
+      // Delegación de eventos en items de la lista
+      if (itemsContainer) {
+        itemsContainer.addEventListener('click', (e) => {
+          const btnEliminar = e.target.closest('[data-accion="eliminar"]');
+          if (btnEliminar) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = btnEliminar.dataset.id;
+            if (id) this.eliminar(id);
+            return;
+          }
+
+          const btnActivar = e.target.closest('[data-accion="activar"]');
+          if (btnActivar) {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = btnActivar.dataset.id;
+            if (id) {
+              this.activar(id);
+              cerrarMenu();
+            }
           }
         });
       }
 
-      if (btnAdminDesplegable) {
-        btnAdminDesplegable.addEventListener('click', () => {
-          cerrarDesplegable();
-          abrirModal();
-        });
-      }
-
-      // Cerrar al hacer clic fuera o pulsar ESC
-      document.addEventListener('click', (e) => {
-        if (!e.target.closest('#desplegable-lista-custom')) {
-          cerrarDesplegable();
-        }
-      });
-
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && menuCustom && !menuCustom.hidden) {
-          cerrarDesplegable();
-        }
-      });
-
-      // Cambio desde selector en el sidebar (oculto para fallback)
-      if (selectSidebar) {
-        selectSidebar.addEventListener('change', (e) => {
-          this.activar(e.target.value);
-        });
-      }
-
-      // Pestañas URL / Archivo
-      if (tabUrl && tabArchivo) {
-        tabUrl.addEventListener('click', () => {
+      // Pestañas Formulario (URL vs Archivo)
+      if (tabUrl && tabArchivo && campoUrl && campoArchivo) {
+        tabUrl.addEventListener('click', (e) => {
+          e.preventDefault();
           this.modoFormulario = 'url';
           tabUrl.classList.add('activo');
           tabArchivo.classList.remove('activo');
@@ -634,7 +574,8 @@
           campoArchivo.hidden = true;
         });
 
-        tabArchivo.addEventListener('click', () => {
+        tabArchivo.addEventListener('click', (e) => {
+          e.preventDefault();
           this.modoFormulario = 'archivo';
           tabArchivo.classList.add('activo');
           tabUrl.classList.remove('activo');
@@ -643,139 +584,97 @@
         });
       }
 
-      // Drag and drop archivo
-      if (dropzone && fileInput) {
-        dropzone.addEventListener('click', () => fileInput.click());
-        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
-        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-        dropzone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          dropzone.classList.remove('dragover');
-          if (e.dataTransfer.files?.length) {
-            fileInput.files = e.dataTransfer.files;
-            handleFile(fileInput.files[0]);
+      // Manejo de archivo seleccionado
+      if (inputFile) {
+        inputFile.addEventListener('change', (e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            this.archivoSeleccionado = file;
+            if (labelFile) labelFile.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+            if (inputNombre && !inputNombre.value.trim()) {
+              inputNombre.value = file.name.replace(/\.[^/.]+$/, '');
+            }
           }
-        });
-        fileInput.addEventListener('change', (e) => {
-          if (e.target.files?.length) handleFile(e.target.files[0]);
         });
       }
 
-      const handleFile = (file) => {
-        this.archivoSeleccionado = file;
-        if (archivoNombre) archivoNombre.textContent = `Archivo: ${file.name} (${Math.round(file.size / 1024)} KB)`;
-        const inputNombre = document.getElementById('input-nombre-lista');
-        if (inputNombre && !inputNombre.value.trim()) {
-          inputNombre.value = file.name.replace(/\.[^/.]+$/, "");
-        }
-      };
-
-      // Botón Nueva Lista
-      if (btnMostrarForm && boxForm) {
-        btnMostrarForm.addEventListener('click', () => {
-          this.editandoId = null;
-          form.reset();
-          if (archivoNombre) archivoNombre.textContent = 'Ningún archivo seleccionado';
-          this.archivoSeleccionado = null;
-          document.getElementById('form-titulo-gestor').textContent = 'Agregar Nueva Lista';
-          document.getElementById('btn-submit-gestor').textContent = 'Guardar y Activar';
-          boxForm.hidden = false;
-          document.getElementById('input-nombre-lista').focus();
+      // Toggle formulario desplegable "+ Nueva Lista"
+      if (btnToggleNueva && boxForm) {
+        btnToggleNueva.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const visible = !boxForm.hidden;
+          boxForm.hidden = visible;
+          if (!visible) {
+            form?.reset();
+            this.archivoSeleccionado = null;
+            if (labelFile) labelFile.textContent = 'Seleccionar archivo .m3u / .txt';
+            setTimeout(() => inputNombre?.focus(), 50);
+          }
         });
       }
 
       if (btnCancelarForm && boxForm) {
-        btnCancelarForm.addEventListener('click', () => {
+        btnCancelarForm.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           boxForm.hidden = true;
-          this.editandoId = null;
         });
       }
 
-      // Submit Formulario
+      // Guardar nueva lista
       if (form) {
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
-          const nombre = document.getElementById('input-nombre-lista').value.trim();
-          const url = document.getElementById('input-url-lista').value.trim();
-          const btnSubmit = document.getElementById('btn-submit-gestor');
+          e.stopPropagation();
+
+          const nombre = inputNombre?.value.trim();
+          const url = inputUrl?.value.trim();
+          const btnSubmit = document.getElementById('btn-flotante-submit');
 
           if (!nombre) {
-            alert('Por favor introduce un nombre para la lista.');
+            alert('Por favor ingresa un nombre para la lista.');
             return;
           }
 
-          btnSubmit.disabled = true;
-          btnSubmit.textContent = 'Procesando…';
+          if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Guardando…';
+          }
 
           try {
-            if (this.editandoId) {
-              this.editar(this.editandoId, { nombre, url });
-              boxForm.hidden = true;
-              this.editandoId = null;
+            if (this.modoFormulario === 'url') {
+              if (!url) throw new Error('Por favor ingresa la URL de la lista M3U.');
+              await this.agregar({ nombre, url, tipo: 'url' });
             } else {
-              if (this.modoFormulario === 'url') {
-                if (!url) throw new Error('Por favor ingresa la URL de la lista M3U.');
-                await this.agregar({ nombre, url, tipo: 'url' });
-              } else {
-                if (!this.archivoSeleccionado) throw new Error('Por favor selecciona un archivo .m3u o .m3u8.');
-                const texto = await this.archivoSeleccionado.text();
-                let count = 0;
-                const parsearFn = global.ParserM3U?.parsear || global.parsear;
-                if (typeof parsearFn === 'function') {
-                  const res = parsearFn(texto, 'local');
-                  count = res.canales?.length || 0;
-                }
-                await this.agregar({ nombre, tipo: 'archivo', contenido: texto, canalesCount: count });
+              if (!this.archivoSeleccionado) throw new Error('Por favor selecciona un archivo .m3u o .m3u8.');
+              const texto = await this.archivoSeleccionado.text();
+              let count = 0;
+              const parsearFn = global.ParserM3U?.parsear || global.parsear;
+              if (typeof parsearFn === 'function') {
+                const res = parsearFn(texto, 'local');
+                count = res.canales?.length || 0;
               }
-              boxForm.hidden = true;
-              if (dialog) dialog.close();
+              await this.agregar({ nombre, tipo: 'archivo', contenido: texto, canalesCount: count });
             }
+            cerrarMenu();
           } catch (err) {
             alert('Error: ' + err.message);
           } finally {
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = 'Guardar y Activar';
+            if (btnSubmit) {
+              btnSubmit.disabled = false;
+              btnSubmit.textContent = 'Guardar y Activar';
+            }
           }
         });
       }
 
-      // Eventos de tarjetas (activar, editar, eliminar, descargar)
-      const contenedor = document.getElementById('gestor-contenedor-listas');
-      if (contenedor) {
-        contenedor.addEventListener('click', (e) => {
-          const btn = e.target.closest('[data-accion]');
-          if (!btn) return;
-
-          const accion = btn.dataset.accion;
-          const id = btn.dataset.id;
-
-          if (accion === 'activar') {
-            this.activar(id);
-            if (dialog) dialog.close();
-          } else if (accion === 'eliminar') {
-            this.eliminar(id);
-          } else if (accion === 'descargar') {
-            this.descargarM3U(id);
-          } else if (accion === 'editar') {
-            const pl = this.listas.find(l => l.id === id);
-            if (!pl) return;
-            this.editandoId = id;
-            document.getElementById('input-nombre-lista').value = pl.nombre;
-            document.getElementById('input-url-lista').value = pl.url || '';
-            document.getElementById('form-titulo-gestor').textContent = `Editar Lista: ${pl.nombre}`;
-            document.getElementById('btn-submit-gestor').textContent = 'Guardar Cambios';
-            boxForm.hidden = false;
-            campoArchivo.hidden = true;
-            campoUrl.hidden = (pl.tipo === 'archivo');
-            document.getElementById('input-nombre-lista').focus();
-          }
-        });
-      }
-
-      // Importar de Cloudflare KV
-      if (btnImportarKV) {
-        btnImportarKV.addEventListener('click', () => {
-          const pin = prompt('Introduce tu PIN de Alexis TV para sincronizar tus listas guardadas en la nube:');
+      // Sincronizar PIN de Cloudflare KV
+      if (btnSincronizar) {
+        btnSincronizar.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const pin = prompt('Introduce tu PIN de Alexis TV para sincronizar listas de la nube:');
           if (pin) {
             this.importarDesdeKV(pin);
           }
