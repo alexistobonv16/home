@@ -132,6 +132,8 @@
       this._volumen = typeof this.video.volume === 'number' ? this.video.volume : 1;
       this.bloqueoAutoplay = false;
       this.audioChainBaselineV = 0;
+      this.videoReproduciendo = false;
+      this.pausaUsuario = false;
 
       this._initDecodificadores();
       this._escucharVideo();
@@ -326,12 +328,17 @@
         if (this.h264wPlayer.active) {
           this.h264wPlayer.stop();
           this.video.pause();
+          this.pausaUsuario = true;
+          this.videoReproduciendo = false;
           if (this.audioCtx && this.audioCtx.state === 'running') this.audioCtx.suspend().catch(() => {});
+          this._emit('pausado', { pausado: true });
           return false;
         } else {
           this.h264wPlayer.start();
           this.video.play().catch(() => {});
+          this.pausaUsuario = false;
           if (this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) this.audioCtx.resume().catch(() => {});
+          this._emit('pausado', { pausado: false });
           return true;
         }
       }
@@ -339,17 +346,25 @@
       if (!this.hayVideo) return null;
       if (!v.paused) {
         v.pause();
+        this.pausaUsuario = true;
+        this.videoReproduciendo = false;
         if (this.useWebAudio && this.audioCtx && this.audioCtx.state === 'running') {
           this.audioCtx.suspend().catch(() => {});
         }
+        this._emit('pausado', { pausado: true });
         return false;
       }
+      this.pausaUsuario = false;
       const directo = this.hls?.liveSyncPosition;
-      if (directo && v.currentTime < directo - 30) v.currentTime = directo;
+      if (directo && typeof directo === 'number' && Math.abs(v.currentTime - directo) > 5) {
+        v.currentTime = directo;
+        this._stopWebAudio();
+      }
       this._reproducir();
       if (this.useWebAudio && this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) {
         this.audioCtx.resume().catch(() => {});
       }
+      this._emit('pausado', { pausado: false });
       return true;
     }
 
@@ -586,9 +601,11 @@
               if (!this.hasH264Video) this.isActualMpeg2Stream = true;
             } else if (streamType === 0x03 || streamType === 0x04) {
               audioPids.add(elemPid);
+              if (!this.selectedMp2Pid) this.selectedMp2Pid = elemPid;
               isMp2 = true;
             } else if (streamType === 0x81 || streamType === 0x87) {
               audioPids.add(elemPid);
+              if (!this.selectedMp2Pid) this.selectedMp2Pid = elemPid;
               isDolby = true;
             } else if (streamType === 0x06) {
               let isDolbyES = false;
@@ -607,6 +624,7 @@
               }
               if (isDolbyES) {
                 audioPids.add(elemPid);
+                if (!this.selectedMp2Pid) this.selectedMp2Pid = elemPid;
                 isDolby = true;
               }
             }
@@ -684,10 +702,10 @@
     }
 
     _flushAudioQueue() {
-      if (!this.useWebAudio || !this.audioCtx || !this.video || this.h264wActive || this.video.paused || this.video.readyState < 2) return;
+      if (!this.useWebAudio || !this.audioCtx || !this.video || this.h264wActive || !this.videoReproduciendo || this.video.paused || this.video.readyState < 3) return;
       const vTime = this.video.currentTime;
       const aNow = this.audioCtx.currentTime;
-      if (vTime <= 0) return;
+      if (vTime <= 0.05) return;
 
       while (this.pendingAudioQueue.length > 0) {
         const item = this.pendingAudioQueue.shift();
@@ -709,7 +727,7 @@
         };
 
         if (timeDelta === null || isNaN(timeDelta)) {
-          const startTime = Math.max(aNow + 0.03, this.nextAudioTime);
+          const startTime = Math.max(aNow + 0.02, this.nextAudioTime);
           source.start(startTime, 0);
           this.nextAudioTime = startTime + duration;
         } else if (timeDelta < 0) {
@@ -737,7 +755,7 @@
       if (this.nextAudioTime <= 0 || this.h264wActive) return;
       if (!this.video || typeof this.audioChainBaselineV !== 'number') return;
       const drift = this.video.currentTime - this.audioChainBaselineV;
-      if (Math.abs(drift) > 0.5) {
+      if (Math.abs(drift) > 0.4) {
         this._stopWebAudio();
         console.log('[Alexis TV] Cadena de audio desalineada tras congelación (Δ=' + drift.toFixed(2) + ' s) → reconstrucción');
       }
@@ -748,7 +766,9 @@
       const duration = buffer.duration;
       const v = this.video;
 
-      if (v.paused || v.readyState < 2 || v.currentTime <= 0) {
+      // Si el video aún no está presentando cuadros activamente (no ha emitido playing o está congelado/en pausa),
+      // ENCOLAR en pendingAudioQueue para arrancar en el milisegundo exacto que se renderiza el video en pantalla
+      if (!this.videoReproduciendo || v.paused || v.readyState < 3 || v.currentTime <= 0.05) {
         this.pendingAudioQueue.push({ fragStart, duration, buffer });
         if (this.pendingAudioQueue.length > 16) this.pendingAudioQueue.shift();
         return;
@@ -773,7 +793,7 @@
       };
 
       if (timeDelta === null || isNaN(timeDelta)) {
-        const startTime = Math.max(aNow + 0.03, this.nextAudioTime);
+        const startTime = Math.max(aNow + 0.02, this.nextAudioTime);
         source.start(startTime, 0);
         this.nextAudioTime = startTime + duration;
       } else if (timeDelta < 0) {
@@ -847,6 +867,7 @@
         this.canvasH264w.style.background = '#000';
       }
       if (this.canvasMpeg2) this.canvasMpeg2.style.display = 'none';
+      if (this.video) this.video.style.opacity = '0';
       this.h264wPlayer.start();
       this.vbPending = [];
       this._ensureVbPendingTimer();
@@ -934,9 +955,15 @@
 
       class TolerantMediaErrorController extends Hls.DefaultConfig.errorController {
         onErrorOut(event, data) {
-          if (self.h264wActive && data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-            data.fatal = false;
-            return;
+          if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            if (self.h264wActive) {
+              data.fatal = false;
+              return;
+            }
+            if (self.useWebAudio || data.sourceBufferName === 'audio' || data.details === Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR || data.details === Hls.ErrorDetails.BUFFER_APPENDING_ERROR) {
+              data.fatal = false;
+              return;
+            }
           }
           super.onErrorOut(event, data);
         }
@@ -966,8 +993,8 @@
                   self.rawTsRing.delete(firstKey);
                 }
 
-                const modifiedResponse = Object.assign({}, response, { data: processed.data });
-                return origSuccess(modifiedResponse, stats, context, networkDetails);
+                response.data = processed.data;
+                return origSuccess(response, stats, context, networkDetails);
               }
               origSuccess(response, stats, context, networkDetails);
             };
@@ -984,16 +1011,16 @@
         lowLatencyMode: false,
         forceKeyFrameOnDiscontinuity: false,
         stretchShortVideoTrack: false,
-        liveSyncDurationCount: 3.5,
+        liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 8,
         maxBufferLength: 30,
         maxMaxBufferLength: 60,
         maxBufferSize: 60 * 1024 * 1024,
-        maxBufferHole: 1.5,
+        maxBufferHole: 1.8,
         backBufferLength: movil ? 10 : 20,
         liveDurationInfinity: true,
         highBufferWatchdogPeriod: 2,
-        nudgeOffset: 0.1,
+        nudgeOffset: 0.2,
         nudgeMaxRetry: 6,
         manifestLoadingTimeOut: 20000,
         manifestLoadingMaxRetry: 6,
@@ -1122,6 +1149,19 @@
       const status = data.response?.code || data.networkDetails?.status || 0;
       this.diagnostico?.errores.push({ tipo: data.type, detalle: data.details, http: status, fatal: !!data.fatal });
       if (this.diagnostico?.errores.length > 20) this.diagnostico.errores.shift();
+
+      if (data.details === global.Hls.ErrorDetails.BUFFER_ADD_CODEC_ERROR && data.sourceBufferName === 'audio') {
+        console.log('[Alexis TV] BUFFER_ADD_CODEC_ERROR en audio ignorado: gestionado vía WebAudio');
+        this.useWebAudio = true;
+        this._initWebAudio().catch(() => {});
+        return;
+      }
+
+      if (this.useWebAudio && data.type === global.Hls.ErrorTypes.MEDIA_ERROR && (data.sourceBufferName === 'audio' || data.details === global.Hls.ErrorDetails.BUFFER_APPENDING_ERROR)) {
+        console.log('[Alexis TV] Error de SourceBuffer de audio ignorado: gestionado vía WebAudio');
+        return;
+      }
+
       if (data.type === global.Hls.ErrorTypes.NETWORK_ERROR) {
         this.falloRedPendiente = true;
         this._emit('fallo-red');
@@ -1185,8 +1225,10 @@
       }
 
       if (data.type === ErrorTypes.MEDIA_ERROR) {
-        // En modo Vía B, los errores de buffer/decode de MSE se ignoran pues el render se hace en el canvas WASM
         if (this.h264wActive || this.isMpeg2Decoding) return;
+        if (this.useWebAudio && (data.sourceBufferName === 'audio' || data.details === ErrorDetails.BUFFER_ADD_CODEC_ERROR || data.details === ErrorDetails.BUFFER_APPENDING_ERROR)) {
+          return;
+        }
 
         if (data.fatal) {
           if (this.hls && this.recuperacionesMedia === 0) {
@@ -1201,9 +1243,9 @@
             return this.hls.recoverMediaError();
           }
 
-          // Solo si las dos recuperaciones nativas de HLS.js fallan (ej. Win+ con video entrelazado PAFF):
-          if (global.H264WasmLivePlayer && this.canvasH264w && this.hasH264Video) {
-            console.log('[Alexis TV] Conmutando a Vía B (WASM) tras agotar recuperaciones nativas');
+          // Solo si las dos recuperaciones nativas de HLS.js fallan en VIDEO H.264 (ej. Win+ con video entrelazado PAFF):
+          if (global.H264WasmLivePlayer && this.canvasH264w && this.hasH264Video && (data.sourceBufferName === 'video' || !data.sourceBufferName)) {
+            console.log('[Alexis TV] Conmutando a Vía B (WASM) tras agotar recuperaciones nativas de video');
             this._activarH264Wasm();
             return;
           }
@@ -1378,8 +1420,10 @@
 
       this.bloqueoAutoplay = false;
       this.audioChainBaselineV = 0;
-      this.inicioBuffer = null;
+      this.videoReproduciendo = false;
       this.pausaUsuario = false;
+      if (this.video) this.video.style.opacity = '1';
+      this.inicioBuffer = null;
       this.falloRedPendiente = false;
       this.ultimaRecuperacion = null;
       this._destruirHls();
@@ -1394,6 +1438,7 @@
     _escucharVideo() {
       const v = this.video;
       v.addEventListener('playing', () => {
+        this.videoReproduciendo = true;
         this._cerrarBuffer();
         clearTimeout(this.tArranque);
         if (this.useWebAudio) {
@@ -1405,12 +1450,14 @@
         }
       });
       v.addEventListener('waiting', () => {
+        this.videoReproduciendo = false;
         if (!this.terminal && this.diagnostico?.inicioVideoMs != null) {
           this.inicioBuffer = performance.now();
           this._emit('buffering');
         }
       });
       v.addEventListener('pause', () => {
+        this.videoReproduciendo = false;
         if (this.h264wActive && this.h264wPlayer) {
           if (this.h264wPlayer.active) this.h264wPlayer.stop();
         }
@@ -1432,29 +1479,37 @@
           this.audioCtx.resume().catch(() => {});
         }
       });
-      v.addEventListener('volumechange', () => {
-        if (!this.useWebAudio) {
-          this._silenciado = v.muted;
-          this._volumen = v.volume;
-        } else {
-          if (!v.muted) {
-            this._silenciado = false;
-            this.video.muted = true;
-          }
-          this._volumen = v.volume;
-        }
-        this.aplicarVolumen();
-        this._emit('cambio-volumen', { silenciado: this._silenciado, volumen: this._volumen });
+      v.addEventListener('seeking', () => {
+        this.videoReproduciendo = false;
       });
-      v.addEventListener('timeupdate', () => {
-        if (this.audioCtx && this.audioCtx.state === 'running') {
-          this.audioChainBaselineV = v.currentTime;
-        }
+      v.addEventListener('seeked', () => {
+        if (!v.paused && v.readyState >= 3) this.videoReproduciendo = true;
         if (this.useWebAudio) {
           this._flushAudioQueue();
         }
       });
-      v.addEventListener('seeked', () => {
+      let _sincronizandoVolumen = false;
+      v.addEventListener('volumechange', () => {
+        if (_sincronizandoVolumen) return;
+        _sincronizandoVolumen = true;
+        try {
+          if (!this.useWebAudio) {
+            this._silenciado = v.muted;
+            this._volumen = v.volume;
+            this.aplicarVolumen();
+            this._emit('cambio-volumen', { silenciado: this._silenciado, volumen: this._volumen });
+          }
+        } finally {
+          _sincronizandoVolumen = false;
+        }
+      });
+      v.addEventListener('timeupdate', () => {
+        if (!v.paused && v.readyState >= 3 && v.currentTime > 0.05) {
+          this.videoReproduciendo = true;
+        }
+        if (this.audioCtx && this.audioCtx.state === 'running') {
+          this.audioChainBaselineV = v.currentTime;
+        }
         if (this.useWebAudio) {
           this._flushAudioQueue();
         }

@@ -138,8 +138,8 @@
 
       <!-- ========== REPRODUCTOR ========== -->
       <section id="zona-reproductor" class="zona-reproductor" aria-label="Reproductor">
-        <div id="contenedor-video" class="contenedor-video" data-estado="cargando">
-          <video id="video" autoplay muted playsinline webkit-playsinline controls preload="auto" autopictureinpicture x-webkit-airplay="allow"></video>
+        <div id="contenedor-video" class="contenedor-video cursor-pointer" data-estado="cargando">
+          <video id="video" autoplay muted playsinline webkit-playsinline preload="auto" autopictureinpicture x-webkit-airplay="allow"></video>
           <!-- Canvas de respaldo para decodificación WebAssembly de video (Vía B y MPEG-2) -->
           <canvas id="mpeg2-canvas" class="player-canvas" style="display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10; background: #000;"></canvas>
           <canvas id="h264w-canvas" class="player-canvas" style="display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10; background: #000;"></canvas>
@@ -170,6 +170,19 @@
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
               Activar sonido
             </button>
+            <button id="btn-pausa" type="button" class="accion" title="Pausar / Reproducir (Espacio)">
+              <svg id="icono-pausa" viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <svg id="icono-play" viewBox="0 0 24 24" class="h-4 w-4 hidden" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span class="sr-only">Pausar o Reproducir</span>
+            </button>
+            <div class="flex items-center gap-1.5 px-0.5">
+              <button id="btn-volumen" type="button" class="accion" title="Silenciar / Activar sonido (M)">
+                <svg id="icono-volumen" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                <svg id="icono-mudo" viewBox="0 0 24 24" class="h-4 w-4 hidden" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                <span class="sr-only">Volumen / Silenciar</span>
+              </button>
+              <input id="slider-volumen" type="range" min="0" max="1" step="0.05" value="1" title="Ajustar volumen" class="hidden sm:block h-1.5 w-16 sm:w-20 cursor-pointer accent-cancha bg-slate-700 rounded-lg">
+            </div>
             <button id="btn-anterior" type="button" class="accion" title="Canal anterior (↑)" disabled>
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg><span class="sr-only">Canal anterior</span>
             </button>
@@ -180,7 +193,7 @@
               <svg viewBox="0 0 24 24" class="icono-estrella h-4 w-4" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg><span class="sr-only">Favorito</span>
             </button>
             <button id="btn-pip" type="button" class="accion" aria-pressed="false" title="Ventana flotante (P)" hidden>
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor"/></svg>
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor"/></svg>
               <span class="sr-only">Picture-in-Picture</span>
             </button>
             <button id="btn-pantalla" type="button" class="accion" aria-pressed="false" title="Pantalla completa (F)">
@@ -455,15 +468,15 @@
     </div>
   </div>
 
-  <script src="./js/analitica.js?v=v16"></script>
-  <script src="./js/parser.js?v=v16"></script>
-  <script src="./js/player.js?v=v16"></script>
-  <script src="./js/verificador.js?v=v16"></script>
-  <script src="./js/estados-canales.js?v=v16"></script>
-  <script src="./js/epg.js?v=v16"></script>
-  <script src="./js/servidores.js?v=v16"></script>
-  <script src="./js/app.js?v=v16"></script>
-  <script src="./js/gestor-listas.js?v=v16"></script>
-  <script src="./js/actualizador.js?v=v16"></script>
+  <script src="./js/analitica.js?v=v17"></script>
+  <script src="./js/parser.js?v=v17"></script>
+  <script src="./js/player.js?v=v17"></script>
+  <script src="./js/verificador.js?v=v17"></script>
+  <script src="./js/estados-canales.js?v=v17"></script>
+  <script src="./js/epg.js?v=v17"></script>
+  <script src="./js/servidores.js?v=v17"></script>
+  <script src="./js/app.js?v=v17"></script>
+  <script src="./js/gestor-listas.js?v=v17"></script>
+  <script src="./js/actualizador.js?v=v17"></script>
 </body>
 </html>

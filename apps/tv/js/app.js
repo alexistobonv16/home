@@ -303,6 +303,13 @@ const CANALES_PARTIDO_HOY = [
     osd: $('#osd'),
     osdNumero: $('#osd-numero'),
     osdTexto: $('#osd-texto'),
+    btnPausa: $('#btn-pausa'),
+    iconoPausa: $('#icono-pausa'),
+    iconoPlay: $('#icono-play'),
+    btnVolumen: $('#btn-volumen'),
+    iconoVolumen: $('#icono-volumen'),
+    iconoMudo: $('#icono-mudo'),
+    sliderVolumen: $('#slider-volumen'),
     btnPip: $('#btn-pip'),
     btnPantalla: $('#btn-pantalla'),
     fichaMeta: $('#ficha-meta'),
@@ -1454,10 +1461,25 @@ const CANALES_PARTIDO_HOY = [
 
   /* ---------------- 8. Reproductor, ficha, guía y OSD ---------------- */
 
+  function actualizarIconoPausa(pausado) {
+    if (dom.iconoPausa && dom.iconoPlay) {
+      dom.iconoPausa.classList.toggle('hidden', !!pausado);
+      dom.iconoPlay.classList.toggle('hidden', !pausado);
+    }
+  }
+
   function actualizarSonido() {
     const btn = document.querySelector('#activar-sonido');
     if (btn) {
       btn.hidden = !(reproductor.silenciado || reproductor.bloqueoAutoplay);
+    }
+    const mudo = reproductor.silenciado;
+    if (dom.iconoVolumen && dom.iconoMudo) {
+      dom.iconoVolumen.classList.toggle('hidden', !!mudo);
+      dom.iconoMudo.classList.toggle('hidden', !mudo);
+    }
+    if (dom.sliderVolumen) {
+      dom.sliderVolumen.value = mudo ? 0 : (typeof reproductor.volumen === 'number' ? reproductor.volumen : 1);
     }
   }
 
@@ -1622,6 +1644,7 @@ const CANALES_PARTIDO_HOY = [
         capa('cargando');
         dom.textoCargando.textContent = `Conectando con ${canal.nombre}…`;
         estado.reproduciendo = false;
+        actualizarIconoPausa(false);
         break;
       case 'buffering':
         capa('cargando');
@@ -1633,6 +1656,7 @@ const CANALES_PARTIDO_HOY = [
         break;
       case 'reproduciendo':
         capa(null);
+        actualizarIconoPausa(false);
         actualizarSonido();
         setTimeout(activarLogos, 1500);
         emergenciaSenal.hidden = true;
@@ -1640,6 +1664,9 @@ const CANALES_PARTIDO_HOY = [
         if (!reproductor.videoConfirmado) verificador.marcar(canal.url, true, 'video iniciado; confirmación pendiente');
         // Estadísticas (js/analitica.js): un evento por canal que de verdad llegó a verse.
         medirUnaVez('ver_canal', d.intentoCarga, { canal_id: canal.id, pais: canal.pais, categoria: canal.cats?.[0] });
+        break;
+      case 'pausado':
+        actualizarIconoPausa(d?.pausado);
         break;
       case 'silenciado':
         actualizarSonido();
@@ -1651,6 +1678,7 @@ const CANALES_PARTIDO_HOY = [
       case 'caido':
         capa('error');
         estado.reproduciendo = false;
+        actualizarIconoPausa(true);
         verificador.marcar(canal.url, false, d.motivo, d);
         medirUnaVez('canal_caido', d.intentoCarga, { canal: canal.nombre, origen: 'reproductor', pais: canal.pais, codigo: d.codigo,
           inicio_video: !!d.iniciado, reconexiones: d.reconexiones,
@@ -1661,6 +1689,7 @@ const CANALES_PARTIDO_HOY = [
       case 'detenido':
         capa('reposo');
         estado.reproduciendo = false;
+        actualizarIconoPausa(true);
         break;
     }
     if (canal && canal.url === estado.actual?.url && (eraVivo !== estado.reproduciendo || est === 'caido')) {
@@ -2157,12 +2186,16 @@ const CANALES_PARTIDO_HOY = [
       ' ': () => {
         if (!estado.actual) return zapping(1); // sin canal: Espacio arranca el primero
         const r = reproductor.alternarPausa();
-        if (r !== null) mostrarOsd(r ? '▶' : '❚❚', r ? 'Reproduciendo' : 'En pausa');
+        if (r !== null) {
+          actualizarIconoPausa(!r);
+          mostrarOsd(r ? '▶' : '❚❚', r ? 'Reproduciendo' : 'En pausa');
+        }
       },
       f: alternarPantallaCompleta,
       p: alternarPiP,
       m: () => {
         const mudo = reproductor.alternarSilencio();
+        actualizarSonido();
         mostrarOsd(mudo ? '🔇' : '🔊', mudo ? 'Silenciado' : 'Sonido activado');
       },
       s: () => alternarFavorito(estado.actual),
@@ -2436,26 +2469,65 @@ const CANALES_PARTIDO_HOY = [
   });
 
   // Memoria: volumen preferido.
-  const volumen = Number(Memoria.leer('volumen'));
-  if (volumen >= 0 && volumen <= 1 && Memoria.leer('volumen') !== null) dom.video.volume = volumen;
-  dom.video.addEventListener('volumechange', () => Memoria.guardar('volumen', Math.round(dom.video.volume * 100) / 100));
-  const activarSonido = document.querySelector('#activar-sonido');
-  dom.video.addEventListener('volumechange', () => actualizarSonido());
-  activarSonido?.addEventListener('click', () => {
-    reproductor.desmutear();
-    dom.video.muted = false;
-    dom.video.volume = 1.0;
-    actualizarSonido();
-    dom.video.play()?.catch(() => { dom.video.controls = true; });
+  const volumenGuardado = Number(Memoria.leer('volumen'));
+  if (volumenGuardado >= 0 && volumenGuardado <= 1 && Memoria.leer('volumen') !== null) {
+    reproductor.volumen = volumenGuardado;
+    dom.video.volume = volumenGuardado;
+  }
+  actualizarSonido();
+
+  // Controles de reproducción en la barra de acciones
+  dom.btnPausa?.addEventListener('click', () => {
+    const r = reproductor.alternarPausa();
+    if (r !== null) {
+      actualizarIconoPausa(!r);
+      mostrarOsd(r ? '▶' : '❚❚', r ? 'Reproduciendo' : 'En pausa');
+    }
   });
 
-  // Desbloqueo de sonido por gesto directo sobre el escenario de video
+  dom.btnVolumen?.addEventListener('click', () => {
+    const mudo = reproductor.alternarSilencio();
+    actualizarSonido();
+    mostrarOsd(mudo ? '🔇' : '🔊', mudo ? 'Silenciado' : 'Sonido activado');
+  });
+
+  dom.sliderVolumen?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    reproductor.volumen = val;
+    if (reproductor.silenciado && val > 0) {
+      reproductor.desmutear();
+    }
+    actualizarSonido();
+    Memoria.guardar('volumen', val);
+  });
+
+  dom.video.addEventListener('volumechange', () => {
+    if (!reproductor.useWebAudio) {
+      Memoria.guardar('volumen', Math.round(dom.video.volume * 100) / 100);
+      actualizarSonido();
+    }
+  });
+
+  const activarSonido = document.querySelector('#activar-sonido');
+  activarSonido?.addEventListener('click', () => {
+    reproductor.desmutear();
+    actualizarSonido();
+    dom.video.play()?.catch(() => {});
+  });
+
+  // Clic en el video: alternar pausa o activar sonido bloqueado por autoplay
   dom.contenedorVideo.addEventListener('click', (e) => {
-    if (e.target.closest('button, input, select, .accion')) return;
+    if (e.target.closest('button, input, select, .accion, a')) return;
     if (reproductor.silenciado && reproductor.bloqueoAutoplay) {
       reproductor.desmutear();
       actualizarSonido();
       toast('Sonido activado', 'ok', 3000);
+      return;
+    }
+    const r = reproductor.alternarPausa();
+    if (r !== null) {
+      actualizarIconoPausa(!r);
+      mostrarOsd(r ? '▶' : '❚❚', r ? 'Reproduciendo' : 'En pausa');
     }
   });
 
