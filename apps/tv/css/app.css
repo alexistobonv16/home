@@ -466,3 +466,255 @@
   background: rgba(248, 113, 113, 0.2);
   color: #f87171;
 }
+
+/* ==========================================================================
+   Alexis TV — Layout Fijo: Video Inmóvil y Lista Scrolleable Independiente
+   ========================================================================== */
+
+/* 1. Bloqueo de scroll global en la ventana */
+html,
+body {
+  height: 100% !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #07090d;
+}
+
+/* 2. Cabecera fija superior */
+.cabecera {
+  flex-shrink: 0 !important;
+  height: 3.25rem !important;
+  position: relative !important;
+  top: 0 !important;
+  z-index: 40 !important;
+  border-bottom: 1px solid #1f2730;
+}
+
+/* 3. Contenedor principal ajustado exactamente al viewport */
+.principal {
+  height: calc(100dvh - 3.25rem) !important;
+  max-height: calc(100dvh - 3.25rem) !important;
+  max-width: 1600px !important;
+  margin: 0 auto !important;
+  padding: 0.6rem 1rem 0.6rem !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+
+/* 4. Disposición en 2 columnas en Desktop */
+.disposicion {
+  height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 420px) !important;
+  gap: 1.25rem !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+}
+
+/* 5. Columna Izquierda: Video y Controles FIJOS */
+.zona-reproductor {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  position: static !important;
+  overflow: hidden !important;
+  gap: 0.4rem !important;
+}
+
+.contenedor-video {
+  position: relative !important;
+  aspect-ratio: 16/9 !important;
+  width: 100% !important;
+  max-height: calc(100% - 4.5rem) !important;
+  overflow: hidden !important;
+  border-radius: 1rem;
+  background: #000;
+  flex-shrink: 0 !important;
+  margin: 0 auto;
+}
+
+.barra-ahora {
+  flex-shrink: 0 !important;
+  margin-top: 0.2rem !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Área de avisos/detalles secundaria en la columna izquierda */
+.detalles-reproductor {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* Toasts flotantes desvinculados del flujo para no mover ni empujar la pantalla */
+.toasts {
+  position: fixed !important;
+  bottom: 1.5rem !important;
+  left: 1.5rem !important;
+  z-index: 100 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  pointer-events: none !important;
+  max-width: min(90vw, 420px) !important;
+  margin: 0 !important;
+}
+
+.toast {
+  pointer-events: auto !important;
+}
+
+/* Avisos flotantes de descarga de listas */
+#estado-carga,
+#error-carga {
+  position: fixed !important;
+  top: 3.75rem !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 50 !important;
+  width: min(92vw, 480px) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* 6. Columna Derecha: Canales scrolleables dentro de su box */
+.zona-canales {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.panel-canales {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-right: 0.35rem !important;
+}
+
+.panel-canales-cabecera-fija {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  background: rgba(7, 9, 13, 0.96) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  padding-top: 0.2rem !important;
+  padding-bottom: 0.5rem !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* 7. Vista Móvil y Tablets (< 1024px): Video FIJO ARRIBA y solo la lista baja */
+@media (max-width: 1023px) {
+  .principal {
+    padding: 0 !important;
+    height: calc(100dvh - 3.25rem) !important;
+    max-height: calc(100dvh - 3.25rem) !important;
+    overflow: hidden !important;
+  }
+
+  .disposicion {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .zona-reproductor {
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    background: #07090d !important;
+    z-index: 25 !important;
+    border-bottom: 1px solid #1f2730 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  .contenedor-video {
+    width: 100% !important;
+    max-height: none !important;
+    aspect-ratio: 16/9 !important;
+    border-radius: 0 !important;
+  }
+
+  .barra-ahora {
+    padding: 0.4rem 0.65rem 0.45rem !important;
+    margin-top: 0 !important;
+    background: #07090d !important;
+    flex-wrap: wrap !important;
+    gap: 0.3rem !important;
+  }
+
+  .ahora-titulo {
+    font-size: 1.15rem !important;
+  }
+
+  .ahora-acciones {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .detalles-reproductor {
+    max-height: 80px;
+    padding: 0 0.65rem 0.4rem;
+  }
+
+  .zona-canales {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+  }
+
+  .panel-canales {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 0.4rem 0.65rem 1.5rem !important;
+  }
+
+  .panel-canales-cabecera-fija {
+    top: 0 !important;
+    padding-top: 0.2rem !important;
+    background: rgba(7, 9, 13, 0.96) !important;
+  }
+
+  .toasts {
+    bottom: 1rem !important;
+    left: 1rem !important;
+    right: 1rem !important;
+    max-width: none !important;
+  }
+
+  .titulo-seccion {
+    display: none !important;
+  }
+}
+

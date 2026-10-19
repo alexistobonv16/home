@@ -21,15 +21,15 @@
   <!-- Catálogo curado de canales -->
   <link rel="preload" href="/data/catalogo-pro.json" as="fetch" crossorigin />
   <!-- Estilos compilados (Tailwind CLI + componentes): la página se pinta sin ejecutar JavaScript. -->
-  <link rel="stylesheet" href="./css/app.css?v=v20" />
-  <link rel="stylesheet" href="./css/gestor-listas.css?v=v20" />
+  <link rel="stylesheet" href="./css/app.css?v=v21" />
+  <link rel="stylesheet" href="./css/gestor-listas.css?v=v21" />
   <!-- Motor HLS.js para reproducción universal de streaming -->
-  <script src="./js/hls.min.js?v=v20"></script>
+  <script src="./js/hls.min.js?v=v21"></script>
   <!-- Decodificador de audio WebAssembly MP2/MPEG para streaming de TV -->
   <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
   <!-- Decodificadores software de video para señales entrelazadas PAFF y MPEG-2 -->
-  <script src="./js/mpeg2-player.js?v=v20"></script>
-  <script src="./js/h264w-player.js?v=v20"></script>
+  <script src="./js/mpeg2-player.js?v=v21"></script>
+  <script src="./js/h264w-player.js?v=v21"></script>
   <!-- Tipografía de titulares sin bloquear el primer render (el texto usa la fuente del sistema). -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" media="print" onload="this.media='all'" />
@@ -226,7 +226,9 @@
           </div>
         </div>
 
-        <!-- Estado del reproductor (fuera del video) -->
+        <!-- Detalles secundarios del reproductor (scroll interno si se muestran) -->
+        <div class="detalles-reproductor scroll-fino">
+          <!-- Estado del reproductor (fuera del video) -->
         <div id="estado-reproductor" class="estado-reproductor">
           <div id="toasts" class="toasts" aria-live="polite"></div>
           <div id="capa-error" class="tarjeta-error" role="alert" hidden>
@@ -259,14 +261,15 @@
           <button id="btn-copiar" type="button" disabled>Copiar URL</button>
           <button id="btn-atajos" type="button">Atajos</button>
         </div>
+        </div>
       </section>
 
       <!-- ========== CANALES ========== -->
       <aside class="zona-canales" aria-label="Canales">
         <div id="panel" class="panel-canales scroll-fino">
-          <h2 class="titulo-seccion">Canales verificados</h2>
-          <!-- Buscador y filtros (fijos al hacer scroll) -->
-          <div class="sticky top-14 z-20 -mx-4 bg-fondo/95 px-4 pb-3 pt-1 backdrop-blur lg:top-0 lg:mx-0 lg:px-0">
+          <!-- Buscador y filtros (fijos al inicio del box de canales) -->
+          <div class="panel-canales-cabecera-fija">
+            <h2 class="titulo-seccion">Canales verificados</h2>
             <!-- Select oculto para compatibilidad con código existente -->
             <select id="selector-lista-activa" class="sr-only" aria-label="Lista activa (oculto)"></select>
             <div class="relative">
@@ -344,6 +347,12 @@
             </h2>
             <ul id="lista-global" class="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1"></ul>
           </section>
+
+          <!-- Pie de página integrado al final del scroll de canales -->
+          <footer class="mt-8 border-t border-linea pt-4 pb-4 text-center text-[11px] text-slate-500">
+            Alexis TV · Señales en vivo y canales verificados · <a href="https://alexistobon.com" class="text-cancha hover:underline">alexistobon.com</a>
+            <button id="btn-privacidad" type="button" class="ml-2 underline hover:text-slate-300" hidden>Privacidad y estadísticas</button>
+          </footer>
         </div>
       </aside>
     </div>
@@ -478,11 +487,6 @@
     </div>
   </dialog>
 
-  <footer class="mx-auto max-w-[1600px] px-4 pb-6 pt-4 text-center text-[11px] text-slate-500">
-    Alexis TV · Señales en vivo y canales verificados · <a href="https://alexistobon.com" class="text-cancha hover:underline">alexistobon.com</a>
-    <button id="btn-privacidad" type="button" class="ml-2 underline hover:text-slate-300" hidden>Privacidad y estadísticas</button>
-  </footer>
-
   <div id="aviso-cookies" class="aviso-cookies" role="dialog" aria-labelledby="titulo-cookies" hidden>
     <p id="titulo-cookies" class="text-xs text-slate-300"><b class="text-white">Estadísticas anónimas.</b> Usamos Google Analytics para medir uso por país y dispositivo. Sin datos personales.</p>
     <div class="flex shrink-0 gap-2">
@@ -491,15 +495,15 @@
     </div>
   </div>
 
-  <script src="./js/analitica.js?v=v20"></script>
-  <script src="./js/parser.js?v=v20"></script>
-  <script src="./js/player.js?v=v20"></script>
-  <script src="./js/verificador.js?v=v20"></script>
-  <script src="./js/estados-canales.js?v=v20"></script>
-  <script src="./js/epg.js?v=v20"></script>
-  <script src="./js/servidores.js?v=v20"></script>
-  <script src="./js/app.js?v=v20"></script>
-  <script src="./js/gestor-listas.js?v=v20"></script>
-  <script src="./js/actualizador.js?v=v20"></script>
+  <script src="./js/analitica.js?v=v21"></script>
+  <script src="./js/parser.js?v=v21"></script>
+  <script src="./js/player.js?v=v21"></script>
+  <script src="./js/verificador.js?v=v21"></script>
+  <script src="./js/estados-canales.js?v=v21"></script>
+  <script src="./js/epg.js?v=v21"></script>
+  <script src="./js/servidores.js?v=v21"></script>
+  <script src="./js/app.js?v=v21"></script>
+  <script src="./js/gestor-listas.js?v=v21"></script>
+  <script src="./js/actualizador.js?v=v21"></script>
 </body>
 </html>
