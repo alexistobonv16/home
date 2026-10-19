@@ -1821,8 +1821,9 @@ const CANALES_PARTIDO_HOY = [
       siguienteSenal();
       return;
     }
-    emergenciaSenal.hidden = true;
-    document.querySelector('#chat-oferta-servidor').hidden = true;
+    if (emergenciaSenal) emergenciaSenal.hidden = true;
+    const chatOferta = document.querySelector('#chat-oferta-servidor');
+    if (chatOferta) chatOferta.hidden = true;
     cancelarRespaldo();
     if (!['respaldo', 'servidor'].includes(origen)) {
       fallosCadena.clear();
@@ -2254,12 +2255,17 @@ const CANALES_PARTIDO_HOY = [
 
   // Un solo listener por lista (delegación de eventos): lista activa y resultados globales.
   function alClicCanal(e, fuente) {
-    const boton = e.target.closest('[data-accion]');
-    const li = boton?.closest('[data-id]');
-    const canal = li && fuente().find((c) => c.id === li.dataset.id);
+    const li = e.target.closest('[data-id]');
+    if (!li) return;
+    const canal = fuente().find((c) => c.id === li.dataset.id);
     if (!canal) return;
-    if (boton.dataset.accion === 'fav') alternarFavorito(canal);
-    else ver(canal);
+    const botonFav = e.target.closest('[data-accion="fav"]');
+    if (botonFav) {
+      e.stopPropagation();
+      alternarFavorito(canal);
+      return;
+    }
+    ver(canal);
   }
   dom.lista.addEventListener('click', (e) => alClicCanal(e, () => estado.filtrados));
   dom.listaGlobal.addEventListener('click', (e) => alClicCanal(e, () => estado.globales.lista));

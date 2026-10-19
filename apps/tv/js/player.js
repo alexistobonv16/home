@@ -22,24 +22,30 @@
     maxReintentosRed: 3,        // reintentos ante cortes durante la emisión
   };
 
-  /* hls.js: se carga desde CDN o local con fallback */
+  /* hls.js: se carga local o desde CDN con fallback */
   let promesaMotor = null;
   function cargarMotorHls() {
     if (global.Hls) return Promise.resolve(global.Hls);
     if (promesaMotor) return promesaMotor;
     promesaMotor = new Promise((resolver, rechazar) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
-      s.async = true;
-      s.onload = () => (global.Hls ? resolver(global.Hls) : rechazar(new Error('hls.js no disponible')));
-      s.onerror = () => {
-        const s2 = document.createElement('script');
-        s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js';
-        s2.onload = () => (global.Hls ? resolver(global.Hls) : rechazar(new Error('hls.js no disponible')));
-        s2.onerror = () => { promesaMotor = null; rechazar(new Error('hls.js no cargó')); };
-        document.head.appendChild(s2);
+      const sLocal = document.createElement('script');
+      sLocal.src = './js/hls.min.js';
+      sLocal.onload = () => (global.Hls ? resolver(global.Hls) : rechazar(new Error('hls.js no disponible')));
+      sLocal.onerror = () => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+        s.async = true;
+        s.onload = () => (global.Hls ? resolver(global.Hls) : rechazar(new Error('hls.js no disponible')));
+        s.onerror = () => {
+          const s2 = document.createElement('script');
+          s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js';
+          s2.onload = () => (global.Hls ? resolver(global.Hls) : rechazar(new Error('hls.js no disponible')));
+          s2.onerror = () => { promesaMotor = null; rechazar(new Error('hls.js no cargó')); };
+          document.head.appendChild(s2);
+        };
+        document.head.appendChild(s);
       };
-      document.head.appendChild(s);
+      document.head.appendChild(sLocal);
     });
     return promesaMotor;
   }
