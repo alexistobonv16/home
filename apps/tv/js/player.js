@@ -523,6 +523,8 @@
         return { data: buffer, isMp2: false, isDolby: false };
       }
 
+      this.audioCodec = isDolby ? 'dolby' : (isMp2 ? 'mp2' : null);
+
       // Enmascarar paquetes de audio en el buffer enviado a Hls.js MSE para que el navegador no falle
       const copy = new Uint8Array(u8.length);
       copy.set(u8);
@@ -650,8 +652,10 @@
       }
       this.h264wActive = true;
       this.useWebAudio = true;
-      this.video.muted = true;
-      if (this.canvasH264w) this.canvasH264w.style.display = 'block';
+      if (this.canvasH264w) {
+        this.canvasH264w.style.display = 'block';
+        this.canvasH264w.style.background = '#000';
+      }
       if (this.canvasMpeg2) this.canvasMpeg2.style.display = 'none';
       this.h264wPlayer.start();
       this.vbPending = [];
@@ -698,8 +702,10 @@
       if (!this.mpeg2Player) return;
       this.isMpeg2Decoding = true;
       this.useWebAudio = true;
-      this.video.muted = true;
-      if (this.canvasMpeg2) this.canvasMpeg2.style.display = 'block';
+      if (this.canvasMpeg2) {
+        this.canvasMpeg2.style.display = 'block';
+        this.canvasMpeg2.style.background = '#000';
+      }
       if (this.canvasH264w) this.canvasH264w.style.display = 'none';
       this.mpeg2Player.start();
       this._initWebAudio().catch(() => {});
@@ -764,12 +770,6 @@
                 if (self.rawTsRing.size > 20) {
                   const firstKey = self.rawTsRing.keys().next().value;
                   self.rawTsRing.delete(firstKey);
-                }
-
-                // Alimentar directamente el decoder WASM en cuanto llega el fragmento
-                if (self.h264wActive && self.h264wPlayer) {
-                  const fragStartFeed = (context.frag && typeof context.frag.start === 'number') ? context.frag.start : null;
-                  self.h264wPlayer.pushChunk(response.data, fragStartFeed);
                 }
 
                 const modifiedResponse = Object.assign({}, response, { data: processed.data });
@@ -991,25 +991,33 @@
 
       if (data.type === ErrorTypes.MEDIA_ERROR) {
         // En modo Vía B, los errores de buffer/decode de MSE se ignoran pues el render se hace en el canvas WASM
-        if (this.h264wActive) return;
+        if (this.h264wActive || this.isMpeg2Decoding) return;
 
-        // Si tenemos H264WasmLivePlayer listo (Vía B), activarlo de inmediato ante error de decodificación
-        if (global.H264WasmLivePlayer && this.canvasH264w) {
-          console.log('[Alexis TV] Conmutando automáticamente a Vía B (WASM) por incompatibilidad de decodificación MSE/PAFF');
-          this._activarH264Wasm();
-          return;
+        if (data.fatal) {
+          if (this.hls && this.recuperacionesMedia === 0) {
+            this.recuperacionesMedia++;
+            console.log('[Alexis TV] Error fatal de media: intentando recuperación nativa de Hls.js (1/2)...');
+            return this.hls.recoverMediaError();
+          }
+          if (this.hls && this.recuperacionesMedia === 1) {
+            this.recuperacionesMedia++;
+            console.log('[Alexis TV] Error fatal de media: intentando swapAudioCodec y recuperación nativa (2/2)...');
+            this.hls.swapAudioCodec();
+            return this.hls.recoverMediaError();
+          }
+
+          // Solo si las dos recuperaciones nativas de HLS.js fallan (ej. Win+ con video entrelazado PAFF):
+          if (global.H264WasmLivePlayer && this.canvasH264w && this.hasH264Video) {
+            console.log('[Alexis TV] Conmutando a Vía B (WASM) tras agotar recuperaciones nativas');
+            this._activarH264Wasm();
+            return;
+          }
+
+          return fallar('el navegador no puede decodificar este video', 'media');
         }
 
-        if (this.hls && this.recuperacionesMedia === 0) {
-          this.recuperacionesMedia++;
-          return this.hls.recoverMediaError();
-        }
-        if (this.hls && this.recuperacionesMedia === 1) {
-          this.recuperacionesMedia++;
-          this.hls.swapAudioCodec();
-          return this.hls.recoverMediaError();
-        }
-        return fallar('el navegador no puede decodificar este video', 'media');
+        // Si no es fatal, Hls.js lo gestiona internamente sin interrumpir la reproducción
+        return;
       }
 
       fallar('error irrecuperable del reproductor', 'otro');
@@ -1190,9 +1198,36 @@
           this._emit('buffering');
         }
       });
+      v.addEventListener('pause', () => {
+        if (this.h264wActive && this.h264wPlayer) {
+          if (this.h264wPlayer.active) this.h264wPlayer.stop();
+        }
+        if (this.isMpeg2Decoding && this.mpeg2Player) {
+          if (this.mpeg2Player.active) this.mpeg2Player.stop();
+        }
+        if (this.audioCtx && this.audioCtx.state === 'running') {
+          this.audioCtx.suspend().catch(() => {});
+        }
+      });
+      v.addEventListener('play', () => {
+        if (this.h264wActive && this.h264wPlayer) {
+          if (!this.h264wPlayer.active) this.h264wPlayer.start();
+        }
+        if (this.isMpeg2Decoding && this.mpeg2Player) {
+          if (!this.mpeg2Player.active) this.mpeg2Player.start();
+        }
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume().catch(() => {});
+        }
+      });
       v.addEventListener('volumechange', () => {
-        if (this.useWebAudio && this.audioGain) {
-          this.audioGain.gain.value = v.muted ? 0 : (v.volume || 1);
+        if (this.audioGain) {
+          const vol = v.muted ? 0 : (typeof v.volume === 'number' ? v.volume : 1);
+          if (this.audioCtx) {
+            this.audioGain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
+          } else {
+            this.audioGain.gain.value = vol;
+          }
         }
       });
     }
