@@ -125,10 +125,13 @@
       this.activeAudioSources = [];
       this.pendingAudioQueue = [];
       this.vbPending = [];
-      this.vbPendingTimer = null;
       this.nextAudioTime = 0;
       this.processedAudioFrags = new Set();
       this.rawTsRing = new Map();
+      this._silenciado = false;
+      this._volumen = typeof this.video.volume === 'number' ? this.video.volume : 1;
+      this.bloqueoAutoplay = false;
+      this.audioChainBaselineV = 0;
 
       this._initDecodificadores();
       this._escucharVideo();
@@ -153,15 +156,15 @@
     }
 
     async _initWebAudio() {
-      if (this.audioCtx && this.audioCtx.state === 'running') return;
       const AudioContextClass = global.AudioContext || global.webkitAudioContext;
       if (!AudioContextClass) return;
       if (!this.audioCtx) {
         this.audioCtx = new AudioContextClass();
         this.audioGain = this.audioCtx.createGain();
+        this.audioGain.gain.value = this._silenciado ? 0 : this._volumen;
         this.audioGain.connect(this.audioCtx.destination);
       }
-      if (this.audioCtx.state === 'suspended') {
+      if (this.audioCtx.state === 'suspended' && !this._silenciado && !this.bloqueoAutoplay) {
         try { await this.audioCtx.resume(); } catch (e) {}
       }
       if (!this.audioDecoder && global['mpg123-decoder'] && global['mpg123-decoder'].MPEGDecoder) {
@@ -184,6 +187,9 @@
       this.pendingAudioQueue = [];
       this.vbPending = [];
       this.nextAudioTime = 0;
+      if (this.audioDecoder) {
+        try { this.audioDecoder.reset(); } catch (e) {}
+      }
     }
 
     get soportaHls() {
@@ -257,16 +263,75 @@
       return !!this.canal && this.video.readyState > 0;
     }
 
+    get silenciado() {
+      return this._silenciado;
+    }
+
+    set silenciado(val) {
+      this._silenciado = !!val;
+      this.aplicarVolumen();
+    }
+
+    get volumen() {
+      return this._volumen;
+    }
+
+    set volumen(val) {
+      this._volumen = Math.max(0, Math.min(1, Number(val)));
+      this.aplicarVolumen();
+    }
+
+    aplicarVolumen() {
+      const mudo = this._silenciado;
+      const vol = mudo ? 0 : this._volumen;
+      if (this.useWebAudio) {
+        this.video.muted = true; // Silencia el video HTML5 para evitar interferencias o eco
+        if (this.audioGain && this.audioCtx) {
+          try {
+            this.audioGain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
+          } catch (e) {
+            this.audioGain.gain.value = vol;
+          }
+        }
+      } else {
+        this.video.muted = mudo;
+        this.video.volume = vol;
+      }
+    }
+
+    desmutear() {
+      this.bloqueoAutoplay = false;
+      this._silenciado = false;
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+      this.aplicarVolumen();
+      this._flushAudioQueue();
+      this._emit('cambio-volumen', { silenciado: false, volumen: this._volumen });
+    }
+
+    alternarSilencio() {
+      this._silenciado = !this._silenciado;
+      this.bloqueoAutoplay = false;
+      if (!this._silenciado && this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+      this.aplicarVolumen();
+      this._emit('cambio-volumen', { silenciado: this._silenciado, volumen: this._volumen });
+      return this._silenciado;
+    }
+
     alternarPausa() {
       if (this.h264wActive && this.h264wPlayer) {
         if (this.h264wPlayer.active) {
           this.h264wPlayer.stop();
           this.video.pause();
+          if (this.audioCtx && this.audioCtx.state === 'running') this.audioCtx.suspend().catch(() => {});
           return false;
         } else {
           this.h264wPlayer.start();
           this.video.play().catch(() => {});
-          if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
+          if (this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) this.audioCtx.resume().catch(() => {});
           return true;
         }
       }
@@ -274,20 +339,18 @@
       if (!this.hayVideo) return null;
       if (!v.paused) {
         v.pause();
+        if (this.useWebAudio && this.audioCtx && this.audioCtx.state === 'running') {
+          this.audioCtx.suspend().catch(() => {});
+        }
         return false;
       }
       const directo = this.hls?.liveSyncPosition;
       if (directo && v.currentTime < directo - 30) v.currentTime = directo;
       this._reproducir();
-      return true;
-    }
-
-    alternarSilencio() {
-      this.video.muted = !this.video.muted;
-      if (this.useWebAudio && this.audioGain) {
-        this.audioGain.gain.value = this.video.muted ? 0 : 1;
+      if (this.useWebAudio && this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) {
+        this.audioCtx.resume().catch(() => {});
       }
-      return this.video.muted;
+      return true;
     }
 
     get enPantallaCompleta() {
@@ -405,6 +468,21 @@
             }
             if (!chosenPid && (streamType === 0x03 || streamType === 0x04 || streamType === 0x81 || streamType === 0x87)) {
               chosenPid = elemPid;
+            } else if (!chosenPid && streamType === 0x06) {
+              let isDolbyES = false;
+              let d = p + 5;
+              const dEnd = d + esInfoLen;
+              while (d + 1 < dEnd) {
+                const tag = buf[d];
+                const len = buf[d + 1];
+                if (tag === 0x6A || tag === 0x7A) isDolbyES = true;
+                else if (tag === 0x05 && len >= 4 && d + 5 < dEnd) {
+                  const fourcc = String.fromCharCode(buf[d + 2], buf[d + 3], buf[d + 4], buf[d + 5]);
+                  if (fourcc === 'AC-3' || fourcc === 'EAC3') isDolbyES = true;
+                }
+                d += 2 + len;
+              }
+              if (isDolbyES) chosenPid = elemPid;
             }
             p += 5 + esInfoLen;
           }
@@ -509,9 +587,28 @@
             } else if (streamType === 0x03 || streamType === 0x04) {
               audioPids.add(elemPid);
               isMp2 = true;
-            } else if (streamType === 0x81 || streamType === 0x87 || streamType === 0x06) {
+            } else if (streamType === 0x81 || streamType === 0x87) {
               audioPids.add(elemPid);
               isDolby = true;
+            } else if (streamType === 0x06) {
+              let isDolbyES = false;
+              let d = p + 5;
+              const dEnd = d + esInfoLen;
+              while (d + 1 < dEnd) {
+                const tag = u8[d];
+                const len = u8[d + 1];
+                if (tag === 0x6A || tag === 0x7A) {
+                  isDolbyES = true;
+                } else if (tag === 0x05 && len >= 4 && d + 5 < dEnd) {
+                  const fourcc = String.fromCharCode(u8[d + 2], u8[d + 3], u8[d + 4], u8[d + 5]);
+                  if (fourcc === 'AC-3' || fourcc === 'EAC3') isDolbyES = true;
+                }
+                d += 2 + len;
+              }
+              if (isDolbyES) {
+                audioPids.add(elemPid);
+                isDolby = true;
+              }
             }
             p += 5 + esInfoLen;
           }
@@ -586,10 +683,85 @@
       this.nextAudioTime = startTime + playDur;
     }
 
+    _flushAudioQueue() {
+      if (!this.useWebAudio || !this.audioCtx || !this.video || this.h264wActive || this.video.paused || this.video.readyState < 2) return;
+      const vTime = this.video.currentTime;
+      const aNow = this.audioCtx.currentTime;
+      if (vTime <= 0) return;
+
+      while (this.pendingAudioQueue.length > 0) {
+        const item = this.pendingAudioQueue.shift();
+        const duration = item.duration;
+        const timeDelta = (typeof item.fragStart === 'number' && !isNaN(item.fragStart)) ? (item.fragStart - vTime) : null;
+
+        if (timeDelta !== null && timeDelta + duration <= 0.05) {
+          continue;
+        }
+
+        const source = this.audioCtx.createBufferSource();
+        source.buffer = item.buffer;
+        source.connect(this.audioGain);
+        this.activeAudioSources.push(source);
+        source.onended = () => {
+          try { source.disconnect(); } catch (e) {}
+          const idx = this.activeAudioSources.indexOf(source);
+          if (idx !== -1) this.activeAudioSources.splice(idx, 1);
+        };
+
+        if (timeDelta === null || isNaN(timeDelta)) {
+          const startTime = Math.max(aNow + 0.03, this.nextAudioTime);
+          source.start(startTime, 0);
+          this.nextAudioTime = startTime + duration;
+        } else if (timeDelta < 0) {
+          const offset = Math.min(-timeDelta, duration - 0.05);
+          const playDur = duration - offset;
+          const startTime = aNow + 0.02;
+          source.start(startTime, offset);
+          this.nextAudioTime = startTime + playDur;
+        } else {
+          const targetTime = aNow + timeDelta;
+          let startTime = targetTime;
+          if (this.nextAudioTime > aNow && Math.abs(this.nextAudioTime - targetTime) < 0.12) {
+            startTime = this.nextAudioTime;
+          } else {
+            startTime = Math.max(aNow + 0.02, targetTime);
+          }
+          source.start(startTime, 0);
+          this.nextAudioTime = startTime + duration;
+        }
+      }
+    }
+
+    _maybeRebuildStaleChain() {
+      if (!this.audioCtx || this.audioCtx.state !== 'suspended') return;
+      if (this.nextAudioTime <= 0 || this.h264wActive) return;
+      if (!this.video || typeof this.audioChainBaselineV !== 'number') return;
+      const drift = this.video.currentTime - this.audioChainBaselineV;
+      if (Math.abs(drift) > 0.5) {
+        this._stopWebAudio();
+        console.log('[Alexis TV] Cadena de audio desalineada tras congelación (Δ=' + drift.toFixed(2) + ' s) → reconstrucción');
+      }
+    }
+
     _scheduleAudioBuffer(buffer, fragStart) {
       if (!this.audioCtx || !this.audioGain || !buffer) return;
-      const aNow = this.audioCtx.currentTime;
       const duration = buffer.duration;
+      const v = this.video;
+
+      if (v.paused || v.readyState < 2 || v.currentTime <= 0) {
+        this.pendingAudioQueue.push({ fragStart, duration, buffer });
+        if (this.pendingAudioQueue.length > 16) this.pendingAudioQueue.shift();
+        return;
+      }
+
+      const vTime = v.currentTime;
+      const aNow = this.audioCtx.currentTime;
+      const timeDelta = (fragStart !== null && !isNaN(fragStart)) ? (fragStart - vTime) : null;
+
+      if (timeDelta !== null && timeDelta + duration <= 0.05) {
+        return;
+      }
+
       const source = this.audioCtx.createBufferSource();
       source.buffer = buffer;
       source.connect(this.audioGain);
@@ -600,9 +772,27 @@
         if (idx !== -1) this.activeAudioSources.splice(idx, 1);
       };
 
-      let startTime = this.nextAudioTime > aNow ? this.nextAudioTime : aNow + 0.03;
-      source.start(startTime, 0);
-      this.nextAudioTime = startTime + duration;
+      if (timeDelta === null || isNaN(timeDelta)) {
+        const startTime = Math.max(aNow + 0.03, this.nextAudioTime);
+        source.start(startTime, 0);
+        this.nextAudioTime = startTime + duration;
+      } else if (timeDelta < 0) {
+        const offset = Math.min(-timeDelta, duration - 0.05);
+        const playDur = duration - offset;
+        const startTime = aNow + 0.02;
+        source.start(startTime, offset);
+        this.nextAudioTime = startTime + playDur;
+      } else {
+        const targetTime = aNow + timeDelta;
+        let startTime = targetTime;
+        if (this.nextAudioTime > aNow && Math.abs(this.nextAudioTime - targetTime) < 0.12) {
+          startTime = this.nextAudioTime;
+        } else {
+          startTime = Math.max(aNow + 0.02, targetTime);
+        }
+        source.start(startTime, 0);
+        this.nextAudioTime = startTime + duration;
+      }
     }
 
     _vbPendingTick() {
@@ -762,6 +952,10 @@
               if (sesion !== self.sesion) return;
               if (context.frag && response.data) {
                 const processed = self._preprocessTsChunk(response.data);
+                if (processed.isMp2 || processed.isDolby) {
+                  self.useWebAudio = true;
+                  self.aplicarVolumen();
+                }
                 context.frag._rawChunkBuffer = response.data;
                 const ringKey = (context.frag.sn !== undefined && context.frag.sn !== null)
                   ? context.frag.sn
@@ -790,16 +984,16 @@
         lowLatencyMode: false,
         forceKeyFrameOnDiscontinuity: false,
         stretchShortVideoTrack: false,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 6,
-        maxBufferLength: 20,
-        maxMaxBufferLength: 40,
-        maxBufferSize: 30 * 1000 * 1000,
-        maxBufferHole: 1.8,
+        liveSyncDurationCount: 3.5,
+        liveMaxLatencyDurationCount: 8,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 60 * 1024 * 1024,
+        maxBufferHole: 1.5,
         backBufferLength: movil ? 10 : 20,
         liveDurationInfinity: true,
         highBufferWatchdogPeriod: 2,
-        nudgeOffset: 0.2,
+        nudgeOffset: 0.1,
         nudgeMaxRetry: 6,
         manifestLoadingTimeOut: 20000,
         manifestLoadingMaxRetry: 6,
@@ -864,6 +1058,11 @@
             const rawAudio = audioExtract ? audioExtract.data : null;
             if (rawAudio && rawAudio.length) {
               await this._initWebAudio();
+              this.aplicarVolumen();
+              if (sesion !== this.sesion) return;
+              if (this.audioDecoder && this.audioDecoder.ready) {
+                try { await this.audioDecoder.ready; } catch (e) {}
+              }
               const mainDecoder = (this.audioCodec === 'dolby')
                 ? await getDolbyDecoder()
                 : this.audioDecoder;
@@ -934,10 +1133,6 @@
             this.ultimaRecuperacion = ahora;
             this.reintentosRed++;
             this.hls.startLoad();
-          } else if (data.type === global.Hls.ErrorTypes.MEDIA_ERROR && this.recuperacionesMedia < 2) {
-            this.ultimaRecuperacion = ahora;
-            this.recuperacionesMedia++;
-            this.hls.recoverMediaError();
           }
         }
         return;
@@ -1036,7 +1231,9 @@
       promesa.catch((err) => {
         if (sesion !== this.sesion || this.terminal) return;
         if (err.name !== 'NotAllowedError') return;
-        this.video.muted = true;
+        this._silenciado = true;
+        this.bloqueoAutoplay = true;
+        this.aplicarVolumen();
         this.video.play()
           .then(() => { if (sesion === this.sesion && !this.terminal) this._emit('silenciado'); })
           .catch(() => {
@@ -1083,6 +1280,12 @@
         if (this.diagnostico.inicioVideoMs != null && intervaloMs <= 1500) {
           const deltaSec = this.h264wActive ? (intervaloMs / 1000) : (v.currentTime - this.ultimoTiempo);
           this.progresoConfirmacionMs += Math.min(intervaloMs, deltaSec * 1000);
+        }
+        if (this.progresoConfirmacionMs > 2500) {
+          this.recuperacionesMedia = 0;
+        }
+        if (!this.h264wActive && this.useWebAudio) {
+          this._flushAudioQueue();
         }
         if (this.falloRedPendiente) {
           this.falloRedPendiente = false;
@@ -1173,6 +1376,8 @@
       this.rawTsRing.clear();
       this._stopWebAudio();
 
+      this.bloqueoAutoplay = false;
+      this.audioChainBaselineV = 0;
       this.inicioBuffer = null;
       this.pausaUsuario = false;
       this.falloRedPendiente = false;
@@ -1191,6 +1396,13 @@
       v.addEventListener('playing', () => {
         this._cerrarBuffer();
         clearTimeout(this.tArranque);
+        if (this.useWebAudio) {
+          this._maybeRebuildStaleChain();
+          if (this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) {
+            this.audioCtx.resume().catch(() => {});
+          }
+          this._flushAudioQueue();
+        }
       });
       v.addEventListener('waiting', () => {
         if (!this.terminal && this.diagnostico?.inicioVideoMs != null) {
@@ -1216,18 +1428,35 @@
         if (this.isMpeg2Decoding && this.mpeg2Player) {
           if (!this.mpeg2Player.active) this.mpeg2Player.start();
         }
-        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        if (this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) {
           this.audioCtx.resume().catch(() => {});
         }
       });
       v.addEventListener('volumechange', () => {
-        if (this.audioGain) {
-          const vol = v.muted ? 0 : (typeof v.volume === 'number' ? v.volume : 1);
-          if (this.audioCtx) {
-            this.audioGain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
-          } else {
-            this.audioGain.gain.value = vol;
+        if (!this.useWebAudio) {
+          this._silenciado = v.muted;
+          this._volumen = v.volume;
+        } else {
+          if (!v.muted) {
+            this._silenciado = false;
+            this.video.muted = true;
           }
+          this._volumen = v.volume;
+        }
+        this.aplicarVolumen();
+        this._emit('cambio-volumen', { silenciado: this._silenciado, volumen: this._volumen });
+      });
+      v.addEventListener('timeupdate', () => {
+        if (this.audioCtx && this.audioCtx.state === 'running') {
+          this.audioChainBaselineV = v.currentTime;
+        }
+        if (this.useWebAudio) {
+          this._flushAudioQueue();
+        }
+      });
+      v.addEventListener('seeked', () => {
+        if (this.useWebAudio) {
+          this._flushAudioQueue();
         }
       });
     }

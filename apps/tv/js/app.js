@@ -1,11 +1,28 @@
 // Grupo oficial abierto de GolStream IPTV.
 const WHATSAPP_GROUP_URL = 'https://wa.me/573001234567?text=Hola%20Alexis%2C%20estoy%20viendo%20Alexis%20TV';
 const HLS_ESTABLE = Object.freeze({
-  enableWorker: true, lowLatencyMode: false,
-  liveSyncDurationCount: 4, liveMaxLatencyDurationCount: 8,
-  maxBufferLength: 30, maxMaxBufferLength: 60, maxBufferHole: 0.5,
-  manifestLoadingTimeOut: 10000, manifestLoadingMaxRetry: 4,
-  levelLoadingMaxRetry: 4, fragLoadingMaxRetry: 6, startLevel: -1,
+  enableWorker: true,
+  lowLatencyMode: false,
+  forceKeyFrameOnDiscontinuity: false,
+  liveSyncDurationCount: 3.5,
+  liveMaxLatencyDurationCount: 8,
+  maxBufferLength: 30,
+  maxMaxBufferLength: 60,
+  maxBufferSize: 60 * 1024 * 1024,
+  maxBufferHole: 1.5,
+  highBufferWatchdogPeriod: 2,
+  nudgeOffset: 0.1,
+  nudgeMaxRetry: 6,
+  manifestLoadingTimeOut: 20000,
+  manifestLoadingMaxRetry: 6,
+  manifestLoadingRetryDelay: 500,
+  levelLoadingTimeOut: 20000,
+  levelLoadingMaxRetry: 6,
+  levelLoadingRetryDelay: 500,
+  fragLoadingTimeOut: 20000,
+  fragLoadingMaxRetry: 6,
+  fragLoadingRetryDelay: 500,
+  startLevel: -1,
 });
 const CANALES_PARTIDO_HOY = [
   {
@@ -1437,8 +1454,16 @@ const CANALES_PARTIDO_HOY = [
 
   /* ---------------- 8. Reproductor, ficha, guía y OSD ---------------- */
 
+  function actualizarSonido() {
+    const btn = document.querySelector('#activar-sonido');
+    if (btn) {
+      btn.hidden = !(reproductor.silenciado || reproductor.bloqueoAutoplay);
+    }
+  }
+
   const reproductor = new ReproductorIPTV(dom.video, {
     onEstado: alCambiarEstado,
+    onCambioVolumen: () => actualizarSonido(),
     onConfirmacionVideo: (canal, detalle) => {
       verificador.marcar(canal.url, true, 'reproduce correctamente', { confirmado: true, ...detalle });
       refrescarTarjeta(estado.actual?.url === canal.url ? estado.actual : canal);
@@ -1608,6 +1633,7 @@ const CANALES_PARTIDO_HOY = [
         break;
       case 'reproduciendo':
         capa(null);
+        actualizarSonido();
         setTimeout(activarLogos, 1500);
         emergenciaSenal.hidden = true;
         estado.reproduciendo = true;
@@ -1616,7 +1642,8 @@ const CANALES_PARTIDO_HOY = [
         medirUnaVez('ver_canal', d.intentoCarga, { canal_id: canal.id, pais: canal.pais, categoria: canal.cats?.[0] });
         break;
       case 'silenciado':
-        break; // el botón «Activar sonido» bajo el video ya lo indica
+        actualizarSonido();
+        break;
       case 'requiere-clic':
         capa(null);
         toast('Toca ▶ en el video para iniciar.');
@@ -2413,14 +2440,23 @@ const CANALES_PARTIDO_HOY = [
   if (volumen >= 0 && volumen <= 1 && Memoria.leer('volumen') !== null) dom.video.volume = volumen;
   dom.video.addEventListener('volumechange', () => Memoria.guardar('volumen', Math.round(dom.video.volume * 100) / 100));
   const activarSonido = document.querySelector('#activar-sonido');
-  const actualizarSonido = () => { if (activarSonido) activarSonido.hidden = !dom.video.muted && dom.video.volume > 0; };
-  dom.video.addEventListener('volumechange', actualizarSonido);
+  dom.video.addEventListener('volumechange', () => actualizarSonido());
   activarSonido?.addEventListener('click', () => {
+    reproductor.desmutear();
     dom.video.muted = false;
     dom.video.volume = 1.0;
     actualizarSonido();
-    // El gesto también reanuda Safari si pausó el video al cambiar el audio.
     dom.video.play()?.catch(() => { dom.video.controls = true; });
+  });
+
+  // Desbloqueo de sonido por gesto directo sobre el escenario de video
+  dom.contenedorVideo.addEventListener('click', (e) => {
+    if (e.target.closest('button, input, select, .accion')) return;
+    if (reproductor.silenciado && reproductor.bloqueoAutoplay) {
+      reproductor.desmutear();
+      actualizarSonido();
+      toast('Sonido activado', 'ok', 3000);
+    }
   });
 
   // Ayuda de atajos.
