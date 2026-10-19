@@ -129,8 +129,16 @@
       this.processedAudioFrags = new Set();
       this.rawTsRing = new Map();
       this._silenciado = false;
-      this._volumen = typeof this.video.volume === 'number' ? this.video.volume : 1;
+      this._silenciadoUsuario = false;
+      this._volumen = 1;
+      const savedVol = global.localStorage?.getItem('volumen');
+      if (savedVol !== null) {
+        const n = Number(savedVol);
+        if (!isNaN(n) && n > 0.05 && n <= 1) this._volumen = n;
+      }
       this.bloqueoAutoplay = false;
+      this._sincronizandoVolumen = false;
+      this._cargandoCanal = false;
       this.audioChainBaselineV = 0;
       this.videoReproduciendo = false;
       this.pausaUsuario = false;
@@ -163,10 +171,11 @@
       if (!this.audioCtx) {
         this.audioCtx = new AudioContextClass();
         this.audioGain = this.audioCtx.createGain();
-        this.audioGain.gain.value = this._silenciado ? 0 : this._volumen;
+        const safeGain = this._silenciado ? 0 : (typeof this._volumen === 'number' && !isNaN(this._volumen) ? this._volumen : 1);
+        this.audioGain.gain.value = safeGain;
         this.audioGain.connect(this.audioCtx.destination);
       }
-      if (this.audioCtx.state === 'suspended' && !this._silenciado && !this.bloqueoAutoplay) {
+      if (this.audioCtx.state === 'suspended' && !this._silenciadoUsuario) {
         try { await this.audioCtx.resume(); } catch (e) {}
       }
       if (!this.audioDecoder && global['mpg123-decoder'] && global['mpg123-decoder'].MPEGDecoder) {
@@ -201,20 +210,40 @@
     }
 
     cargar(canal) {
-      this._limpiar();
-      this.intentoCarga = (this.intentoCarga || 0) + 1;
-      this.canal = canal;
-      this.terminal = false;
-      this.inicio = performance.now();
-      this.ultimoTiempo = this.video.currentTime;
-      this.ultimoAvance = this.inicio;
-      this.ultimosCuadros = 0;
-      this.cuadrosReportados = false;
-      this.videoConfirmado = false;
-      this.progresoConfirmacionMs = 0;
-      this.diagnostico = { pais: canal.pais || '', fuente: canal.fuente || 'lista', inicioVideoMs: null,
-        congelamientos: 0, bufferingMs: 0, reconexiones: 0, errores: [], resultado: 'cargando' };
-      this.probadoNativo = false;
+      this._cargandoCanal = true;
+      try {
+        this._limpiar();
+        this.intentoCarga = (this.intentoCarga || 0) + 1;
+        this.canal = canal;
+        this.terminal = false;
+        this.inicio = performance.now();
+        this.ultimoTiempo = this.video.currentTime;
+        this.ultimoAvance = this.inicio;
+        this.ultimosCuadros = 0;
+        this.cuadrosReportados = false;
+        this.videoConfirmado = false;
+        this.progresoConfirmacionMs = 0;
+        this.diagnostico = { pais: canal.pais || '', fuente: canal.fuente || 'lista', inicioVideoMs: null,
+          congelamientos: 0, bufferingMs: 0, reconexiones: 0, errores: [], resultado: 'cargando' };
+        this.probadoNativo = false;
+
+        if (!this._silenciadoUsuario) {
+          this._silenciado = false;
+          this.bloqueoAutoplay = false;
+        }
+
+        const savedVol = global.localStorage?.getItem('volumen');
+        if (savedVol !== null) {
+          const numVol = Number(savedVol);
+          if (!isNaN(numVol) && numVol > 0.05 && numVol <= 1) {
+            this._volumen = numVol;
+          }
+        }
+        this.aplicarVolumen();
+      } finally {
+        this._cargandoCanal = false;
+      }
+
       const { url, formato } = canal;
 
       if (!canal.compatible && formato !== 'ts') {
@@ -261,7 +290,7 @@
     }
 
     get hayVideo() {
-      if (this.h264wActive) return true;
+      if (this.h264wActive || this.isMpeg2Decoding) return true;
       return !!this.canal && this.video.readyState > 0;
     }
 
@@ -271,6 +300,8 @@
 
     set silenciado(val) {
       this._silenciado = !!val;
+      this._silenciadoUsuario = this._silenciado;
+      if (!this._silenciado) this.bloqueoAutoplay = false;
       this.aplicarVolumen();
     }
 
@@ -279,31 +310,49 @@
     }
 
     set volumen(val) {
-      this._volumen = Math.max(0, Math.min(1, Number(val)));
+      const v = Math.max(0, Math.min(1, Number(val)));
+      if (isNaN(v)) return;
+      this._volumen = v;
+      if (v > 0 && this._silenciado && !this._silenciadoUsuario) {
+        this._silenciado = false;
+        this.bloqueoAutoplay = false;
+      }
       this.aplicarVolumen();
     }
 
     aplicarVolumen() {
       const mudo = this._silenciado;
-      const vol = mudo ? 0 : this._volumen;
+      const safeVol = Math.max(0, Math.min(1, typeof this._volumen === 'number' && !isNaN(this._volumen) ? this._volumen : 1));
       if (this.useWebAudio) {
-        this.video.muted = true; // Silencia el video HTML5 para evitar interferencias o eco
+        this._sincronizandoVolumen = true;
+        try {
+          this.video.muted = true; // Silencia el video HTML5 para evitar eco o interferencias con WebAudio
+        } finally {
+          this._sincronizandoVolumen = false;
+        }
         if (this.audioGain && this.audioCtx) {
+          const targetGain = mudo ? 0 : safeVol;
           try {
-            this.audioGain.gain.setValueAtTime(vol, this.audioCtx.currentTime);
+            this.audioGain.gain.setValueAtTime(targetGain, this.audioCtx.currentTime);
           } catch (e) {
-            this.audioGain.gain.value = vol;
+            this.audioGain.gain.value = targetGain;
           }
         }
       } else {
-        this.video.muted = mudo;
-        this.video.volume = vol;
+        this._sincronizandoVolumen = true;
+        try {
+          this.video.muted = mudo;
+          this.video.volume = safeVol; // Preserva el volumen real del usuario, nunca lo corrompe a 0
+        } finally {
+          this._sincronizandoVolumen = false;
+        }
       }
     }
 
     desmutear() {
       this.bloqueoAutoplay = false;
       this._silenciado = false;
+      this._silenciadoUsuario = false;
       if (this.audioCtx && this.audioCtx.state === 'suspended') {
         this.audioCtx.resume().catch(() => {});
       }
@@ -314,13 +363,24 @@
 
     alternarSilencio() {
       this._silenciado = !this._silenciado;
+      this._silenciadoUsuario = this._silenciado;
       this.bloqueoAutoplay = false;
       if (!this._silenciado && this.audioCtx && this.audioCtx.state === 'suspended') {
         this.audioCtx.resume().catch(() => {});
       }
       this.aplicarVolumen();
+      if (!this._silenciado) this._flushAudioQueue();
       this._emit('cambio-volumen', { silenciado: this._silenciado, volumen: this._volumen });
       return this._silenciado;
+    }
+
+    desbloquearAudio() {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+      if (this._silenciado && this.bloqueoAutoplay) {
+        this.desmutear();
+      }
     }
 
     alternarPausa() {
@@ -335,6 +395,24 @@
           return false;
         } else {
           this.h264wPlayer.start();
+          this.video.play().catch(() => {});
+          this.pausaUsuario = false;
+          if (this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) this.audioCtx.resume().catch(() => {});
+          this._emit('pausado', { pausado: false });
+          return true;
+        }
+      }
+      if (this.isMpeg2Decoding && this.mpeg2Player) {
+        if (this.mpeg2Player.active) {
+          this.mpeg2Player.stop();
+          this.video.pause();
+          this.pausaUsuario = true;
+          this.videoReproduciendo = false;
+          if (this.audioCtx && this.audioCtx.state === 'running') this.audioCtx.suspend().catch(() => {});
+          this._emit('pausado', { pausado: true });
+          return false;
+        } else {
+          this.mpeg2Player.start();
           this.video.play().catch(() => {});
           this.pausaUsuario = false;
           if (this.audioCtx && this.audioCtx.state === 'suspended' && !this._silenciado) this.audioCtx.resume().catch(() => {});
@@ -663,15 +741,12 @@
       return (typeof ct === 'number' && isFinite(ct)) ? ct : null;
     }
 
-    _scheduleVbAudioBlock(fragStart, duration, buffer) {
+    _reproducirAudioBuffer(buffer, fragStart) {
       if (!this.audioCtx || !this.audioGain || !buffer) return;
+      const duration = buffer.duration;
       const aNow = this.audioCtx.currentTime;
-      const picPos = this._getVbPicPos();
-      let timeDelta = null;
-      if (fragStart !== null && !isNaN(fragStart) && picPos !== null) {
-        timeDelta = fragStart - picPos;
-      }
-      if (timeDelta !== null && timeDelta + duration <= 0.05) return;
+      const v = this.video;
+      const vTime = (v && typeof v.currentTime === 'number') ? v.currentTime : null;
 
       const source = this.audioCtx.createBufferSource();
       source.buffer = buffer;
@@ -683,69 +758,40 @@
         if (idx !== -1) this.activeAudioSources.splice(idx, 1);
       };
 
-      let desired, playDur = duration, offset = 0;
-      if (timeDelta === null || isNaN(timeDelta)) {
-        desired = this.nextAudioTime > aNow ? this.nextAudioTime : aNow + 0.03;
-      } else if (timeDelta < 0) {
-        offset = Math.min(-timeDelta, duration - 0.05);
-        playDur = duration - offset;
-        desired = aNow + 0.02;
-      } else {
-        desired = aNow + timeDelta;
+      let startTime = this.nextAudioTime;
+
+      // Sincronización continua de cadena WebAudio sin cortes ni pérdida de paquetes
+      if (!startTime || startTime < aNow + 0.01) {
+        // Arranque inicial o tras pausa/vacío de buffer (underrun)
+        startTime = aNow + 0.02;
+      } else if (startTime > aNow + 0.5) {
+        // Limitar acumulación de latencia a máx 50ms por delante del tiempo real
+        startTime = aNow + 0.05;
+      } else if (typeof fragStart === 'number' && typeof vTime === 'number') {
+        const delta = fragStart - vTime;
+        // Solo ajustar si delta es un desfase creíble en la misma línea de tiempo (< 0.8s)
+        if (Math.abs(delta) < 0.8 && Math.abs((aNow + delta) - startTime) < 0.2) {
+          startTime = Math.max(aNow + 0.02, aNow + delta);
+        }
       }
-      let startTime = Math.max(aNow + 0.02, desired);
-      if (this.nextAudioTime > aNow + 0.12 && desired < this.nextAudioTime - 0.12) {
-        startTime = this.nextAudioTime;
-      }
-      source.start(startTime, offset);
-      this.nextAudioTime = startTime + playDur;
+
+      source.start(startTime, 0);
+      this.nextAudioTime = startTime + duration;
+    }
+
+    _scheduleVbAudioBlock(fragStart, duration, buffer) {
+      if (!this.audioCtx || !this.audioGain || !buffer) return;
+      this._reproducirAudioBuffer(buffer, fragStart);
     }
 
     _flushAudioQueue() {
-      if (!this.useWebAudio || !this.audioCtx || !this.video || this.h264wActive || !this.videoReproduciendo || this.video.paused || this.video.readyState < 3) return;
-      const vTime = this.video.currentTime;
-      const aNow = this.audioCtx.currentTime;
-      if (vTime <= 0.05) return;
+      if (!this.useWebAudio || !this.audioCtx || this.h264wActive) return;
+      if (!this.videoReproduciendo || this.video?.paused) return;
 
       while (this.pendingAudioQueue.length > 0) {
         const item = this.pendingAudioQueue.shift();
-        const duration = item.duration;
-        const timeDelta = (typeof item.fragStart === 'number' && !isNaN(item.fragStart)) ? (item.fragStart - vTime) : null;
-
-        if (timeDelta !== null && timeDelta + duration <= 0.05) {
-          continue;
-        }
-
-        const source = this.audioCtx.createBufferSource();
-        source.buffer = item.buffer;
-        source.connect(this.audioGain);
-        this.activeAudioSources.push(source);
-        source.onended = () => {
-          try { source.disconnect(); } catch (e) {}
-          const idx = this.activeAudioSources.indexOf(source);
-          if (idx !== -1) this.activeAudioSources.splice(idx, 1);
-        };
-
-        if (timeDelta === null || isNaN(timeDelta)) {
-          const startTime = Math.max(aNow + 0.02, this.nextAudioTime);
-          source.start(startTime, 0);
-          this.nextAudioTime = startTime + duration;
-        } else if (timeDelta < 0) {
-          const offset = Math.min(-timeDelta, duration - 0.05);
-          const playDur = duration - offset;
-          const startTime = aNow + 0.02;
-          source.start(startTime, offset);
-          this.nextAudioTime = startTime + playDur;
-        } else {
-          const targetTime = aNow + timeDelta;
-          let startTime = targetTime;
-          if (this.nextAudioTime > aNow && Math.abs(this.nextAudioTime - targetTime) < 0.12) {
-            startTime = this.nextAudioTime;
-          } else {
-            startTime = Math.max(aNow + 0.02, targetTime);
-          }
-          source.start(startTime, 0);
-          this.nextAudioTime = startTime + duration;
+        if (item && item.buffer) {
+          this._reproducirAudioBuffer(item.buffer, item.fragStart);
         }
       }
     }
@@ -763,56 +809,17 @@
 
     _scheduleAudioBuffer(buffer, fragStart) {
       if (!this.audioCtx || !this.audioGain || !buffer) return;
-      const duration = buffer.duration;
       const v = this.video;
 
-      // Si el video aún no está presentando cuadros activamente (no ha emitido playing o está congelado/en pausa),
-      // ENCOLAR en pendingAudioQueue para arrancar en el milisegundo exacto que se renderiza el video en pantalla
-      if (!this.videoReproduciendo || v.paused || v.readyState < 3 || v.currentTime <= 0.05) {
-        this.pendingAudioQueue.push({ fragStart, duration, buffer });
-        if (this.pendingAudioQueue.length > 16) this.pendingAudioQueue.shift();
+      // Si el video está pausado o aún no empezó a reproducir, encolar temporalmente
+      if (!this.videoReproduciendo || !v || v.paused) {
+        this.pendingAudioQueue.push({ fragStart, buffer });
+        if (this.pendingAudioQueue.length > 20) this.pendingAudioQueue.shift();
         return;
       }
 
-      const vTime = v.currentTime;
-      const aNow = this.audioCtx.currentTime;
-      const timeDelta = (fragStart !== null && !isNaN(fragStart)) ? (fragStart - vTime) : null;
-
-      if (timeDelta !== null && timeDelta + duration <= 0.05) {
-        return;
-      }
-
-      const source = this.audioCtx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(this.audioGain);
-      this.activeAudioSources.push(source);
-      source.onended = () => {
-        try { source.disconnect(); } catch (e) {}
-        const idx = this.activeAudioSources.indexOf(source);
-        if (idx !== -1) this.activeAudioSources.splice(idx, 1);
-      };
-
-      if (timeDelta === null || isNaN(timeDelta)) {
-        const startTime = Math.max(aNow + 0.02, this.nextAudioTime);
-        source.start(startTime, 0);
-        this.nextAudioTime = startTime + duration;
-      } else if (timeDelta < 0) {
-        const offset = Math.min(-timeDelta, duration - 0.05);
-        const playDur = duration - offset;
-        const startTime = aNow + 0.02;
-        source.start(startTime, offset);
-        this.nextAudioTime = startTime + playDur;
-      } else {
-        const targetTime = aNow + timeDelta;
-        let startTime = targetTime;
-        if (this.nextAudioTime > aNow && Math.abs(this.nextAudioTime - targetTime) < 0.12) {
-          startTime = this.nextAudioTime;
-        } else {
-          startTime = Math.max(aNow + 0.02, targetTime);
-        }
-        source.start(startTime, 0);
-        this.nextAudioTime = startTime + duration;
-      }
+      this._flushAudioQueue();
+      this._reproducirAudioBuffer(buffer, fragStart);
     }
 
     _vbPendingTick() {
@@ -1268,6 +1275,7 @@
 
     _reproducir() {
       const sesion = this.sesion;
+      this.aplicarVolumen();
       const promesa = this.video.play();
       if (!promesa) return;
       promesa.catch((err) => {
@@ -1430,8 +1438,13 @@
       this.modo = null;
       this.reintentosRed = 0;
       this.recuperacionesMedia = 0;
-      this.video.removeAttribute('src');
-      this.video.load();
+      this._sincronizandoVolumen = true;
+      try {
+        this.video.removeAttribute('src');
+        this.video.load();
+      } finally {
+        this._sincronizandoVolumen = false;
+      }
       this.ev.onCalidades?.([]);
     }
 
@@ -1483,28 +1496,32 @@
         this.videoReproduciendo = false;
       });
       v.addEventListener('seeked', () => {
-        if (!v.paused && v.readyState >= 3) this.videoReproduciendo = true;
+        if (!v.paused && v.readyState >= 2) this.videoReproduciendo = true;
         if (this.useWebAudio) {
           this._flushAudioQueue();
         }
       });
-      let _sincronizandoVolumen = false;
       v.addEventListener('volumechange', () => {
-        if (_sincronizandoVolumen) return;
-        _sincronizandoVolumen = true;
+        if (this._sincronizandoVolumen || this._cargandoCanal) return;
+        this._sincronizandoVolumen = true;
         try {
           if (!this.useWebAudio) {
-            this._silenciado = v.muted;
-            this._volumen = v.volume;
+            if (!this.bloqueoAutoplay) {
+              this._silenciado = v.muted;
+              this._silenciadoUsuario = v.muted;
+            }
+            if (typeof v.volume === 'number' && !isNaN(v.volume) && v.volume > 0.02) {
+              this._volumen = v.volume;
+            }
             this.aplicarVolumen();
             this._emit('cambio-volumen', { silenciado: this._silenciado, volumen: this._volumen });
           }
         } finally {
-          _sincronizandoVolumen = false;
+          this._sincronizandoVolumen = false;
         }
       });
       v.addEventListener('timeupdate', () => {
-        if (!v.paused && v.readyState >= 3 && v.currentTime > 0.05) {
+        if (!v.paused && v.readyState >= 2) {
           this.videoReproduciendo = true;
         }
         if (this.audioCtx && this.audioCtx.state === 'running') {

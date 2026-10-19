@@ -21,15 +21,15 @@
   <!-- Catálogo curado de canales -->
   <link rel="preload" href="/data/catalogo-pro.json" as="fetch" crossorigin />
   <!-- Estilos compilados (Tailwind CLI + componentes): la página se pinta sin ejecutar JavaScript. -->
-  <link rel="stylesheet" href="./css/app.css?v=v18" />
-  <link rel="stylesheet" href="./css/gestor-listas.css?v=v18" />
+  <link rel="stylesheet" href="./css/app.css?v=v19" />
+  <link rel="stylesheet" href="./css/gestor-listas.css?v=v19" />
   <!-- Motor HLS.js para reproducción universal de streaming -->
-  <script src="./js/hls.min.js?v=v18"></script>
+  <script src="./js/hls.min.js?v=v19"></script>
   <!-- Decodificador de audio WebAssembly MP2/MPEG para streaming de TV -->
   <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
   <!-- Decodificadores software de video para señales entrelazadas PAFF y MPEG-2 -->
-  <script src="./js/mpeg2-player.js?v=v18"></script>
-  <script src="./js/h264w-player.js?v=v18"></script>
+  <script src="./js/mpeg2-player.js?v=v19"></script>
+  <script src="./js/h264w-player.js?v=v19"></script>
   <!-- Tipografía de titulares sin bloquear el primer render (el texto usa la fuente del sistema). -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" media="print" onload="this.media='all'" />
@@ -139,7 +139,7 @@
       <!-- ========== REPRODUCTOR ========== -->
       <section id="zona-reproductor" class="zona-reproductor" aria-label="Reproductor">
         <div id="contenedor-video" class="contenedor-video cursor-pointer" data-estado="cargando">
-          <video id="video" autoplay muted playsinline webkit-playsinline preload="auto" autopictureinpicture x-webkit-airplay="allow"></video>
+          <video id="video" autoplay playsinline webkit-playsinline preload="auto" autopictureinpicture x-webkit-airplay="allow"></video>
           <!-- Canvas de respaldo para decodificación WebAssembly de video (Vía B y MPEG-2) -->
           <canvas id="mpeg2-canvas" class="player-canvas" style="display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10; background: #000;"></canvas>
           <canvas id="h264w-canvas" class="player-canvas" style="display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10; background: #000;"></canvas>
@@ -468,15 +468,15 @@
     </div>
   </div>
 
-  <script src="./js/analitica.js?v=v18"></script>
-  <script src="./js/parser.js?v=v18"></script>
-  <script src="./js/player.js?v=v18"></script>
-  <script src="./js/verificador.js?v=v18"></script>
-  <script src="./js/estados-canales.js?v=v18"></script>
-  <script src="./js/epg.js?v=v18"></script>
-  <script src="./js/servidores.js?v=v18"></script>
-  <script src="./js/app.js?v=v18"></script>
-  <script src="./js/gestor-listas.js?v=v18"></script>
-  <script src="./js/actualizador.js?v=v18"></script>
+  <script src="./js/analitica.js?v=v19"></script>
+  <script src="./js/parser.js?v=v19"></script>
+  <script src="./js/player.js?v=v19"></script>
+  <script src="./js/verificador.js?v=v19"></script>
+  <script src="./js/estados-canales.js?v=v19"></script>
+  <script src="./js/epg.js?v=v19"></script>
+  <script src="./js/servidores.js?v=v19"></script>
+  <script src="./js/app.js?v=v19"></script>
+  <script src="./js/gestor-listas.js?v=v19"></script>
+  <script src="./js/actualizador.js?v=v19"></script>
 </body>
 </html>

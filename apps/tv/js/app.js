@@ -1872,6 +1872,9 @@ const CANALES_PARTIDO_HOY = [
    */
   function ver(c, { origen = 'clic' } = {}) {
     if (!c) return;
+    if (origen === 'clic') {
+      reproductor.desbloquearAudio();
+    }
     reservarRedVideo();
     if (!esHlsInterno(c)) {
       siguienteSenal();
@@ -1913,6 +1916,7 @@ const CANALES_PARTIDO_HOY = [
       // Mantiene visible en la lista el canal elegido (en PC; en celular no se mueve la página).
       if (!esMovil()) tarjetaEnPantalla(c)?.scrollIntoView({ block: 'nearest' });
     } else {
+      reproductor.desbloquearAudio();
       reproductor.cargar(c);
       if (origen === 'clic' && esMovil()) dom.zonaReproductor.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -2469,15 +2473,19 @@ const CANALES_PARTIDO_HOY = [
   });
 
   // Memoria: volumen preferido.
-  const volumenGuardado = Number(Memoria.leer('volumen'));
-  if (volumenGuardado >= 0 && volumenGuardado <= 1 && Memoria.leer('volumen') !== null) {
-    reproductor.volumen = volumenGuardado;
-    dom.video.volume = volumenGuardado;
+  let volumenGuardado = Number(Memoria.leer('volumen'));
+  // Si estaba guardado en 0 o corrupto por versiones anteriores, restablecer a 1.0 (audible)
+  if (isNaN(volumenGuardado) || volumenGuardado <= 0.05 || volumenGuardado > 1 || Memoria.leer('volumen') === null) {
+    volumenGuardado = 1;
+    Memoria.guardar('volumen', 1);
   }
+  reproductor.volumen = volumenGuardado;
+  dom.video.volume = volumenGuardado;
   actualizarSonido();
 
   // Controles de reproducción en la barra de acciones
   dom.btnPausa?.addEventListener('click', () => {
+    reproductor.desbloquearAudio();
     const r = reproductor.alternarPausa();
     if (r !== null) {
       actualizarIconoPausa(!r);
@@ -2498,18 +2506,23 @@ const CANALES_PARTIDO_HOY = [
       reproductor.desmutear();
     }
     actualizarSonido();
-    Memoria.guardar('volumen', val);
+    if (val > 0.05) {
+      Memoria.guardar('volumen', val);
+    }
   });
 
   dom.video.addEventListener('volumechange', () => {
     if (!reproductor.useWebAudio) {
-      Memoria.guardar('volumen', Math.round(dom.video.volume * 100) / 100);
+      if (dom.video.volume > 0.05) {
+        Memoria.guardar('volumen', Math.round(dom.video.volume * 100) / 100);
+      }
       actualizarSonido();
     }
   });
 
   const activarSonido = document.querySelector('#activar-sonido');
   activarSonido?.addEventListener('click', () => {
+    reproductor.desbloquearAudio();
     reproductor.desmutear();
     actualizarSonido();
     dom.video.play()?.catch(() => {});
@@ -2518,6 +2531,7 @@ const CANALES_PARTIDO_HOY = [
   // Clic en el video: alternar pausa o activar sonido bloqueado por autoplay
   dom.contenedorVideo.addEventListener('click', (e) => {
     if (e.target.closest('button, input, select, .accion, a')) return;
+    reproductor.desbloquearAudio();
     if (reproductor.silenciado && reproductor.bloqueoAutoplay) {
       reproductor.desmutear();
       actualizarSonido();
