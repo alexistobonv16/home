@@ -2433,10 +2433,8 @@ const CANALES_PARTIDO_HOY = [
   aplicarFiltros(); // muestra favoritos/contadores aunque aún no haya lista
   dom.video.muted = true;
   dom.video.playsInline = true;
-  actualizarSonido();
-  const senalInicial = candidatosPartido[0].find(c => c.url === CANALES_PARTIDO_HOY[0].url);
-  senalesPartido[0] = senalInicial;
-  ver(senalInicial, { origen: 'auto' });
+  // No forzar reproducción automática no deseada; mantener en reposo hasta que el usuario elija un canal
+  capa('reposo');
   // Las guías remotas se cargan a petición; no compiten con el arranque del video.
   pintarAgenda(); // lo guardado en el dispositivo se ve al instante
   if (dom.agenda) alVerSeccion('#agenda', () => agenda.iniciar()); // TheSportsDB solo cuando la agenda está en pantalla

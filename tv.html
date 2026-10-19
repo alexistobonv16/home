@@ -17,10 +17,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Alexis TV">
-  <!-- Lo primero que necesita la página: catálogo curado y conexión TLS con la señal principal. -->
-  <link rel="preload" href="./data/catalogo-pro.json" as="fetch" crossorigin />
-  <link rel="preconnect" href="https://barinaslive1.boldmss.com" crossorigin />
-  <link rel="preconnect" href="https://barinaslive1.boldmss.com" />
+  <base href="/">
+  <!-- Catálogo curado de canales -->
+  <link rel="preload" href="/data/catalogo-pro.json" as="fetch" crossorigin />
   <!-- Estilos compilados (Tailwind CLI + componentes): la página se pinta sin ejecutar JavaScript. -->
   <link rel="stylesheet" href="./css/app.css?v=pro_v8" />
   <link rel="stylesheet" href="./css/gestor-listas.css?v=2" />
