@@ -442,20 +442,20 @@
         const badgeTexto = l.oficial ? 'Oficial' : l.tipo === 'archivo' ? 'Archivo' : 'M3U';
 
         return `
-          <div class="item-lista-flotante ${esActiva ? 'activo' : ''}" data-id="${l.id}">
-            <button type="button" class="item-lista-clickeable" data-accion="activar" data-id="${l.id}" title="${escapeHtml(l.nombre)}">
-              <span class="punto-estado"></span>
-              <div class="item-lista-textos">
+          <div class="item-lista-flotante flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-[#141d28] transition ${esActiva ? 'activo bg-cancha/10 border border-cancha/30' : 'border border-transparent'}" data-id="${l.id}">
+            <button type="button" class="item-lista-clickeable flex items-center gap-2.5 min-w-0 flex-1 text-left bg-transparent border-0 cursor-pointer p-0 text-inherit" data-accion="activar" data-id="${l.id}" title="${escapeHtml(l.nombre)}">
+              <span class="punto-estado shrink-0 w-2 h-2 rounded-full ${esActiva ? 'bg-cancha' : 'bg-slate-600'}"></span>
+              <div class="item-lista-textos flex flex-col min-w-0 flex-1">
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <span class="item-lista-nombre">${escapeHtml(l.nombre)}</span>
-                  <span class="item-badge ${badgeClase}">${badgeTexto}</span>
+                  <span class="item-lista-nombre truncate text-xs font-semibold ${esActiva ? 'text-cancha' : 'text-slate-200'}">${escapeHtml(l.nombre)}</span>
+                  <span class="item-badge ${badgeClase} text-[10px] font-mono px-1.5 py-0.5 rounded uppercase font-semibold shrink-0">${badgeTexto}</span>
                 </div>
-                <span class="item-lista-canales">${l.canalesCount ? `${l.canalesCount} canales` : 'Verificar canales'}</span>
+                <span class="item-lista-canales text-[11px] text-slate-400 mt-0.5 tabular-nums">${l.canalesCount ? `${l.canalesCount} canales` : 'Verificar canales'}</span>
               </div>
             </button>
             ${!l.oficial ? `
-              <button type="button" class="btn-eliminar-flotante" data-accion="eliminar" data-id="${l.id}" title="Eliminar lista '${escapeHtml(l.nombre)}'">
-                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <button type="button" class="btn-eliminar-flotante text-slate-500 hover:text-red-400 p-1.5 rounded hover:bg-red-500/10 transition shrink-0 cursor-pointer bg-transparent border-0" data-accion="eliminar" data-id="${l.id}" title="Eliminar lista '${escapeHtml(l.nombre)}'">
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0" width="14" height="14" style="width: 14px; height: 14px; min-width: 14px; min-height: 14px;" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
             ` : ''}
           </div>
@@ -491,6 +491,7 @@
         if (menuFlotante) {
           menuFlotante.hidden = false;
           menuFlotante.style.display = 'flex';
+          menuFlotante.style.flexDirection = 'column';
         }
         if (btnAbrir) btnAbrir.setAttribute('aria-expanded', 'true');
         if (chevron) chevron.style.transform = 'rotate(180deg)';
