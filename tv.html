@@ -48,12 +48,12 @@
       <div class="ml-auto flex items-center gap-2">
         <span id="info-lista" class="hidden md:inline min-w-0 truncate text-right text-xs text-slate-500"></span>
         <!-- Selector y Gestor de Listas M3U (Menú Desplegable Flotante) -->
-        <div id="contenedor-menu-listas" class="relative">
-          <button id="btn-abrir-gestor" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-cancha/40 bg-cancha/10 px-3 py-1.5 text-xs font-semibold text-cancha hover:bg-cancha hover:text-fondo transition shadow-sm cursor-pointer select-none" aria-haspopup="true" aria-expanded="false" title="Mis Listas M3U">
-            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="17" cy="18" r="3"/><path d="M17 16v4M15 18h4"/></svg>
-            <span class="font-bold">Mis Listas M3U</span>
+        <div id="contenedor-menu-listas" class="relative shrink-0">
+          <button id="btn-abrir-gestor" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-cancha/40 bg-cancha/10 px-3 py-1.5 text-xs font-semibold text-cancha hover:bg-cancha hover:text-fondo transition shadow-sm cursor-pointer select-none whitespace-nowrap" aria-haspopup="true" aria-expanded="false" title="Mis Listas M3U">
+            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" width="16" height="16" style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="17" cy="18" r="3"/><path d="M17 16v4M15 18h4"/></svg>
+            <span class="font-bold whitespace-nowrap">Mis Listas M3U</span>
             <span id="badge-total-listas" class="rounded-full bg-cancha px-1.5 text-[10px] font-black text-fondo">1</span>
-            <svg id="chevron-menu-listas" viewBox="0 0 24 24" class="h-3 w-3 shrink-0 opacity-70 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+            <svg id="chevron-menu-listas" viewBox="0 0 24 24" class="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform duration-200" width="14" height="14" style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
           </button>
 
           <!-- Menú flotante desplegable anclado al botón naranja -->
@@ -232,18 +232,8 @@
           <h2 class="titulo-seccion">Canales verificados</h2>
           <!-- Buscador y filtros (fijos al hacer scroll) -->
           <div class="sticky top-14 z-20 -mx-4 bg-fondo/95 px-4 pb-3 pt-1 backdrop-blur lg:top-0 lg:mx-0 lg:px-0">
-            <!-- Barra de Lista Activa: Indicador limpio y enlace directo al menú de listas -->
-            <div class="barra-lista-activa mb-2.5 flex items-center justify-between text-xs">
-              <button id="btn-sidebar-cambiar-lista" type="button" class="flex items-center gap-2 min-w-0 flex-1 text-left group cursor-pointer hover:opacity-90 transition p-1 rounded-lg hover:bg-sup-2" title="Cambiar lista M3U activa">
-                <span class="h-2 w-2 rounded-full bg-cancha shrink-0 animate-pulse"></span>
-                <span class="text-slate-400 shrink-0 font-medium hidden sm:inline">Lista:</span>
-                <span id="texto-lista-activa" class="truncate font-semibold text-white group-hover:text-cancha transition">Alexis TV Oficial</span>
-                <span id="badge-conteo-lista-activa" class="tag-conteo">362 ch</span>
-                <svg viewBox="0 0 24 24" class="h-3 w-3 text-slate-500 group-hover:text-cancha shrink-0 transition" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
-              </button>
-              <!-- Select oculto para compatibilidad con código existente -->
-              <select id="selector-lista-activa" class="sr-only" aria-label="Lista activa (oculto)"></select>
-            </div>
+            <!-- Select oculto para compatibilidad con código existente -->
+            <select id="selector-lista-activa" class="sr-only" aria-label="Lista activa (oculto)"></select>
             <div class="relative">
               <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
               <label for="buscador" class="sr-only">Buscar canal</label>

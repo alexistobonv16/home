@@ -3,6 +3,26 @@
    Menú desplegable stadium dark anclado al botón del header
    ========================================================================== */
 
+/* Botón de Mis Listas M3U en la cabecera */
+#btn-abrir-gestor {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+#btn-abrir-gestor svg {
+  flex-shrink: 0 !important;
+}
+
+#chevron-menu-listas {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  display: inline-block !important;
+}
+
 /* Menú flotante desplegable desde el botón "Mis Listas M3U" */
 .menu-flotante-listas {
   position: absolute;
