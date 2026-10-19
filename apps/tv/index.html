@@ -321,13 +321,13 @@
           <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           <span>Nueva Lista</span>
         </button>
-        <button id="btn-restaurar-legacy" type="button" class="btn-secundario !py-1.5 !px-3 text-xs flex items-center gap-1.5" title="Restaurar listas predefinidas oficiales y por países (Colombia, Chile, Win +, etc.)">
-          <svg viewBox="0 0 24 24" class="h-4 w-4 text-cancha" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          <span>Listas Legacy</span>
-        </button>
-        <button id="btn-importar-kv" type="button" class="btn-secundario !py-1.5 !px-3 text-xs flex items-center gap-1.5" title="Importar listas sincronizadas desde Cloudflare KV">
+        <a href="/legacy" target="_blank" class="btn-secundario !py-1.5 !px-3 text-xs flex items-center gap-1.5 text-slate-300 hover:text-white" title="Abrir la versión clásica anterior de Alexis TV y consultar listas guardadas">
+          <svg viewBox="0 0 24 24" class="h-4 w-4 text-cancha" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Versión Clásica (/legacy)</span>
+        </a>
+        <button id="btn-importar-kv" type="button" class="btn-secundario !py-1.5 !px-3 text-xs flex items-center gap-1.5" title="Sincronizar listas guardadas de Alexis TV desde Cloudflare KV">
           <svg viewBox="0 0 24 24" class="h-4 w-4 text-cancha" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M12 13v6m-3-3 3 3 3-3"/></svg>
-          <span>Importar de la Nube (KV)</span>
+          <span>Sincronizar Nube (PIN)</span>
         </button>
       </div>
       <span id="gestor-contador-listas" class="text-xs text-slate-400">1 lista guardada</span>
@@ -494,14 +494,14 @@
     </div>
   </div>
 
-  <script src="./js/parser.js?v=v11"></script>
-  <script src="./js/player.js?v=v11"></script>
-  <script src="./js/verificador.js?v=v11"></script>
-  <script src="./js/estados-canales.js?v=v11"></script>
-  <script src="./js/epg.js?v=v11"></script>
-  <script src="./js/servidores.js?v=v11"></script>
-  <script src="./js/app.js?v=v11"></script>
-  <script src="./js/gestor-listas.js?v=v11"></script>
-  <script src="./js/actualizador.js?v=v11"></script>
+  <script src="./js/parser.js?v=v12"></script>
+  <script src="./js/player.js?v=v12"></script>
+  <script src="./js/verificador.js?v=v12"></script>
+  <script src="./js/estados-canales.js?v=v12"></script>
+  <script src="./js/epg.js?v=v12"></script>
+  <script src="./js/servidores.js?v=v12"></script>
+  <script src="./js/app.js?v=v12"></script>
+  <script src="./js/gestor-listas.js?v=v12"></script>
+  <script src="./js/actualizador.js?v=v12"></script>
 </body>
 </html>

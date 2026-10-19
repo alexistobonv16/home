@@ -569,10 +569,7 @@ const CANALES_PARTIDO_HOY = [
     }
     // Las antiguas URLs mundiales guardadas nunca vuelven a descargar miles de entradas.
     if (/iptv-org.*\/(?:index|languages\/spa)\.m3u(?:[?#]|$)/i.test(textoUrl) || /\/data\/catalogo-estable\.m3u(?:[?#]|$)/.test(textoUrl)) textoUrl = CONFIG.listaPorDefecto;
-    if (textoUrl !== CONFIG.listaPorDefecto && prioridadVideo) {
-      toast('Pausa el video antes de cargar otra lista para conservar su conexión.');
-      return;
-    }
+    prioridadVideo = false;
     estado.carga?.abort(); // cancela una descarga anterior
     estado.ultimaUrl = textoUrl;
     dom.errorCarga.hidden = true;
@@ -958,6 +955,12 @@ const CANALES_PARTIDO_HOY = [
     }
     // (los canales caídos se recuerdan por URL durante la sesión, aunque se cambie de lista)
     estado.grupo = '';
+    if (estado.filtro !== 'favoritos') {
+      estado.filtro = 'todos';
+      document.querySelectorAll('.chip-filtro').forEach(c => {
+        c.classList.toggle('activo', c.dataset.filtro === 'todos');
+      });
+    }
     estado.listaUrl = r.url;
     estado.version++;
 

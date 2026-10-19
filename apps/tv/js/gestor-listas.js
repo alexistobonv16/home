@@ -18,112 +18,15 @@
     activa: true
   };
 
-  const LISTAS_LEGACY_PREDEFINIDAS = [
-    {
-      id: 'pl_win_plus',
-      nombre: 'Win +',
-      url: 'http://181.118.152.45:8000/playlist.m3u',
-      tipo: 'url',
-      canalesCount: 87,
-      oficial: false
-    },
-    {
-      id: 'legacy_co',
-      nombre: '🇨🇴 Colombia',
-      url: 'https://iptv-org.github.io/iptv/countries/co.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_cl',
-      nombre: '🇨🇱 Chile',
-      url: 'https://iptv-org.github.io/iptv/countries/cl.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_ar',
-      nombre: '🇦🇷 Argentina',
-      url: 'https://iptv-org.github.io/iptv/countries/ar.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_pe',
-      nombre: '🇵🇪 Perú',
-      url: 'https://iptv-org.github.io/iptv/countries/pe.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_deportes',
-      nombre: '⚽ Deportes',
-      url: 'https://iptv-org.github.io/iptv/categories/sports.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_noticias',
-      nombre: '📰 Noticias',
-      url: 'https://iptv-org.github.io/iptv/categories/news.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_es',
-      nombre: '🇪🇸 España',
-      url: 'https://iptv-org.github.io/iptv/countries/es.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_mx',
-      nombre: '🇲🇽 México',
-      url: 'https://iptv-org.github.io/iptv/countries/mx.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_spa',
-      nombre: '🌎 Canales en Español',
-      url: 'https://iptv-org.github.io/iptv/languages/spa.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_us',
-      nombre: '🇺🇸 Estados Unidos',
-      url: 'https://iptv-org.github.io/iptv/countries/us.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_peliculas',
-      nombre: '🎬 Películas',
-      url: 'https://iptv-org.github.io/iptv/categories/movies.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    },
-    {
-      id: 'legacy_br',
-      nombre: '🇧🇷 Brasil',
-      url: 'https://iptv-org.github.io/iptv/countries/br.m3u',
-      tipo: 'url',
-      canalesCount: 0,
-      oficial: false
-    }
-  ];
+  const LISTA_WIN_PLUS = {
+    id: 'pl_win_plus',
+    nombre: 'Win +',
+    url: 'http://181.118.152.45:8000/playlist.m3u',
+    tipo: 'url',
+    canalesCount: 87,
+    oficial: false,
+    activa: false
+  };
 
   class GestorListas {
     constructor() {
@@ -140,34 +43,29 @@
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            listas = parsed;
+            // Eliminar listas no deseadas o temporales generadas en versiones previas
+            listas = parsed.filter(l => !l.id || !l.id.startsWith('legacy_'));
           }
         }
       } catch (e) {
         console.error('Error cargando listas de localStorage:', e);
       }
 
-      if (listas.length === 0) {
-        listas = [LISTA_OFICIAL, ...LISTAS_LEGACY_PREDEFINIDAS];
+      // Asegurar que la oficial siempre esté presente y con su URL absoluta
+      const idx = listas.findIndex(l => l.id === 'oficial');
+      if (idx >= 0) {
+        listas[idx].url = LISTA_OFICIAL.url;
+        listas[idx].oficial = true;
+        listas[idx].tipo = 'oficial';
+        if (!listas[idx].canalesCount) listas[idx].canalesCount = 362;
       } else {
-        // Asegurar que la oficial siempre esté presente y con su URL absoluta
-        const idx = listas.findIndex(l => l.id === 'oficial');
-        if (idx >= 0) {
-          listas[idx].url = LISTA_OFICIAL.url;
-          listas[idx].oficial = true;
-          listas[idx].tipo = 'oficial';
-          if (!listas[idx].canalesCount) listas[idx].canalesCount = 362;
-        } else {
-          listas.unshift(LISTA_OFICIAL);
-        }
+        listas.unshift({ ...LISTA_OFICIAL });
+      }
 
-        // Incorporar listas legacy que falten (incluyendo Win +)
-        for (const leg of LISTAS_LEGACY_PREDEFINIDAS) {
-          const yaExiste = listas.some(l => l.id === leg.id || (leg.url && l.url === leg.url) || l.nombre.toLowerCase() === leg.nombre.toLowerCase());
-          if (!yaExiste) {
-            listas.push({ ...leg, activa: false });
-          }
-        }
+      // Asegurar que Win + siempre esté presente
+      const tieneWin = listas.some(l => l.id === 'pl_win_plus' || l.url === LISTA_WIN_PLUS.url || l.nombre.toLowerCase().trim() === 'win +');
+      if (!tieneWin) {
+        listas.push({ ...LISTA_WIN_PLUS });
       }
 
       // Asegurar que al menos una esté marcada como activa
@@ -312,26 +210,51 @@
       URL.revokeObjectURL(a.href);
     }
 
-    restaurarListasLegacy() {
-      let agregadas = 0;
-      for (const leg of LISTAS_LEGACY_PREDEFINIDAS) {
-        const idx = this.listas.findIndex(l => l.id === leg.id || (leg.url && l.url === leg.url) || l.nombre.toLowerCase() === leg.nombre.toLowerCase());
-        if (idx === -1) {
-          this.listas.push({ ...leg, activa: false });
-          agregadas++;
-        } else {
-          this.listas[idx].url = leg.url;
-          if (leg.canalesCount && !this.listas[idx].canalesCount) {
-            this.listas[idx].canalesCount = leg.canalesCount;
+    async sincronizarSilenciosoKV() {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return;
+      try {
+        const syncRes = await fetch('/api/tv/sync', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!syncRes.ok) return;
+        const syncData = await syncRes.json();
+        const kvPlaylists = syncData.data?.playlists || syncData.playlists || [];
+        if (!Array.isArray(kvPlaylists) || kvPlaylists.length === 0) return;
+
+        let huboCambios = false;
+        for (const item of kvPlaylists) {
+          const itemUrl = item.sourceUrl || item.url || '';
+          const itemNombre = item.name || item.nombre || 'Lista Guardada';
+          const yaExiste = this.listas.some(l => l.nombre.toLowerCase() === itemNombre.toLowerCase() || (itemUrl && l.url === itemUrl));
+          if (!yaExiste) {
+            let contenido = null;
+            if (Array.isArray(item.channels) && item.channels.length > 0 && !itemUrl) {
+              const lineas = ['#EXTM3U'];
+              item.channels.forEach(ch => {
+                lineas.push(`#EXTINF:-1 tvg-id="${ch.tvgId || ch.id || ''}" tvg-name="${ch.name || ''}" tvg-logo="${ch.logo || ''}" group-title="${ch.group || ''}",${ch.name || ''}`);
+                lineas.push(ch.url || '');
+              });
+              contenido = lineas.join('\n');
+            }
+            this.listas.push({
+              id: 'kv_' + (item.id || Date.now() + Math.random().toString(36).slice(2, 6)),
+              nombre: itemNombre,
+              url: itemUrl,
+              tipo: itemUrl ? 'url' : 'archivo',
+              contenido: contenido,
+              canalesCount: item.channelsCount || (Array.isArray(item.channels) ? item.channels.length : 0),
+              oficial: false,
+              activa: false
+            });
+            huboCambios = true;
           }
         }
-      }
-      this.guardar();
-      const toastFn = global.toast || global.AlexisTV?.toast;
-      if (typeof toastFn === 'function') {
-        toastFn(`Se restauraron las listas predefinidas (${agregadas} agregadas).`, 'ok');
-      } else {
-        alert(`Se restauraron las listas predefinidas legacy.`);
+        if (huboCambios) {
+          this.guardar();
+        }
+      } catch {
+        // Silencioso
       }
     }
 
@@ -802,18 +725,10 @@
         });
       }
 
-      // Restaurar listas predefinidas legacy
-      const btnRestaurarLegacy = document.getElementById('btn-restaurar-legacy');
-      if (btnRestaurarLegacy) {
-        btnRestaurarLegacy.addEventListener('click', () => {
-          this.restaurarListasLegacy();
-        });
-      }
-
       // Importar de Cloudflare KV
       if (btnImportarKV) {
         btnImportarKV.addEventListener('click', () => {
-          const pin = prompt('Introduce tu PIN de administrador para importar tus listas guardadas en la nube:');
+          const pin = prompt('Introduce tu PIN de Alexis TV para sincronizar tus listas guardadas en la nube:');
           if (pin) {
             this.importarDesdeKV(pin);
           }
@@ -821,6 +736,7 @@
       }
 
       this.actualizarUI();
+      this.sincronizarSilenciosoKV();
     }
   }
 
