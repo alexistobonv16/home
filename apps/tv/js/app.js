@@ -131,6 +131,12 @@ const CANALES_PARTIDO_HOY = [
     clasificar, NOMBRES_CATEGORIA, // filtro inteligente (se calcula en el Worker del parser)
   } = window.ParserM3U;
 
+  const Analitica = (typeof window !== 'undefined' && window.Analitica) || {
+    evento() {},
+    mostrarAviso() {},
+    activa: false
+  };
+
   /* ---------------- 1. Configuración, memoria y estado ---------------- */
 
   const IPTV_ORG = 'https://iptv-org.github.io/iptv';
@@ -383,7 +389,7 @@ const CANALES_PARTIDO_HOY = [
     if (estado.eventosMedidos.has(clave)) return;
     estado.eventosMedidos.add(clave);
     if (estado.eventosMedidos.size > 96) estado.eventosMedidos.delete(estado.eventosMedidos.values().next().value);
-    Analitica.evento(nombre, parametros);
+    Analitica?.evento?.(nombre, parametros);
   }
 
   /** Hash corto y estable (djb2) para ids. */
@@ -928,10 +934,10 @@ const CANALES_PARTIDO_HOY = [
   }, true);
 
   document.querySelector('#unirme-whatsapp')?.addEventListener('click', () => {
-    Analitica.evento('clic_whatsapp', { accion: 'unirse_grupo', canal: estado.actual?.nombre || '' });
+    Analitica?.evento?.('clic_whatsapp', { accion: 'unirse_grupo', canal: estado.actual?.nombre || '' });
   });
   document.querySelector('#compartir-partido')?.addEventListener('click', async () => {
-    Analitica.evento('clic_whatsapp', { accion: 'compartir_app', canal: estado.actual?.nombre || '' });
+    Analitica?.evento?.('clic_whatsapp', { accion: 'compartir_app', canal: estado.actual?.nombre || '' });
     const url = new URL(location.origin + location.pathname);
     url.search = '?utm_source=whatsapp&utm_medium=boton_compartir&utm_campaign=viral_app';
     const datos = { title: 'GolStream IPTV', text: '📺 Mira los partidos en vivo y únete a la comunidad de GolStream IPTV', url: url.href };
@@ -1009,7 +1015,7 @@ const CANALES_PARTIDO_HOY = [
 
     aplicarFiltros();
     pintarAgenda(); // la nueva lista puede tener el canal que transmite un partido
-    if (!r.desdeCache) Analitica.evento('cargar_lista', { lista: LISTAS.find(l => l.url === r.url)?.id || 'personalizada', canales: r.canales.length });
+    if (!r.desdeCache) Analitica?.evento?.('cargar_lista', { lista: LISTAS.find(l => l.url === r.url)?.id || 'personalizada', canales: r.canales.length });
     const extra = [
       r.duplicados ? `${fmtNum.format(r.duplicados)} duplicados fusionados` : '',
       r.descartados ? `${fmtNum.format(r.descartados)} enlaces no válidos descartados` : '',
@@ -2337,7 +2343,7 @@ const CANALES_PARTIDO_HOY = [
       const opcion = b && agendaUi.tv.get(b.dataset.evento)?.[Number(b.dataset.indice)];
       if (!opcion) return;
       const ev = agenda.hoy().concat(agenda.proximos()).find((x) => x.id === b.dataset.evento);
-      Analitica.evento('ver_partido', { partido: ev ? `${ev.local} vs ${ev.visita}` : '', canal: opcion.canal.nombre });
+      Analitica?.evento?.('ver_partido', { partido: ev ? `${ev.local} vs ${ev.visita}` : '', canal: opcion.canal.nombre });
       ver(opcion.canal);
     });
   }
