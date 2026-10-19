@@ -21,8 +21,8 @@
   <!-- Catálogo curado de canales -->
   <link rel="preload" href="/data/catalogo-pro.json" as="fetch" crossorigin />
   <!-- Estilos compilados (Tailwind CLI + componentes): la página se pinta sin ejecutar JavaScript. -->
-  <link rel="stylesheet" href="./css/app.css?v=v10" />
-  <link rel="stylesheet" href="./css/gestor-listas.css?v=v10" />
+  <link rel="stylesheet" href="./css/app.css?v=v11" />
+  <link rel="stylesheet" href="./css/gestor-listas.css?v=v11" />
   <!-- Motor HLS.js para reproducción universal de streaming -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
   <!-- Tipografía de titulares sin bloquear el primer render (el texto usa la fuente del sistema). -->
@@ -46,6 +46,11 @@
           <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="17" cy="18" r="3"/><path d="M17 16v4M15 18h4"/></svg>
           <span class="font-bold">Mis Listas M3U</span>
           <span id="badge-total-listas" class="rounded-full bg-cancha px-1.5 text-[10px] font-black text-fondo">1</span>
+        </button>
+        <button id="btn-epg" type="button" class="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-linea bg-sup px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:border-cancha/60 hover:text-white transition shadow-sm" title="Guía de programación (EPG / XMLTV)">
+          <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h7"/></svg>
+          <span>Guía TV</span>
+          <span id="cuenta-epg" class="text-[10px] font-medium text-cancha"></span>
         </button>
         <a href="/legacy" class="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-linea bg-sup px-2.5 py-1 text-xs font-medium text-slate-400 hover:border-cancha/60 hover:text-white transition" title="Versión clásica anterior">
           <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -187,11 +192,6 @@
                 <!-- Select oculto para compatibilidad con código existente -->
                 <select id="selector-lista-activa" class="sr-only" aria-label="Lista activa (oculto)"></select>
               </div>
-
-              <button id="btn-abrir-gestor-sidebar" type="button" class="shrink-0 text-cancha hover:text-white bg-cancha/10 hover:bg-cancha/20 px-2.5 py-1 rounded-lg border border-cancha/30 text-xs font-semibold flex items-center gap-1 transition" title="Abrir Administrador de Listas">
-                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-                <span class="hidden sm:inline">Gestionar</span>
-              </button>
             </div>
             <div class="relative">
               <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -287,64 +287,16 @@
     </div>
 
 
-    <details id="mas-fuentes" class="caja-plegable mt-4">
-      <summary>Más listas y herramientas</summary>
-      <section class="mt-3" aria-label="Fuentes de canales">
-        <div id="pestanas-listas" class="navegacion-listas" role="tablist" aria-label="Listas de canales"></div>
-    <details class="px-2 pb-2 text-xs text-slate-400" id="acceso-oficial-latam">
-      <summary class="cursor-pointer">Perú y Colombia: acceso oficial</summary>
-      <p class="mt-2">Si una señal no abre, consulta su plataforma oficial. La disponibilidad puede depender de tu país. Win Play requiere suscripción.</p>
-      <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
-        <span>TV Perú / Noticias</span>
-        <span>ATV</span>
-        <span>América tvGO</span>
-        <span>Latina</span>
-        <span>Panamericana</span>
-        <span>Señal Colombia / Canal Institucional</span>
-        <span>Canal Capital</span>
-        <span>Teleantioquia</span>
-        <span>Telecaribe</span>
-        <span>Telepacífico</span>
-        <span>Win Play (suscripción)</span>
-      </div>
-    </details>
-    <form id="form-lista" class="carga-lista" novalidate>
-      <label for="input-lista" class="sr-only">URL de la lista M3U</label>
-      <div class="relative min-w-0 basis-full sm:flex-1 sm:basis-auto">
-        <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
-        <input id="input-lista" type="url" inputmode="url" autocomplete="url" spellcheck="false"
-          placeholder="Pega la URL de una lista M3U · ej. https://iptv-org.github.io/iptv/languages/spa.m3u"
-          class="w-full rounded-xl border border-linea bg-fondo py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-slate-500 focus:border-cancha/60 focus:outline-none focus:ring-2 focus:ring-cancha/20" />
-      </div>
-      <button id="btn-cargar" type="submit" class="btn-primario flex-1 sm:flex-none">
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12m0 0-4-4m4 4 4-4M4 20h16"/></svg>
-        Cargar lista
-      </button>
-      <button id="btn-defecto" type="button" class="btn-secundario flex-1 sm:flex-none">Lista por defecto</button>
-      <!-- Guarda la lista actual en "Mis listas" (la búsqueda global recorre todas las guardadas) -->
-      <button id="btn-guardar-lista" type="button" class="btn-secundario" aria-pressed="false" title="Guardar esta lista en Mis listas" disabled>
-        <svg viewBox="0 0 24 24" class="icono-estrella h-4 w-4" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>
-        <span id="texto-guardar-lista">Guardar</span>
-      </button>
-      <button id="btn-epg" type="button" class="btn-secundario" title="Guía de programación (EPG / XMLTV)">
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h4M7 17h7"/></svg>
-        Guía <span id="cuenta-epg" class="text-xs font-normal text-cancha"></span>
-      </button>
-      <button id="btn-analizador" type="button" class="btn-secundario" title="Analizador tecnico de paginas deportivas">
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
-        Analizador
-      </button>
-      <!-- Listas adicionales (se rellena desde LISTAS_EXTRA en js/app.js) -->
-      <label for="sel-preset" class="sr-only">Más listas públicas de iptv-org</label>
-      <select id="sel-preset" class="control w-full sm:w-auto"><option value="">Más listas…</option></select>
-    </form>
-        <div id="mis-listas" class="mt-2 flex flex-wrap items-center gap-1.5 border-t border-linea px-1 pt-2 text-xs text-slate-500"></div>
-      </section>
-        
-    </details>
+    <!-- Elementos ocultos para retener compatibilidad de selectores JS auxiliares -->
+    <div id="elementos-auxiliares-listas" class="sr-only" aria-hidden="true">
+      <div id="pestanas-listas"></div>
+      <div id="mis-listas"></div>
+      <form id="form-lista"><input id="input-lista" type="url" /><button id="btn-cargar" type="submit"></button><button id="btn-defecto" type="button"></button><button id="btn-guardar-lista" type="button"><span id="texto-guardar-lista"></span></button><select id="sel-preset"></select></form>
+      <button id="btn-analizador" type="button"></button>
+    </div>
   </main>
 
-    <!-- ================= GESTOR ESTÉTICO DE LISTAS M3U ================= -->
+  <!-- ================= GESTOR ESTÉTICO DE LISTAS M3U ================= -->
   <dialog id="dialogo-gestor-listas" class="dialogo-gestor" aria-labelledby="titulo-gestor">
     <!-- Cabecera -->
     <div class="gestor-header">
@@ -368,6 +320,10 @@
         <button id="btn-mostrar-formulario" type="button" class="btn-primario !py-1.5 !px-3 text-xs flex items-center gap-1.5 font-bold shadow-sm">
           <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
           <span>Nueva Lista</span>
+        </button>
+        <button id="btn-restaurar-legacy" type="button" class="btn-secundario !py-1.5 !px-3 text-xs flex items-center gap-1.5" title="Restaurar listas predefinidas oficiales y por países (Colombia, Chile, Win +, etc.)">
+          <svg viewBox="0 0 24 24" class="h-4 w-4 text-cancha" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span>Listas Legacy</span>
         </button>
         <button id="btn-importar-kv" type="button" class="btn-secundario !py-1.5 !px-3 text-xs flex items-center gap-1.5" title="Importar listas sincronizadas desde Cloudflare KV">
           <svg viewBox="0 0 24 24" class="h-4 w-4 text-cancha" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M12 13v6m-3-3 3 3 3-3"/></svg>
@@ -538,14 +494,14 @@
     </div>
   </div>
 
-  <script src="./js/parser.js?v=v10"></script>
-  <script src="./js/player.js?v=v10"></script>
-  <script src="./js/verificador.js?v=v10"></script>
-  <script src="./js/estados-canales.js?v=v10"></script>
-  <script src="./js/epg.js?v=v10"></script>
-  <script src="./js/servidores.js?v=v10"></script>
-  <script src="./js/app.js?v=v10"></script>
-  <script src="./js/gestor-listas.js?v=v10"></script>
-  <script src="./js/actualizador.js?v=v10"></script>
+  <script src="./js/parser.js?v=v11"></script>
+  <script src="./js/player.js?v=v11"></script>
+  <script src="./js/verificador.js?v=v11"></script>
+  <script src="./js/estados-canales.js?v=v11"></script>
+  <script src="./js/epg.js?v=v11"></script>
+  <script src="./js/servidores.js?v=v11"></script>
+  <script src="./js/app.js?v=v11"></script>
+  <script src="./js/gestor-listas.js?v=v11"></script>
+  <script src="./js/actualizador.js?v=v11"></script>
 </body>
 </html>

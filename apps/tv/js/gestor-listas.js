@@ -18,6 +18,113 @@
     activa: true
   };
 
+  const LISTAS_LEGACY_PREDEFINIDAS = [
+    {
+      id: 'pl_win_plus',
+      nombre: 'Win +',
+      url: 'http://181.118.152.45:8000/playlist.m3u',
+      tipo: 'url',
+      canalesCount: 87,
+      oficial: false
+    },
+    {
+      id: 'legacy_co',
+      nombre: '🇨🇴 Colombia',
+      url: 'https://iptv-org.github.io/iptv/countries/co.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_cl',
+      nombre: '🇨🇱 Chile',
+      url: 'https://iptv-org.github.io/iptv/countries/cl.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_ar',
+      nombre: '🇦🇷 Argentina',
+      url: 'https://iptv-org.github.io/iptv/countries/ar.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_pe',
+      nombre: '🇵🇪 Perú',
+      url: 'https://iptv-org.github.io/iptv/countries/pe.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_deportes',
+      nombre: '⚽ Deportes',
+      url: 'https://iptv-org.github.io/iptv/categories/sports.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_noticias',
+      nombre: '📰 Noticias',
+      url: 'https://iptv-org.github.io/iptv/categories/news.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_es',
+      nombre: '🇪🇸 España',
+      url: 'https://iptv-org.github.io/iptv/countries/es.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_mx',
+      nombre: '🇲🇽 México',
+      url: 'https://iptv-org.github.io/iptv/countries/mx.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_spa',
+      nombre: '🌎 Canales en Español',
+      url: 'https://iptv-org.github.io/iptv/languages/spa.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_us',
+      nombre: '🇺🇸 Estados Unidos',
+      url: 'https://iptv-org.github.io/iptv/countries/us.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_peliculas',
+      nombre: '🎬 Películas',
+      url: 'https://iptv-org.github.io/iptv/categories/movies.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    },
+    {
+      id: 'legacy_br',
+      nombre: '🇧🇷 Brasil',
+      url: 'https://iptv-org.github.io/iptv/countries/br.m3u',
+      tipo: 'url',
+      canalesCount: 0,
+      oficial: false
+    }
+  ];
+
   class GestorListas {
     constructor() {
       this.listas = this.cargarListas();
@@ -27,28 +134,48 @@
     }
 
     cargarListas() {
+      let listas = [];
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Asegurar que la oficial siempre esté presente y con su URL absoluta
-            const idx = parsed.findIndex(l => l.id === 'oficial');
-            if (idx >= 0) {
-              parsed[idx].url = LISTA_OFICIAL.url;
-              parsed[idx].oficial = true;
-              parsed[idx].tipo = 'oficial';
-              if (!parsed[idx].canalesCount) parsed[idx].canalesCount = 362;
-            } else {
-              parsed.unshift(LISTA_OFICIAL);
-            }
-            return parsed;
+            listas = parsed;
           }
         }
       } catch (e) {
         console.error('Error cargando listas de localStorage:', e);
       }
-      return [LISTA_OFICIAL];
+
+      if (listas.length === 0) {
+        listas = [LISTA_OFICIAL, ...LISTAS_LEGACY_PREDEFINIDAS];
+      } else {
+        // Asegurar que la oficial siempre esté presente y con su URL absoluta
+        const idx = listas.findIndex(l => l.id === 'oficial');
+        if (idx >= 0) {
+          listas[idx].url = LISTA_OFICIAL.url;
+          listas[idx].oficial = true;
+          listas[idx].tipo = 'oficial';
+          if (!listas[idx].canalesCount) listas[idx].canalesCount = 362;
+        } else {
+          listas.unshift(LISTA_OFICIAL);
+        }
+
+        // Incorporar listas legacy que falten (incluyendo Win +)
+        for (const leg of LISTAS_LEGACY_PREDEFINIDAS) {
+          const yaExiste = listas.some(l => l.id === leg.id || (leg.url && l.url === leg.url) || l.nombre.toLowerCase() === leg.nombre.toLowerCase());
+          if (!yaExiste) {
+            listas.push({ ...leg, activa: false });
+          }
+        }
+      }
+
+      // Asegurar que al menos una esté marcada como activa
+      if (!listas.some(l => l.activa)) {
+        listas[0].activa = true;
+      }
+
+      return listas;
     }
 
     guardar() {
@@ -185,6 +312,29 @@
       URL.revokeObjectURL(a.href);
     }
 
+    restaurarListasLegacy() {
+      let agregadas = 0;
+      for (const leg of LISTAS_LEGACY_PREDEFINIDAS) {
+        const idx = this.listas.findIndex(l => l.id === leg.id || (leg.url && l.url === leg.url) || l.nombre.toLowerCase() === leg.nombre.toLowerCase());
+        if (idx === -1) {
+          this.listas.push({ ...leg, activa: false });
+          agregadas++;
+        } else {
+          this.listas[idx].url = leg.url;
+          if (leg.canalesCount && !this.listas[idx].canalesCount) {
+            this.listas[idx].canalesCount = leg.canalesCount;
+          }
+        }
+      }
+      this.guardar();
+      const toastFn = global.toast || global.AlexisTV?.toast;
+      if (typeof toastFn === 'function') {
+        toastFn(`Se restauraron las listas predefinidas (${agregadas} agregadas).`, 'ok');
+      } else {
+        alert(`Se restauraron las listas predefinidas legacy.`);
+      }
+    }
+
     async importarDesdeKV(pin) {
       try {
         let token = localStorage.getItem(TOKEN_KEY);
@@ -203,19 +353,28 @@
         }
 
         if (!token) {
-          throw new Error('Se requiere un PIN de acceso.');
+          const pinPrompt = prompt('Ingresa tu PIN de Alexis TV para sincronizar listas de la nube:');
+          if (!pinPrompt) return;
+          return this.importarDesdeKV(pinPrompt);
         }
 
         const syncRes = await fetch('/api/tv/sync', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const syncData = await syncRes.json();
 
+        if (syncRes.status === 401) {
+          localStorage.removeItem(TOKEN_KEY);
+          const pinPrompt = prompt('Sesión expirada. Ingresa tu PIN de Alexis TV:');
+          if (!pinPrompt) return;
+          return this.importarDesdeKV(pinPrompt);
+        }
+
+        const syncData = await syncRes.json();
         if (!syncData.success) {
           throw new Error(syncData.error || 'No se pudieron recuperar los datos de la nube.');
         }
 
-        const kvPlaylists = syncData.playlists || [];
+        const kvPlaylists = syncData.data?.playlists || syncData.playlists || [];
         if (!Array.isArray(kvPlaylists) || kvPlaylists.length === 0) {
           alert('No se encontraron listas guardadas en tu almacenamiento de la nube (KV).');
           return;
@@ -223,14 +382,26 @@
 
         let importadas = 0;
         for (const item of kvPlaylists) {
-          const yaExiste = this.listas.some(l => l.nombre === item.name || (item.url && l.url === item.url));
+          const itemUrl = item.sourceUrl || item.url || '';
+          const itemNombre = item.name || item.nombre || 'Lista Importada';
+          const yaExiste = this.listas.some(l => l.nombre.toLowerCase() === itemNombre.toLowerCase() || (itemUrl && l.url === itemUrl));
           if (!yaExiste) {
+            let contenido = null;
+            if (Array.isArray(item.channels) && item.channels.length > 0 && !itemUrl) {
+              const lineas = ['#EXTM3U'];
+              item.channels.forEach(ch => {
+                lineas.push(`#EXTINF:-1 tvg-id="${ch.tvgId || ch.id || ''}" tvg-name="${ch.name || ''}" tvg-logo="${ch.logo || ''}" group-title="${ch.group || ''}",${ch.name || ''}`);
+                lineas.push(ch.url || '');
+              });
+              contenido = lineas.join('\n');
+            }
             this.listas.push({
               id: 'kv_' + (item.id || Date.now() + Math.random().toString(36).slice(2, 6)),
-              nombre: item.name || 'Lista Importada',
-              url: item.url || '',
-              tipo: item.url ? 'url' : 'archivo',
-              canalesCount: Array.isArray(item.channels) ? item.channels.length : 0,
+              nombre: itemNombre,
+              url: itemUrl,
+              tipo: itemUrl ? 'url' : 'archivo',
+              contenido: contenido,
+              canalesCount: item.channelsCount || (Array.isArray(item.channels) ? item.channels.length : 0),
               oficial: false,
               activa: false
             });
@@ -628,6 +799,14 @@
             campoUrl.hidden = (pl.tipo === 'archivo');
             document.getElementById('input-nombre-lista').focus();
           }
+        });
+      }
+
+      // Restaurar listas predefinidas legacy
+      const btnRestaurarLegacy = document.getElementById('btn-restaurar-legacy');
+      if (btnRestaurarLegacy) {
+        btnRestaurarLegacy.addEventListener('click', () => {
+          this.restaurarListasLegacy();
         });
       }
 

@@ -131,8 +131,9 @@
     const { url } = canal;
     const inicio = Date.now();
     if (canal.compatible === false) return { ok: false, restringido: true, motivo: `formato ${String(canal.formato).toUpperCase()} no compatible con navegadores` };
+    let urlFetch = url;
     if (global.location?.protocol === 'https:' && url.startsWith('http:')) {
-      return { ok: false, restringido: true, motivo: 'stream http:// bloqueado en página https:// (contenido mixto)' };
+      urlFetch = `/api/tv/proxy?url=${encodeURIComponent(url)}`;
     }
 
     const ctrl = new AbortController();
@@ -142,7 +143,7 @@
     const timer = setTimeout(() => { porTiempo = true; ctrl.abort(); }, CFG.timeoutMs);
 
     try {
-      const resp = await fetch(url, {
+      const resp = await fetch(urlFetch, {
         signal: ctrl.signal,
         cache: 'no-store',
         credentials: 'omit',

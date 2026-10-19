@@ -531,7 +531,7 @@ const CANALES_PARTIDO_HOY = [
   }
 
   function bloquearFormulario(bloquear) {
-    [dom.btnCargar, dom.btnDefecto, dom.selPreset].forEach((el) => { el.disabled = bloquear; });
+    [dom.btnCargar, dom.btnDefecto, dom.selPreset].forEach((el) => { if (el) el.disabled = bloquear; });
   }
 
   /** Clave de caché: la URL ya normalizada (o el texto tal cual si no es válida). */
@@ -972,7 +972,7 @@ const CANALES_PARTIDO_HOY = [
     marcarPestana(r.url);
 
     // Memoria: esta lista se abrirá sola la próxima vez.
-    dom.inputLista.value = r.url;
+    if (dom.inputLista) dom.inputLista.value = r.url;
     Memoria.guardar('ultimaLista', r.url);
     // La dirección de la página refleja la lista: se puede compartir o guardar en marcadores.
     const direccion = new URL(location.href);
@@ -1063,18 +1063,21 @@ const CANALES_PARTIDO_HOY = [
   /** Marca la pestaña de la lista activa (o la que se está cargando) y muestra cuántos canales tenía. */
   function marcarPestana(url, cargando = false) {
     const conteos = Memoria.leer('conteosListas', {}) || {};
-    const botones = [...dom.pestanas.querySelectorAll('[data-url]')];
+    const botones = dom.pestanas ? [...dom.pestanas.querySelectorAll('[data-url]')] : [];
+    if (!botones.length) return;
     const seleccion = botones.find(b => b.dataset.url === url) || botones[0];
     botones.forEach((b) => {
       const activa = b.dataset.url === url;
       b.setAttribute('aria-selected', String(activa));
       b.tabIndex = b === seleccion ? 0 : -1;
       b.disabled = cargando && !activa;
-      const n = conteos[b.dataset.url];
-      b.querySelector('.pestana-cuenta').textContent = n ? fmtNum.format(n) : '';
-      if (activa && cargando) b.querySelector('.pestana-cuenta').textContent = '…';
+      const cuentaEl = b.querySelector('.pestana-cuenta');
+      if (cuentaEl) {
+        const n = conteos[b.dataset.url];
+        cuentaEl.textContent = n ? fmtNum.format(n) : '';
+        if (activa && cargando) cuentaEl.textContent = '…';
+      }
     });
-    // Las dos filas se adaptan al ancho; seleccionar una lista nunca desplaza ni oculta países.
   }
 
   /* ---------------- 5. Mis listas y búsqueda global ----------------
@@ -1106,10 +1109,11 @@ const CANALES_PARTIDO_HOY = [
   const esMiLista = (url) => estado.misListas.some((l) => l.url === url);
 
   function actualizarBotonGuardar() {
+    if (!dom.btnGuardarLista) return;
     const guardada = esMiLista(estado.listaUrl);
     dom.btnGuardarLista.disabled = !estado.listaUrl;
     dom.btnGuardarLista.setAttribute('aria-pressed', String(guardada));
-    dom.textoGuardarLista.textContent = guardada ? 'Guardada' : 'Guardar';
+    if (dom.textoGuardarLista) dom.textoGuardarLista.textContent = guardada ? 'Guardada' : 'Guardar';
     dom.btnGuardarLista.title = guardada ? 'Quitar esta lista de Mis listas' : 'Guardar esta lista en Mis listas (para la búsqueda global)';
   }
 
@@ -1141,6 +1145,7 @@ const CANALES_PARTIDO_HOY = [
   }
 
   function pintarMisListas() {
+    if (!dom.misListas) return;
     if (!estado.misListas.length) {
       dom.misListas.innerHTML = '<span>Mis listas: pulsa <b class="text-slate-300">☆ Guardar</b> en una lista para buscar en todas a la vez.</span>';
       return;

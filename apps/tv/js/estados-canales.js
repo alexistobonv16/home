@@ -33,7 +33,7 @@
       if (perfil?.estado === 'temporal' && estado !== 'confirmado' && estado !== 'restringido') {
         estado = 'temporal'; motivo = perfil.motivo;
       }
-      if (!canal.compatible || (global.location?.protocol === 'https:' && canal.url.startsWith('http:'))) {
+      if (!canal.compatible) {
         estado = 'restringido'; motivo = 'Esta fuente no es compatible con la reproducción en este navegador/origen.';
       }
       if (estado === 'restringido') estado = 'temporal';

@@ -225,6 +225,11 @@
     return { buffer: await new Blob(partes).arrayBuffer(), urlFinal, bytes };
   }
 
+  function resolverUrlProxy(urlTarget) {
+    const base = (typeof location !== 'undefined' && location.origin) ? location.origin : 'https://tv.alexistobon.com';
+    return new URL(`/api/tv/proxy?url=${encodeURIComponent(urlTarget)}`, base);
+  }
+
   /** Descarga común: timeout, límite de tamaño, progreso y errores legibles. */
   async function descargar(url, { signal, onProgreso } = {}) {
     const ctrl = new AbortController();
@@ -233,15 +238,43 @@
     let porTiempo = false;
     const timer = setTimeout(() => { porTiempo = true; ctrl.abort(); }, LIMITES.timeoutMs);
 
+    // Contenido mixto: si estamos en HTTPS y la URL es HTTP, pasamos directo por el proxy de Cloudflare
+    const esHttpInseguro = (typeof location !== 'undefined' && location.protocol === 'https:' && url.protocol === 'http:');
+    let urlPeticion = esHttpInseguro ? resolverUrlProxy(url.href).href : url.href;
+
     try {
-      const resp = await fetch(url.href, {
-        signal: ctrl.signal,
-        cache: 'no-store',
-        credentials: 'omit',        // nunca enviar cookies a servidores de terceros
-        referrerPolicy: 'no-referrer',
-      });
+      let resp;
+      try {
+        resp = await fetch(urlPeticion, {
+          signal: ctrl.signal,
+          cache: 'no-store',
+          credentials: 'omit',        // nunca enviar cookies a servidores de terceros
+          referrerPolicy: 'no-referrer',
+        });
+      } catch (errorDirecto) {
+        // Si falló directo (por CORS u otro error) y no habíamos usado el proxy, intentamos con el proxy
+        if (!urlPeticion.includes('/api/tv/proxy')) {
+          urlPeticion = resolverUrlProxy(url.href).href;
+          resp = await fetch(urlPeticion, {
+            signal: ctrl.signal,
+            cache: 'no-store',
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+          });
+        } else {
+          throw errorDirecto;
+        }
+      }
+
       if (!resp.ok) {
-        throw new ErrorLista('http', `El servidor respondió con el código ${resp.status}${resp.status === 404 ? ' (la lista no existe en esa dirección)' : ''}.`, resp.status);
+        let msg = `El servidor respondió con el código ${resp.status}${resp.status === 404 ? ' (la lista no existe en esa dirección)' : ''}.`;
+        if (urlPeticion.includes('/api/tv/proxy')) {
+          try {
+            const errData = await resp.json();
+            if (errData && errData.error) msg = errData.error;
+          } catch {}
+        }
+        throw new ErrorLista('http', msg, resp.status);
       }
 
       const total = Number(resp.headers.get('content-length')) || 0;
@@ -268,46 +301,11 @@
         bytes = partes[0].byteLength;
       }
 
-      return { partes, urlFinal: resp.url || url.href, bytes };
+      return { partes, urlFinal: url.href, bytes };
     } catch (err) {
-      if (err instanceof ErrorLista && err.codigo !== 'http') throw err;
+      if (err instanceof ErrorLista) throw err;
       if (porTiempo) throw new ErrorLista('timeout', 'El servidor tardó demasiado en responder. Intenta de nuevo más tarde.');
       if (signal?.aborted) throw new ErrorLista('cancelado', 'Carga cancelada.');
-
-      // Si falla directo (CORS o contenido mixto), intentamos a través de nuestro proxy de Cloudflare
-      if (!url.href.includes('/api/tv/proxy')) {
-        try {
-          const urlProxy = new URL(`/api/tv/proxy?url=${encodeURIComponent(url.href)}`, (typeof location !== 'undefined' ? location.href : 'https://tv.alexistobon.com/'));
-          const respProxy = await fetch(urlProxy.href, {
-            signal: ctrl.signal,
-            cache: 'no-store',
-            credentials: 'omit',
-            referrerPolicy: 'no-referrer',
-          });
-          if (respProxy.ok) {
-            let bytes = 0;
-            const partes = [];
-            if (respProxy.body?.getReader) {
-              const lector = respProxy.body.getReader();
-              for (;;) {
-                const { done, value } = await lector.read();
-                if (done) break;
-                bytes += value.byteLength;
-                if (bytes > LIMITES.maxBytes) {
-                  lector.cancel();
-                  throw errorTamano();
-                }
-                partes.push(value);
-                onProgreso?.(bytes, 0);
-              }
-            } else {
-              partes.push(await respProxy.arrayBuffer());
-              bytes = partes[0].byteLength;
-            }
-            return { partes, urlFinal: url.href, bytes };
-          }
-        } catch { /* si el proxy también falla, lanzamos el error amigable */ }
-      }
 
       // fetch lanza TypeError tanto sin internet como cuando el servidor no permite CORS.
       throw new ErrorLista('red', 'No se pudo descargar la lista. Verifica la URL o que el servidor esté disponible.');
