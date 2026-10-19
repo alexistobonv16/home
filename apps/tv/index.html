@@ -21,15 +21,15 @@
   <!-- Catálogo curado de canales -->
   <link rel="preload" href="/data/catalogo-pro.json" as="fetch" crossorigin />
   <!-- Estilos compilados (Tailwind CLI + componentes): la página se pinta sin ejecutar JavaScript. -->
-  <link rel="stylesheet" href="./css/app.css?v=v19" />
-  <link rel="stylesheet" href="./css/gestor-listas.css?v=v19" />
+  <link rel="stylesheet" href="./css/app.css?v=v20" />
+  <link rel="stylesheet" href="./css/gestor-listas.css?v=v20" />
   <!-- Motor HLS.js para reproducción universal de streaming -->
-  <script src="./js/hls.min.js?v=v19"></script>
+  <script src="./js/hls.min.js?v=v20"></script>
   <!-- Decodificador de audio WebAssembly MP2/MPEG para streaming de TV -->
   <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
   <!-- Decodificadores software de video para señales entrelazadas PAFF y MPEG-2 -->
-  <script src="./js/mpeg2-player.js?v=v19"></script>
-  <script src="./js/h264w-player.js?v=v19"></script>
+  <script src="./js/mpeg2-player.js?v=v20"></script>
+  <script src="./js/h264w-player.js?v=v20"></script>
   <!-- Tipografía de titulares sin bloquear el primer render (el texto usa la fuente del sistema). -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" media="print" onload="this.media='all'" />
@@ -157,6 +157,24 @@
             <span id="osd-numero" class="font-display text-2xl font-bold tabular-nums text-cancha"></span>
             <span id="osd-texto" class="truncate font-display text-lg font-semibold text-white"></span>
           </div>
+
+          <!-- Panel de Estadísticas para Nerds (Overlay interactivo estilo YouTube) -->
+          <div id="panel-nerd" class="panel-nerd" hidden>
+            <div class="panel-nerd-header">
+              <div class="flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-cancha" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 16V8M12 16v-4M17 16v-7"/></svg>
+                <span class="font-bold tracking-wider uppercase text-white text-[11px]">Estadísticas para nerds</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <button id="btn-copiar-nerd" type="button" class="btn-nerd-accion" title="Copiar diagnóstico al portapapeles">
+                  <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  <span>Copiar</span>
+                </button>
+                <button id="btn-cerrar-nerd" type="button" class="btn-nerd-cerrar" title="Cerrar estadísticas">✕</button>
+              </div>
+            </div>
+            <div id="contenido-nerd" class="panel-nerd-body scroll-fino"></div>
+          </div>
         </div>
 
         <!-- En reproducción: nombre, estado y acciones, fuera del área de imagen -->
@@ -189,8 +207,12 @@
             <button id="btn-siguiente" type="button" class="accion" title="Canal siguiente (↓)" disabled>
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span class="sr-only">Canal siguiente</span>
             </button>
-            <button id="btn-fav-ficha" type="button" class="accion" aria-pressed="false" title="Agregar a favoritos" disabled>
+            <button id="btn-fav-ficha" type="button" class="accion" aria-pressed="false" title="Agregar a favoritos (S)" disabled>
               <svg viewBox="0 0 24 24" class="icono-estrella h-4 w-4" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg><span class="sr-only">Favorito</span>
+            </button>
+            <button id="btn-nerd" type="button" class="accion" aria-pressed="false" title="Estadísticas para nerds (N)">
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 16V8M12 16v-4M17 16v-7"/></svg>
+              <span class="sr-only">Estadísticas para nerds</span>
             </button>
             <button id="btn-pip" type="button" class="accion" aria-pressed="false" title="Ventana flotante (P)" hidden>
               <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor"/></svg>
@@ -369,6 +391,7 @@
         <dt><kbd class="tecla">P</kbd></dt><dd>Ventana flotante (Picture-in-Picture)</dd>
         <dt><kbd class="tecla">M</kbd></dt><dd>Silenciar / activar sonido</dd>
         <dt><kbd class="tecla">S</kbd></dt><dd>Agregar / quitar de favoritos</dd>
+        <dt><kbd class="tecla">N</kbd></dt><dd>Estadísticas para nerds</dd>
         <dt><kbd class="tecla">G</kbd></dt><dd>Guía de programación (EPG)</dd>
         <dt><kbd class="tecla">0</kbd>–<kbd class="tecla">9</kbd></dt><dd>Ir al canal por número</dd>
         <dt><kbd class="tecla">/</kbd></dt><dd>Buscar (<kbd class="tecla">Esc</kbd> para salir del buscador)</dd>
@@ -468,15 +491,15 @@
     </div>
   </div>
 
-  <script src="./js/analitica.js?v=v19"></script>
-  <script src="./js/parser.js?v=v19"></script>
-  <script src="./js/player.js?v=v19"></script>
-  <script src="./js/verificador.js?v=v19"></script>
-  <script src="./js/estados-canales.js?v=v19"></script>
-  <script src="./js/epg.js?v=v19"></script>
-  <script src="./js/servidores.js?v=v19"></script>
-  <script src="./js/app.js?v=v19"></script>
-  <script src="./js/gestor-listas.js?v=v19"></script>
-  <script src="./js/actualizador.js?v=v19"></script>
+  <script src="./js/analitica.js?v=v20"></script>
+  <script src="./js/parser.js?v=v20"></script>
+  <script src="./js/player.js?v=v20"></script>
+  <script src="./js/verificador.js?v=v20"></script>
+  <script src="./js/estados-canales.js?v=v20"></script>
+  <script src="./js/epg.js?v=v20"></script>
+  <script src="./js/servidores.js?v=v20"></script>
+  <script src="./js/app.js?v=v20"></script>
+  <script src="./js/gestor-listas.js?v=v20"></script>
+  <script src="./js/actualizador.js?v=v20"></script>
 </body>
 </html>

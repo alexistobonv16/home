@@ -321,6 +321,11 @@ const CANALES_PARTIDO_HOY = [
     btnSiguiente: $('#btn-siguiente'),
     selCalidad: $('#sel-calidad'),
     btnFavFicha: $('#btn-fav-ficha'),
+    btnNerd: $('#btn-nerd'),
+    panelNerd: $('#panel-nerd'),
+    contenidoNerd: $('#contenido-nerd'),
+    btnCerrarNerd: $('#btn-cerrar-nerd'),
+    btnCopiarNerd: $('#btn-copiar-nerd'),
     btnCopiar: $('#btn-copiar'),
     btnAtajos: $('#btn-atajos'),
 
@@ -1696,6 +1701,9 @@ const CANALES_PARTIDO_HOY = [
       refrescarTarjeta(estado.actual);
       actualizarFicha();
     }
+    if (dom.panelNerd && !dom.panelNerd.hidden) {
+      actualizarPanelNerd();
+    }
   }
 
   function pintarCalidades(niveles) {
@@ -1746,6 +1754,253 @@ const CANALES_PARTIDO_HOY = [
     document.title = `${c.nombre} · GolStream IPTV`;
     actualizarMediaSession(c);
     pintarFichaEpg();
+    if (dom.panelNerd && !dom.panelNerd.hidden) {
+      actualizarPanelNerd();
+    }
+  }
+
+  /* ---------- Estadísticas para Nerds (HUD Técnico interactivo) ---------- */
+  let timerNerd = null;
+
+  function obtenerMetricasNerd() {
+    const c = estado.actual;
+    const v = dom.video;
+    const h = reproductor.hls;
+    const diag = reproductor.diagnostico;
+
+    // Motor / Decodificador
+    let motor = 'HTML5 Nativo';
+    if (reproductor.modo === 'wasm') {
+      motor = 'WASM H.264 (Canvas Vía B)';
+    } else if (reproductor.modo === 'mpeg2') {
+      motor = 'WASM MPEG-2 (Canvas)';
+    } else if (h) {
+      motor = 'HLS.js (MSE / Hardware)';
+    } else if (reproductor.modo === 'nativo') {
+      motor = 'Safari Nativo (HLS)';
+    }
+
+    // Canal y formato
+    const canalTexto = c ? `${c.nombre}${c.id || c.tvgId ? ` (${c.id || c.tvgId})` : ''}` : 'Ninguno';
+    const formatoTexto = c ? (c.formato ? c.formato.toUpperCase() : 'HLS') : 'N/A';
+
+    // Resolución de video y viewport
+    const resVideo = v && v.videoWidth && v.videoHeight ? `${v.videoWidth}x${v.videoHeight}` : 'Esperando señal…';
+    const resViewport = v ? `${v.clientWidth}x${v.clientHeight}` : '0x0';
+
+    // Nivel actual / Bitrate / Códec
+    let calidadTexto = 'Auto';
+    let bitrateTexto = 'Desconocido';
+    let codecsTexto = '';
+    let bandwidthEst = '';
+    if (h) {
+      if (typeof h.bandwidthEstimate === 'number' && h.bandwidthEstimate > 0) {
+        bandwidthEst = `${(h.bandwidthEstimate / 1000).toFixed(0)} kbps`;
+      }
+      if (h.currentLevel >= 0 && h.levels && h.levels[h.currentLevel]) {
+        const lvl = h.levels[h.currentLevel];
+        calidadTexto = lvl.name || (lvl.height ? `${lvl.height}p` : 'Desconocida');
+        if (h.autoLevelEnabled) calidadTexto += ' (Auto)';
+        if (lvl.bitrate) bitrateTexto = `${Math.round(lvl.bitrate / 1000)} kbps`;
+        codecsTexto = lvl.attrs?.CODECS || lvl.videoCodec || '';
+      } else if (h.levels && h.levels.length === 1 && h.levels[0]) {
+        const lvl = h.levels[0];
+        if (lvl.bitrate) bitrateTexto = `${Math.round(lvl.bitrate / 1000)} kbps`;
+        codecsTexto = lvl.attrs?.CODECS || lvl.videoCodec || '';
+      }
+    }
+
+    // Cuadros (Frames)
+    let framesTotales = 0;
+    let framesCaidos = 0;
+    if (v && typeof v.getVideoPlaybackQuality === 'function') {
+      const q = v.getVideoPlaybackQuality();
+      framesTotales = q.totalVideoFrames || 0;
+      framesCaidos = q.droppedVideoFrames || 0;
+    } else if (v && 'webkitDecodedFrameCount' in v) {
+      framesTotales = v.webkitDecodedFrameCount || 0;
+      framesCaidos = v.webkitDroppedFrameCount || 0;
+    }
+    const ratioDrop = framesTotales > 0 ? ((framesCaidos / framesTotales) * 100).toFixed(1) : '0.0';
+
+    // Buffer hacia adelante
+    let bufferAdelanto = 0;
+    try {
+      if (v) {
+        const ct = v.currentTime;
+        for (let i = 0; i < v.buffered.length; i++) {
+          if (ct >= v.buffered.start(i) - 0.1 && ct <= v.buffered.end(i) + 0.1) {
+            bufferAdelanto = Math.max(0, v.buffered.end(i) - ct);
+            break;
+          }
+        }
+      }
+    } catch {}
+
+    // Latencia / Sincronización en vivo
+    let syncLive = 'N/A';
+    if (h && typeof h.liveSyncPosition === 'number' && h.liveSyncPosition > 0 && v) {
+      const lat = Math.max(0, h.liveSyncPosition - v.currentTime);
+      syncLive = `${lat.toFixed(1)} s`;
+    }
+
+    // Pipeline Audio
+    let audioTexto = 'HTML5 AAC';
+    if (reproductor.useWebAudio) {
+      audioTexto = `WebAudio (${(reproductor.audioCodec || 'MP2/AC3').toUpperCase()}) @ ${reproductor.audioCtx?.sampleRate || 48000} Hz`;
+    } else {
+      audioTexto = `Nativo / MSE (${reproductor._silenciado ? 'Mudo' : `${Math.round(reproductor._volumen * 100)}%`})`;
+    }
+
+    // Tiempo de arranque
+    let tArranque = 'N/A';
+    if (diag?.inicioVideoMs != null) {
+      tArranque = `${(diag.inicioVideoMs / 1000).toFixed(2)} s`;
+    } else if (reproductor.inicio) {
+      tArranque = `${((performance.now() - reproductor.inicio) / 1000).toFixed(1)} s (en curso)`;
+    }
+
+    // Red / Salud
+    const reconexiones = reproductor.reintentosRed || diag?.reconexiones || 0;
+    const congelamientos = diag?.congelamientos || 0;
+    const resultado = diag?.resultado || (v && v.paused ? 'En pausa' : 'Reproduciendo');
+
+    return {
+      canal: canalTexto,
+      formato: formatoTexto,
+      motor,
+      resVideo,
+      resViewport,
+      calidad: calidadTexto,
+      bitrate: bitrateTexto,
+      bandwidthEst: bandwidthEst || 'N/A',
+      codecs: codecsTexto || 'H.264 / AAC',
+      framesTotales,
+      framesCaidos,
+      ratioDrop,
+      bufferAdelanto,
+      syncLive,
+      audio: audioTexto,
+      tArranque,
+      reconexiones,
+      congelamientos,
+      resultado,
+      url: c?.url || ''
+    };
+  }
+
+  function actualizarPanelNerd() {
+    if (!dom.panelNerd || dom.panelNerd.hidden) return;
+    const m = obtenerMetricasNerd();
+
+    let bufferClase = 'verde';
+    if (m.bufferAdelanto < 2) bufferClase = 'rojo';
+    else if (m.bufferAdelanto < 6) bufferClase = 'amarillo';
+
+    const pctBuffer = Math.min(100, Math.max(0, (m.bufferAdelanto / 15) * 100));
+
+    let dropClase = 'verde';
+    if (parseFloat(m.ratioDrop) > 5) dropClase = 'rojo';
+    else if (parseFloat(m.ratioDrop) > 1) dropClase = 'amarillo';
+
+    dom.contenidoNerd.innerHTML = `
+      <div class="nerd-fila">
+        <span class="nerd-label">Canal / ID</span>
+        <span class="nerd-val azul" title="${esc(m.canal)}">${esc(m.canal)}</span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Motor</span>
+        <span class="nerd-val verde">${esc(m.motor)}</span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Resolución</span>
+        <span class="nerd-val">${esc(m.resVideo)} <span class="text-slate-400 font-normal">(${esc(m.resViewport)})</span></span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Perfil / Bitrate</span>
+        <span class="nerd-val">${esc(m.calidad)} · ${esc(m.bitrate)}</span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Ancho de banda est.</span>
+        <span class="nerd-val">${esc(m.bandwidthEst)}</span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Cuadros (Frames)</span>
+        <span class="nerd-val ${dropClase}">
+          ${m.framesCaidos} caídos / ${m.framesTotales} <span class="text-slate-400 font-normal">(${m.ratioDrop}%)</span>
+        </span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Buffer de video</span>
+        <span class="nerd-val ${bufferClase}">${m.bufferAdelanto.toFixed(1)} s</span>
+      </div>
+      <div class="nerd-buffer-bar-wrap">
+        <div class="nerd-buffer-bar" style="width: ${pctBuffer.toFixed(1)}%; background: ${bufferClase === 'verde' ? '#3ddc84' : bufferClase === 'amarillo' ? '#fbbf24' : '#f87171'}"></div>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Latencia en vivo</span>
+        <span class="nerd-val">${esc(m.syncLive)}</span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Pipeline Audio</span>
+        <span class="nerd-val" title="${esc(m.audio)}">${esc(m.audio)}</span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Tiempo de arranque</span>
+        <span class="nerd-val">${esc(m.tArranque)}</span>
+      </div>
+      <div class="nerd-fila">
+        <span class="nerd-label">Estado / Red</span>
+        <span class="nerd-val ${m.resultado === 'reproduciendo' ? 'verde' : 'amarillo'}">
+          ${esc(m.resultado)} ${m.reconexiones > 0 ? `(${m.reconexiones} reconexiones)` : ''}
+        </span>
+      </div>
+    `;
+  }
+
+  function obtenerDiagnosticoTexto() {
+    const m = obtenerMetricasNerd();
+    return [
+      `=== ALEXIS TV / GOLSTREAM · ESTADÍSTICAS PARA NERDS ===`,
+      `Fecha/Hora: ${new Date().toISOString()}`,
+      `Canal: ${m.canal}`,
+      `Stream URL: ${m.url}`,
+      `Motor de reproducción: ${m.motor}`,
+      `Resolución video: ${m.resVideo} (Viewport: ${m.resViewport})`,
+      `Perfil y calidad: ${m.calidad}`,
+      `Bitrate: ${m.bitrate}`,
+      `Ancho de banda estimado: ${m.bandwidthEst}`,
+      `Códecs: ${m.codecs}`,
+      `Cuadros caídos / totales: ${m.framesCaidos} / ${m.framesTotales} (${m.ratioDrop}%)`,
+      `Buffer hacia adelante: ${m.bufferAdelanto.toFixed(2)} s`,
+      `Retardo en vivo (Live Sync): ${m.syncLive}`,
+      `Pipeline de audio: ${m.audio}`,
+      `Tiempo de inicio: ${m.tArranque}`,
+      `Estado / Reconexiones: ${m.resultado} (Reconexiones: ${m.reconexiones}, Congelamientos: ${m.congelamientos})`,
+      `Navegador: ${navigator.userAgent}`,
+      `======================================================`
+    ].join('\n');
+  }
+
+  function alternarPanelNerd(abrir = null) {
+    if (!dom.panelNerd) return;
+    const visible = abrir !== null ? abrir : dom.panelNerd.hidden;
+    dom.panelNerd.hidden = !visible;
+    if (dom.btnNerd) {
+      dom.btnNerd.setAttribute('aria-pressed', String(visible));
+      dom.btnNerd.classList.toggle('activo', visible);
+    }
+    if (visible) {
+      actualizarPanelNerd();
+      if (!timerNerd) {
+        timerNerd = setInterval(actualizarPanelNerd, 800);
+      }
+    } else {
+      if (timerNerd) {
+        clearInterval(timerNerd);
+        timerNerd = null;
+      }
+    }
   }
 
   /* ---------- Guía de programación (EPG) ---------- */
@@ -2184,6 +2439,12 @@ const CANALES_PARTIDO_HOY = [
     }
     if (dom.dialogoAtajos.open || dom.dialogoEpg.open) return; // los diálogos manejan sus teclas (Esc los cierra)
 
+    if (e.key === 'Escape' && dom.panelNerd && !dom.panelNerd.hidden) {
+      e.preventDefault();
+      alternarPanelNerd(false);
+      return;
+    }
+
     const accion = {
       ArrowDown: () => zapping(1),
       ArrowUp: () => zapping(-1),
@@ -2197,6 +2458,7 @@ const CANALES_PARTIDO_HOY = [
       },
       f: alternarPantallaCompleta,
       p: alternarPiP,
+      n: () => alternarPanelNerd(),
       m: () => {
         const mudo = reproductor.alternarSilencio();
         actualizarSonido();
@@ -2441,6 +2703,21 @@ const CANALES_PARTIDO_HOY = [
   });
   dom.selCalidad.addEventListener('change', () => reproductor.setCalidad(dom.selCalidad.value));
   dom.btnFavFicha.addEventListener('click', () => alternarFavorito(estado.actual));
+  dom.btnNerd?.addEventListener('click', () => alternarPanelNerd());
+  dom.btnCerrarNerd?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    alternarPanelNerd(false);
+  });
+  dom.btnCopiarNerd?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const texto = obtenerDiagnosticoTexto();
+    try {
+      await navigator.clipboard.writeText(texto);
+      toast('Estadísticas copiadas al portapapeles', 'ok', 3000);
+    } catch {
+      toast('No se pudo copiar automáticamente al portapapeles', 'aviso');
+    }
+  });
   /** Copia la URL del stream para abrirla en VLC (Medio → Abrir ubicación de red) u otro reproductor. */
   async function copiarUrl() {
     if (!estado.actual) return;
@@ -2530,7 +2807,7 @@ const CANALES_PARTIDO_HOY = [
 
   // Clic en el video: alternar pausa o activar sonido bloqueado por autoplay
   dom.contenedorVideo.addEventListener('click', (e) => {
-    if (e.target.closest('button, input, select, .accion, a')) return;
+    if (e.target.closest('button, input, select, .accion, a, #panel-nerd')) return;
     reproductor.desbloquearAudio();
     if (reproductor.silenciado && reproductor.bloqueoAutoplay) {
       reproductor.desmutear();

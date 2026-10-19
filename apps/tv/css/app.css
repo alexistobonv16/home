@@ -320,3 +320,149 @@
   color: #fff;
   border-color: #1f2a38;
 }
+
+/* ==========================================================================
+   Alexis TV — Estadísticas para Nerds (Stats for Nerds Overlay)
+   ========================================================================== */
+.panel-nerd {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  max-width: min(92%, 380px);
+  width: 100%;
+  background: rgba(8, 12, 19, 0.88);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  z-index: 30;
+  pointer-events: auto;
+  user-select: text;
+  box-sizing: border-box;
+  animation: panelNerdEntrada 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes panelNerdEntrada {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.panel-nerd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+
+.panel-nerd-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: min(65vh, 400px);
+  overflow-y: auto;
+}
+
+.nerd-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nerd-label {
+  color: #94a3b8;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.nerd-val {
+  color: #f8fafc;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+.nerd-val.verde {
+  color: #3ddc84;
+}
+
+.nerd-val.amarillo {
+  color: #fbbf24;
+}
+
+.nerd-val.rojo {
+  color: #f87171;
+}
+
+.nerd-val.azul {
+  color: #38bdf8;
+}
+
+.nerd-buffer-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin: 1px 0 2px 0;
+}
+
+.nerd-buffer-bar {
+  height: 100%;
+  background: #3ddc84;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.btn-nerd-accion {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-nerd-accion:hover {
+  background: rgba(61, 220, 132, 0.18);
+  color: #3ddc84;
+  border-color: rgba(61, 220, 132, 0.35);
+}
+
+.btn-nerd-cerrar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-nerd-cerrar:hover {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
