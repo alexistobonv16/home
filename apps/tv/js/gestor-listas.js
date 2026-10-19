@@ -244,15 +244,62 @@
       if (countEl) countEl.textContent = `${this.listas.length} lista${this.listas.length === 1 ? '' : 's'} guardada${this.listas.length === 1 ? '' : 's'}`;
     }
 
+    actualizarConteoCanales(urlOId, count) {
+      if (!count || count <= 0) return;
+      const pl = this.listas.find(l => l.id === urlOId || l.url === urlOId || (l.activa && (!l.canalesCount || l.canalesCount === 0)));
+      if (pl && pl.canalesCount !== count) {
+        pl.canalesCount = count;
+        this.guardar();
+      }
+    }
+
     renderSelectorSidebar() {
       const select = document.getElementById('selector-lista-activa');
-      if (!select) return;
+      const activa = this.obtenerActiva();
 
-      select.innerHTML = this.listas.map(l => `
-        <option value="${l.id}" ${l.activa ? 'selected' : ''}>
-          ${l.activa ? '🟢 ' : ''}${escapeHtml(l.nombre)} (${l.canalesCount || '…'} canales)
-        </option>
-      `).join('');
+      // Actualizar el trigger del menú custom
+      const textoActiva = document.getElementById('texto-lista-activa');
+      const badgeConteo = document.getElementById('badge-conteo-lista-activa');
+      const badgeTotal = document.getElementById('desplegable-total-badge');
+      const itemsContainer = document.getElementById('items-desplegable-listas');
+
+      if (textoActiva && activa) {
+        textoActiva.textContent = activa.nombre;
+        textoActiva.title = activa.nombre;
+      }
+      if (badgeConteo && activa) {
+        badgeConteo.textContent = activa.canalesCount ? `${activa.canalesCount} ch` : '…';
+      }
+      if (badgeTotal) {
+        badgeTotal.textContent = this.listas.length;
+      }
+
+      // Renderizar items del dropdown custom
+      if (itemsContainer) {
+        itemsContainer.innerHTML = this.listas.map(l => {
+          const esActiva = (l.id === activa?.id);
+          const badgeTipo = l.oficial ? 'Oficial' : l.tipo === 'archivo' ? 'Archivo' : 'M3U';
+          return `
+            <li class="desplegable-item ${esActiva ? 'activo' : ''}" data-id="${l.id}" role="option" aria-selected="${esActiva}">
+              <div class="desplegable-item-info">
+                <span class="h-2 w-2 rounded-full ${esActiva ? 'bg-cancha shadow-[0_0_8px_#3ddc84]' : 'bg-slate-600'} shrink-0"></span>
+                <span class="desplegable-item-nombre">${escapeHtml(l.nombre)}</span>
+                <span class="text-[9px] text-slate-500 uppercase font-mono px-1 py-0.2 bg-white/5 rounded shrink-0">${badgeTipo}</span>
+              </div>
+              <span class="desplegable-item-conteo">${l.canalesCount ? `${l.canalesCount} ch` : '…'}</span>
+            </li>
+          `;
+        }).join('');
+      }
+
+      // Mantener select oculto sincronizado por si acaso
+      if (select) {
+        select.innerHTML = this.listas.map(l => `
+          <option value="${l.id}" ${l.activa ? 'selected' : ''}>
+            ${escapeHtml(l.nombre)} (${l.canalesCount || '…'} canales)
+          </option>
+        `).join('');
+      }
     }
 
     renderListaCards() {
@@ -351,7 +398,64 @@
         });
       }
 
-      // Cambio desde selector en el sidebar
+      // Manejador del Desplegable Personalizado
+      const btnToggle = document.getElementById('btn-toggle-desplegable');
+      const menuCustom = document.getElementById('menu-desplegable-listas');
+      const itemsCustom = document.getElementById('items-desplegable-listas');
+      const btnAdminDesplegable = document.getElementById('btn-desplegable-administrar');
+
+      const cerrarDesplegable = () => {
+        if (menuCustom) menuCustom.hidden = true;
+        if (btnToggle) btnToggle.setAttribute('aria-expanded', 'false');
+      };
+
+      const toggleDesplegable = (e) => {
+        e.stopPropagation();
+        if (!menuCustom) return;
+        const estaAbierto = !menuCustom.hidden;
+        if (estaAbierto) {
+          cerrarDesplegable();
+        } else {
+          menuCustom.hidden = false;
+          if (btnToggle) btnToggle.setAttribute('aria-expanded', 'true');
+        }
+      };
+
+      if (btnToggle) btnToggle.addEventListener('click', toggleDesplegable);
+
+      if (itemsCustom) {
+        itemsCustom.addEventListener('click', (e) => {
+          const item = e.target.closest('.desplegable-item');
+          if (!item) return;
+          const id = item.dataset.id;
+          if (id) {
+            cerrarDesplegable();
+            this.activar(id);
+          }
+        });
+      }
+
+      if (btnAdminDesplegable) {
+        btnAdminDesplegable.addEventListener('click', () => {
+          cerrarDesplegable();
+          abrirModal();
+        });
+      }
+
+      // Cerrar al hacer clic fuera o pulsar ESC
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#desplegable-lista-custom')) {
+          cerrarDesplegable();
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menuCustom && !menuCustom.hidden) {
+          cerrarDesplegable();
+        }
+      });
+
+      // Cambio desde selector en el sidebar (oculto para fallback)
       if (selectSidebar) {
         selectSidebar.addEventListener('change', (e) => {
           this.activar(e.target.value);

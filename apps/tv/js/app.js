@@ -683,18 +683,19 @@ const CANALES_PARTIDO_HOY = [
 
   function esHlsInterno(c) {
     try {
-      const u = new URL(c?.url);
-      return c.compatible !== false && /^https?:$/.test(u.protocol) && /\.m3u8$/i.test(u.pathname)
-        && !(location.protocol === 'https:' && u.protocol === 'http:');
+      if (!c?.url) return false;
+      const u = new URL(c.url, location.href);
+      return /^https?:$/.test(u.protocol);
     } catch { return false; }
   }
 
-  // El titular solo anuncia un partido si la agenda tiene uno en juego (antes decía «Libertadores» cada día a las 18:30).
+  // El titular solo anuncia un partido si la agenda tiene uno en juego
   function actualizarModoChile() {
     const t = Date.now();
     const vivo = agenda.hoy(t).find((e) => AgendaFutbol.estadoReal(e, t) === 'vivo');
-    document.querySelector('#titulo-partido-hoy').textContent = vivo ? `En juego: ${vivo.local} vs ${vivo.visita}` : 'Señales en vivo';
-    document.querySelector('#partido-hoy').classList.toggle('modo-partido', !!vivo);
+    const tit = document.querySelector('#titulo-partido-hoy');
+    if (tit) tit.textContent = vivo ? `En juego: ${vivo.local} vs ${vivo.visita}` : 'Señales en vivo';
+    document.querySelector('#partido-hoy')?.classList.toggle('modo-partido', !!vivo);
   }
 
   function crearDestacado(opcion, grupo, respaldo = false) {
@@ -726,31 +727,12 @@ const CANALES_PARTIDO_HOY = [
 
   function configurarSenales(canales) {
     for (const c of canales) if (esHlsInterno(c)) catalogoServidores.set(c.url, c);
-    const top = [
-      [CANALES_PARTIDO_HOY[0].opciones[0], CANALES_PARTIDO_HOY[0].opciones[3]],
-      [CANALES_PARTIDO_HOY[1].respaldos[0], CANALES_PARTIDO_HOY[0].opciones[5]],
-      [CANALES_PARTIDO_HOY[2].respaldos[0], CANALES_PARTIDO_HOY[2].respaldos[1]],
-    ];
-    top.forEach((opciones, i) => {
-      const nuevos = opciones.map(o => crearDestacado(o, i));
-      for (const c of nuevos) {
-        if (!c || !esHlsInterno(c)) continue;
-        if (!catalogoServidores.has(c.url)) catalogoServidores.set(c.url, c);
-        if (!candidatosPartido[i].some(x => x.url === c.url)) candidatosPartido[i].push(c);
-      }
-    });
-    senalesPartido = candidatosPartido.map(g => g.find(c => saludDestacados.get(c.url)?.ok) || g.find(c => saludDestacados.get(c.url)?.ok !== false) || null);
     fijarDestacados(canales);
     pintarSenales();
   }
 
   function fijarDestacados(canales = estado.canales) {
-    const primeros = [...new Map(senalesPartido.filter(c => c && saludDestacados.get(c.url)?.ok).map(c => [c.url, c])).values()];
-    const urls = new Set(primeros.map(c => c.url));
-    const candidatos = new Set(candidatosPartido.flat().map(c => c.url));
-    const otrosActivos = candidatosPartido.flat().filter(c => saludDestacados.get(c.url)?.ok && !urls.has(c.url));
-    const todos = [...primeros, ...otrosActivos, ...candidatosPartido.flat(), ...canales.filter(esHlsInterno)];
-    estado.canales = [...new Map(todos.map(c => [c.url, c])).values()].slice(0, CONFIG.maxCanales);
+    estado.canales = canales.slice(0, CONFIG.maxCanales);
     estado.version++;
   }
 
@@ -957,8 +939,13 @@ const CANALES_PARTIDO_HOY = [
   });
 
   function aplicarLista(r) {
-    const host = new URL(r.urlFinal).hostname;
-    configurarSenales(r.canales);
+    let host = '';
+    try { host = new URL(r.urlFinal, location.href).hostname; } catch { host = 'lista local'; }
+    estado.canales = r.canales || [];
+    configurarSenales(estado.canales);
+    if (global.GestorListasInstancia) {
+      global.GestorListasInstancia.actualizarConteoCanales(r.url, estado.canales.length);
+    }
     // (los canales caídos se recuerdan por URL durante la sesión, aunque se cambie de lista)
     estado.grupo = '';
     estado.listaUrl = r.url;

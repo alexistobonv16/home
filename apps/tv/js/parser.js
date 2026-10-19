@@ -270,11 +270,47 @@
 
       return { partes, urlFinal: resp.url || url.href, bytes };
     } catch (err) {
-      if (err instanceof ErrorLista) throw err;
+      if (err instanceof ErrorLista && err.codigo !== 'http') throw err;
       if (porTiempo) throw new ErrorLista('timeout', 'El servidor tardó demasiado en responder. Intenta de nuevo más tarde.');
       if (signal?.aborted) throw new ErrorLista('cancelado', 'Carga cancelada.');
+
+      // Si falla directo (CORS o contenido mixto), intentamos a través de nuestro proxy de Cloudflare
+      if (!url.href.includes('/api/tv/proxy')) {
+        try {
+          const urlProxy = new URL(`/api/tv/proxy?url=${encodeURIComponent(url.href)}`, (typeof location !== 'undefined' ? location.href : 'https://tv.alexistobon.com/'));
+          const respProxy = await fetch(urlProxy.href, {
+            signal: ctrl.signal,
+            cache: 'no-store',
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+          });
+          if (respProxy.ok) {
+            let bytes = 0;
+            const partes = [];
+            if (respProxy.body?.getReader) {
+              const lector = respProxy.body.getReader();
+              for (;;) {
+                const { done, value } = await lector.read();
+                if (done) break;
+                bytes += value.byteLength;
+                if (bytes > LIMITES.maxBytes) {
+                  lector.cancel();
+                  throw errorTamano();
+                }
+                partes.push(value);
+                onProgreso?.(bytes, 0);
+              }
+            } else {
+              partes.push(await respProxy.arrayBuffer());
+              bytes = partes[0].byteLength;
+            }
+            return { partes, urlFinal: url.href, bytes };
+          }
+        } catch { /* si el proxy también falla, lanzamos el error amigable */ }
+      }
+
       // fetch lanza TypeError tanto sin internet como cuando el servidor no permite CORS.
-      throw new ErrorLista('red', 'No se pudo descargar. Revisa tu conexión a internet o, si la URL es correcta, el servidor no permite que otras webs lo lean (CORS).');
+      throw new ErrorLista('red', 'No se pudo descargar la lista. Verifica la URL o que el servidor esté disponible.');
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener('abort', alCancelar);

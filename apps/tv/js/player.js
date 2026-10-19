@@ -22,19 +22,23 @@
     maxReintentosRed: 3,        // reintentos ante cortes durante la emisión
   };
 
-  /* hls.js (~410 KB) se sirve desde el mismo dominio y solo se descarga donde hace falta:
-     Safari / iPhone usan HLS nativo y nunca lo bajan. */
+  /* hls.js: se carga desde CDN o local con fallback */
   let promesaMotor = null;
   function cargarMotorHls() {
     if (global.Hls) return Promise.resolve(global.Hls);
     if (promesaMotor) return promesaMotor;
     promesaMotor = new Promise((resolver, rechazar) => {
       const s = document.createElement('script');
-      const version = document.querySelector('meta[name="golstream-version"]')?.content || 'dev';
-      s.src = new URL(`./js/vendor/hls.min.js?v=${encodeURIComponent(version)}`, location.href).href;
+      s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
       s.async = true;
       s.onload = () => (global.Hls ? resolver(global.Hls) : rechazar(new Error('hls.js no disponible')));
-      s.onerror = () => { promesaMotor = null; rechazar(new Error('hls.js no cargó')); };
+      s.onerror = () => {
+        const s2 = document.createElement('script');
+        s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js';
+        s2.onload = () => (global.Hls ? resolver(global.Hls) : rechazar(new Error('hls.js no disponible')));
+        s2.onerror = () => { promesaMotor = null; rechazar(new Error('hls.js no cargó')); };
+        document.head.appendChild(s2);
+      };
       document.head.appendChild(s);
     });
     return promesaMotor;
@@ -122,11 +126,13 @@
       const { url, formato } = canal;
 
       // Casos que sabemos de antemano que el navegador no puede reproducir.
-      if (!canal.compatible) {
+      if (!canal.compatible && formato !== 'ts') {
         return this._caido(`formato ${NOMBRE_FORMATO[formato] || formato} no compatible con navegadores (sí con VLC)`, 'formato');
       }
+
+      let streamUrl = url;
       if (location.protocol === 'https:' && url.startsWith('http:')) {
-        return this._caido('el stream usa http:// y esta página https://; el navegador lo bloquea (contenido mixto)', 'mixto');
+        streamUrl = `/api/tv/proxy?url=${encodeURIComponent(url)}`;
       }
 
       this._emit('cargando');
@@ -134,13 +140,13 @@
       this.tProgreso = setInterval(() => this._medirProgreso(), 500);
 
       if (formato === 'archivo' || formato === 'audio') {
-        this._cargarNativo(url);
+        this._cargarNativo(streamUrl);
       } else if (this._usarHlsNativo()) {
-        this._cargarNativo(url); // Prioridad nativa en Safari / iOS, MSE en Chrome
+        this._cargarNativo(streamUrl); // Prioridad nativa en Safari / iOS, MSE en Chrome
       } else if (this.soportaHls) {
-        this._cargarHls(url);
+        this._cargarHls(streamUrl);
       } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
-        this._cargarNativo(url);
+        this._cargarNativo(streamUrl);
       } else {
         this._caido('este navegador no puede reproducir HLS', 'navegador');
       }
@@ -348,7 +354,14 @@
 
       if (data.type === ErrorTypes.NETWORK_ERROR) {
         if ([401, 403, 404, 410].includes(codigo)) return fallar(motivoHttp(codigo), `http-${codigo}`);
-        // Fallo al pedir el índice del canal: el enlace está caído o bloqueado.
+        // Fallo al pedir el índice del canal: intentar con proxy antes de darlo por muerto
+        if (!url.includes('/api/tv/proxy') && (data.details === ErrorDetails.MANIFEST_LOAD_ERROR || data.details === ErrorDetails.MANIFEST_LOAD_TIMEOUT || codigo === 0)) {
+          const proxied = `/api/tv/proxy?url=${encodeURIComponent(url)}`;
+          console.warn('[IPTV] Reintentando stream con proxy CORS:', proxied);
+          this.hls.loadSource(proxied);
+          this.hls.startLoad();
+          return;
+        }
         if (data.details === ErrorDetails.MANIFEST_LOAD_ERROR || data.details === ErrorDetails.MANIFEST_LOAD_TIMEOUT) {
           if (codigo === 401 || codigo === 403 || codigo === 404 || codigo === 410) {
             return fallar(motivoHttp(codigo), `http-${codigo}`);

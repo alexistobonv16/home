@@ -23,6 +23,8 @@
   <!-- Estilos compilados (Tailwind CLI + componentes): la página se pinta sin ejecutar JavaScript. -->
   <link rel="stylesheet" href="./css/app.css?v=pro_v8" />
   <link rel="stylesheet" href="./css/gestor-listas.css?v=2" />
+  <!-- Motor HLS.js para reproducción universal de streaming -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
   <!-- Tipografía de titulares sin bloquear el primer render (el texto usa la fuente del sistema). -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" media="print" onload="this.media='all'" />
@@ -127,16 +129,7 @@
           </div>
         </div>
 
-        <!-- Señales destacadas -->
-        <section id="partido-hoy" class="senales" aria-labelledby="titulo-partido-hoy">
-          <h2 id="titulo-partido-hoy" class="senales-titulo">Señales en vivo</h2>
-          <div class="partido-senales" role="group" aria-label="Señales destacadas">
-            <button type="button" data-senal="0" aria-pressed="false" disabled><b>Señal 1</b><span data-nombre>ESPN</span><small data-salud="0">Verificando</small></button>
-            <button type="button" data-senal="1" aria-pressed="false" disabled><b>Señal 2</b><span data-nombre>ESPN 2</span><small data-salud="1">Verificando</small></button>
-            <button type="button" data-senal="2" aria-pressed="false" disabled><b>Señal 3</b><span data-nombre>ESPN 3</span><small data-salud="2">Verificando</small></button>
-          </div>
-          <p id="estado-senales" class="sr-only" role="status"></p>
-        </section>
+
 
         
 
@@ -158,16 +151,44 @@
           <h2 class="titulo-seccion">Canales verificados</h2>
           <!-- Buscador y filtros (fijos al hacer scroll) -->
           <div class="sticky top-14 z-20 -mx-4 bg-fondo/95 px-4 pb-3 pt-1 backdrop-blur lg:top-0 lg:mx-0 lg:px-0">
-            <!-- Barra de Lista Activa y acceso al Gestor -->
+            <!-- Barra de Lista Activa y acceso al Gestor con Desplegable Estilizado -->
             <div class="barra-lista-activa">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="h-2 w-2 rounded-full bg-cancha shrink-0"></span>
-                <span class="text-slate-400 shrink-0 text-xs font-medium">Lista activa:</span>
-                <select id="selector-lista-activa" class="selector-lista-activa" aria-label="Lista activa"></select>
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <span class="h-2 w-2 rounded-full bg-cancha shrink-0 animate-pulse"></span>
+                <span class="text-slate-400 shrink-0 text-xs font-medium hidden sm:inline">Lista:</span>
+                
+                <!-- Desplegable Personalizado Estilo Stadium Dark -->
+                <div id="desplegable-lista-custom" class="desplegable-custom-contenedor relative min-w-0 flex-1">
+                  <button id="btn-toggle-desplegable" type="button" class="desplegable-trigger" aria-haspopup="listbox" aria-expanded="false" title="Cambiar lista activa">
+                    <span id="texto-lista-activa" class="truncate font-semibold text-white">Alexis TV Oficial</span>
+                    <span id="badge-conteo-lista-activa" class="tag-conteo">362</span>
+                    <svg viewBox="0 0 24 24" class="icono-chevron h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  
+                  <div id="menu-desplegable-listas" class="desplegable-menu" role="listbox" hidden>
+                    <div class="desplegable-header">
+                      <span>Tus Listas de Canales</span>
+                      <span id="desplegable-total-badge" class="badge-total">1</span>
+                    </div>
+                    <ul id="items-desplegable-listas" class="desplegable-items scroll-fino">
+                      <!-- Renderizado dinámico desde gestor-listas.js -->
+                    </ul>
+                    <div class="desplegable-footer">
+                      <button id="btn-desplegable-administrar" type="button" class="btn-desplegable-admin">
+                        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                        <span>Administrar listas M3U</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Select oculto para compatibilidad con código existente -->
+                <select id="selector-lista-activa" class="sr-only" aria-label="Lista activa (oculto)"></select>
               </div>
-              <button id="btn-abrir-gestor-sidebar" type="button" class="shrink-0 text-cancha hover:underline text-xs font-semibold flex items-center gap-1" title="Abrir Administrador de Listas">
-                <span>Gestionar</span>
+
+              <button id="btn-abrir-gestor-sidebar" type="button" class="shrink-0 text-cancha hover:text-white bg-cancha/10 hover:bg-cancha/20 px-2.5 py-1 rounded-lg border border-cancha/30 text-xs font-semibold flex items-center gap-1 transition" title="Abrir Administrador de Listas">
                 <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+                <span class="hidden sm:inline">Gestionar</span>
               </button>
             </div>
             <div class="relative">
