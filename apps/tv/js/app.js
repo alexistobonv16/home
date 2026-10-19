@@ -563,6 +563,10 @@ const CANALES_PARTIDO_HOY = [
    * @param {{ forzar?: boolean }} opciones  forzar = ignorar la caché (botón "Cargar lista")
    */
   async function cargar(textoUrl, { forzar = false } = {}) {
+    // Normalizar si apunta al catálogo JSON curado por defecto
+    if (textoUrl === './data/catalogo-pro.json' || textoUrl === '/data/catalogo-pro.json' || String(textoUrl).endsWith('catalogo-pro.json')) {
+      textoUrl = CONFIG.listaPorDefecto;
+    }
     // Las antiguas URLs mundiales guardadas nunca vuelven a descargar miles de entradas.
     if (/iptv-org.*\/(?:index|languages\/spa)\.m3u(?:[?#]|$)/i.test(textoUrl) || /\/data\/catalogo-estable\.m3u(?:[?#]|$)/.test(textoUrl)) textoUrl = CONFIG.listaPorDefecto;
     if (textoUrl !== CONFIG.listaPorDefecto && prioridadVideo) {
@@ -586,7 +590,7 @@ const CANALES_PARTIDO_HOY = [
 
     const ctrl = new AbortController();
     estado.carga = ctrl;
-    if (textoUrl === CONFIG.listaPorDefecto) return cargarCatalogoPro(ctrl, clave);
+    if (textoUrl === CONFIG.listaPorDefecto || String(textoUrl).includes('catalogo-pro.json')) return cargarCatalogoPro(ctrl, clave);
     bloquearFormulario(true);
     marcarPestana(clave, true);
 
@@ -943,8 +947,8 @@ const CANALES_PARTIDO_HOY = [
     try { host = new URL(r.urlFinal, location.href).hostname; } catch { host = 'lista local'; }
     estado.canales = r.canales || [];
     configurarSenales(estado.canales);
-    if (global.GestorListasInstancia) {
-      global.GestorListasInstancia.actualizarConteoCanales(r.url, estado.canales.length);
+    if (typeof window !== 'undefined' && window.GestorListasInstancia) {
+      window.GestorListasInstancia.actualizarConteoCanales(r.url, estado.canales.length);
     }
     // (los canales caídos se recuerdan por URL durante la sesión, aunque se cambie de lista)
     estado.grupo = '';
@@ -2404,9 +2408,56 @@ const CANALES_PARTIDO_HOY = [
 
   Memoria.guardar('fuente', null); // limpia una clave de la primera versión de la app
 
-  // Autoplay inmediato con catálogo local; nunca verifica en paralelo al video.
+  // Exponer API pública en window para el gestor de listas y otros módulos
+  window.AlexisTV = {
+    cargar,
+    aplicarLista,
+    ver,
+    estado,
+    toast,
+    configurarSenales,
+    CONFIG
+  };
+  window.cargar = cargar;
+  window.aplicarLista = aplicarLista;
+
+  // Carga de la lista activa guardada o la predeterminada
   const desdeDireccion = new URLSearchParams(location.search).get('lista');
-  const inicial = desdeDireccion || CONFIG.listaPorDefecto;
+  let listaInicial = desdeDireccion;
+
+  if (!listaInicial) {
+    try {
+      const raw = localStorage.getItem('at_playlists_v2');
+      if (raw) {
+        const listas = JSON.parse(raw);
+        const activa = Array.isArray(listas) ? listas.find(l => l.activa) : null;
+        if (activa) {
+          if (activa.tipo === 'archivo' && activa.contenido) {
+            setTimeout(() => {
+              try {
+                const res = window.ParserM3U.parsear(activa.contenido, location.href);
+                aplicarLista({
+                  canales: res.canales,
+                  grupos: res.grupos,
+                  url: `local:${activa.id}`,
+                  urlFinal: `local:${activa.id}`
+                });
+              } catch (e) { console.error('Error cargando lista local:', e); }
+            }, 60);
+            listaInicial = null;
+          } else if (activa.url) {
+            if (activa.oficial || activa.id === 'oficial' || String(activa.url).endsWith('catalogo-pro.json')) {
+              listaInicial = CONFIG.listaPorDefecto;
+            } else {
+              listaInicial = activa.url;
+            }
+          }
+        }
+      }
+    } catch (e) { console.warn('Error leyendo lista activa guardada:', e); }
+  }
+
+  const inicial = listaInicial !== undefined && listaInicial !== null ? listaInicial : CONFIG.listaPorDefecto;
   configurarSenales([]);
   actualizarModoChile();
   setInterval(actualizarModoChile, 15_000);
@@ -2420,11 +2471,9 @@ const CANALES_PARTIDO_HOY = [
   aplicarFiltros(); // muestra favoritos/contadores aunque aún no haya lista
   dom.video.muted = true;
   dom.video.playsInline = true;
-  // No forzar reproducción automática no deseada; mantener en reposo hasta que el usuario elija un canal
   capa('reposo');
-  // Las guías remotas se cargan a petición; no compiten con el arranque del video.
-  pintarAgenda(); // lo guardado en el dispositivo se ve al instante
-  if (dom.agenda) alVerSeccion('#agenda', () => agenda.iniciar()); // TheSportsDB solo cuando la agenda está en pantalla
+  pintarAgenda();
+  if (dom.agenda) alVerSeccion('#agenda', () => agenda.iniciar());
   if (typeof inicial === 'string' && inicial) {
     dom.inputLista.value = inicial;
     cargar(inicial);

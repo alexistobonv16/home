@@ -11,7 +11,7 @@
   const LISTA_OFICIAL = {
     id: 'oficial',
     nombre: 'Alexis TV Oficial (Deportes & Latam)',
-    url: './data/catalogo-pro.json',
+    url: new URL('./data/catalogo-pro.json', typeof location !== 'undefined' ? location.href : 'https://tv.alexistobon.com/').href,
     tipo: 'oficial',
     canalesCount: 362,
     oficial: true,
@@ -32,8 +32,14 @@
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Asegurar que la oficial siempre esté presente
-            if (!parsed.some(l => l.id === 'oficial')) {
+            // Asegurar que la oficial siempre esté presente y con su URL absoluta
+            const idx = parsed.findIndex(l => l.id === 'oficial');
+            if (idx >= 0) {
+              parsed[idx].url = LISTA_OFICIAL.url;
+              parsed[idx].oficial = true;
+              parsed[idx].tipo = 'oficial';
+              if (!parsed[idx].canalesCount) parsed[idx].canalesCount = 362;
+            } else {
               parsed.unshift(LISTA_OFICIAL);
             }
             return parsed;
@@ -90,9 +96,13 @@
       }
 
       // Si es URL o catálogo oficial
+      let targetUrl = pl.url;
+      if (pl.oficial || pl.id === 'oficial' || String(targetUrl).endsWith('catalogo-pro.json')) {
+        targetUrl = global.AlexisTV?.CONFIG?.listaPorDefecto || LISTA_OFICIAL.url;
+      }
       const cargarFn = global.AlexisTV?.cargar || global.cargar;
       if (typeof cargarFn === 'function') {
-        cargarFn(pl.url, { forzar: true });
+        cargarFn(targetUrl, { forzar: true });
       }
     }
 
@@ -246,7 +256,12 @@
 
     actualizarConteoCanales(urlOId, count) {
       if (!count || count <= 0) return;
-      const pl = this.listas.find(l => l.id === urlOId || l.url === urlOId || (l.activa && (!l.canalesCount || l.canalesCount === 0)));
+      const pl = this.listas.find(l => 
+        l.id === urlOId || 
+        l.url === urlOId || 
+        (l.oficial && String(urlOId).includes('catalogo-pro.json')) || 
+        l.activa
+      );
       if (pl && pl.canalesCount !== count) {
         pl.canalesCount = count;
         this.guardar();
@@ -405,18 +420,24 @@
       const btnAdminDesplegable = document.getElementById('btn-desplegable-administrar');
 
       const cerrarDesplegable = () => {
-        if (menuCustom) menuCustom.hidden = true;
+        if (menuCustom) {
+          menuCustom.hidden = true;
+          menuCustom.style.display = 'none';
+        }
         if (btnToggle) btnToggle.setAttribute('aria-expanded', 'false');
       };
 
       const toggleDesplegable = (e) => {
+        e.preventDefault();
         e.stopPropagation();
         if (!menuCustom) return;
-        const estaAbierto = !menuCustom.hidden;
+        const estaAbierto = !menuCustom.hidden && menuCustom.style.display !== 'none';
         if (estaAbierto) {
           cerrarDesplegable();
         } else {
+          this.renderSelectorSidebar();
           menuCustom.hidden = false;
+          menuCustom.style.display = 'block';
           if (btnToggle) btnToggle.setAttribute('aria-expanded', 'true');
         }
       };
