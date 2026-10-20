@@ -243,6 +243,7 @@
   const visualizerStatsText = document.getElementById('visualizer-stats-text');
 
   // Bottom Player Bar Elements
+  const bottomPlayerBar = document.getElementById('bottom-player-bar');
   const bottomBarLogo = document.getElementById('bottom-bar-logo');
   const bottomBarName = document.getElementById('bottom-bar-name');
   const bottomBarFreq = document.getElementById('bottom-bar-freq');
@@ -451,7 +452,12 @@
     }
 
     if (bottomBarBitrateBadge) {
-      bottomBarBitrateBadge.textContent = activeBitrateText;
+      if (activeBitrateText && activeBitrateText !== '-- kbps' && activeBitrateText !== '0 kbps') {
+        bottomBarBitrateBadge.textContent = activeBitrateText;
+        bottomBarBitrateBadge.style.display = 'inline-block';
+      } else {
+        bottomBarBitrateBadge.style.display = 'none';
+      }
     }
 
     if (bottomBarTelemetry) {
@@ -560,53 +566,56 @@
 
   function updatePlayerStatus(state) {
     if (!nowPlayingStatus) return;
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
     if (state === 'playing') {
       nowPlayingStatus.className = 'bottom-bar-status status-playing';
-      nowPlayingStatus.style.background = 'rgba(16, 185, 129, 0.12)';
-      nowPlayingStatus.style.borderColor = 'rgba(16, 185, 129, 0.35)';
-      nowPlayingStatus.style.color = 'var(--accent-emerald)';
-      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#10b981;box-shadow:0 0 10px #10b981;"></span> EN VIVO';
+      nowPlayingStatus.style.background = isLight ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.14)';
+      nowPlayingStatus.style.borderColor = isLight ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.45)';
+      nowPlayingStatus.style.color = '#ef4444';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led pulse-red" style="background:#ef4444;box-shadow:0 0 8px #ef4444;"></span> EN VIVO';
     } else if (state === 'buffering') {
       nowPlayingStatus.className = 'bottom-bar-status status-buffering';
-      nowPlayingStatus.style.background = 'rgba(245, 158, 11, 0.14)';
-      nowPlayingStatus.style.borderColor = 'rgba(245, 158, 11, 0.45)';
+      nowPlayingStatus.style.background = isLight ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.16)';
+      nowPlayingStatus.style.borderColor = isLight ? 'rgba(245, 158, 11, 0.4)' : 'rgba(245, 158, 11, 0.45)';
       nowPlayingStatus.style.color = 'var(--accent-amber)';
-      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#f59e0b;box-shadow:0 0 10px #f59e0b;"></span> CONECTANDO...';
-    } else if (state === 'error') {
+      nowPlayingStatus.innerHTML = '<span class="pulse-led pulse-amber" style="background:#f59e0b;box-shadow:0 0 8px #f59e0b;"></span> CONECTANDO...';
+    } else if (state === 'error' || state === 'retrying') {
       nowPlayingStatus.className = 'bottom-bar-status status-error';
-      nowPlayingStatus.style.background = 'rgba(239, 68, 68, 0.16)';
-      nowPlayingStatus.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-      nowPlayingStatus.style.color = '#ef4444';
-      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#ef4444;box-shadow:0 0 10px #ef4444;"></span> NO DISPONIBLE';
+      nowPlayingStatus.style.background = isLight ? 'rgba(249, 115, 22, 0.12)' : 'rgba(249, 115, 22, 0.16)';
+      nowPlayingStatus.style.borderColor = isLight ? 'rgba(249, 115, 22, 0.4)' : 'rgba(249, 115, 22, 0.45)';
+      nowPlayingStatus.style.color = '#f97316';
+      const label = state === 'retrying' ? 'REINTENTANDO...' : 'ERROR';
+      nowPlayingStatus.innerHTML = `<span class="pulse-led pulse-orange" style="background:#f97316;box-shadow:0 0 8px #f97316;"></span> ${label}`;
     } else if (state === 'paused') {
       nowPlayingStatus.className = 'bottom-bar-status status-paused';
-      nowPlayingStatus.style.background = 'rgba(255, 255, 255, 0.06)';
-      nowPlayingStatus.style.borderColor = 'var(--border-color)';
+      nowPlayingStatus.style.background = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)';
+      nowPlayingStatus.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.12)' : 'var(--border-color)';
       nowPlayingStatus.style.color = 'var(--text-muted)';
-      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#64748b;box-shadow:none;"></span> PAUSADO';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led pulse-gray" style="background:#64748b;box-shadow:none;"></span> PAUSADO';
     } else {
       // ready / idle
       nowPlayingStatus.className = 'bottom-bar-status status-ready';
-      nowPlayingStatus.style.background = 'rgba(255, 255, 255, 0.06)';
-      nowPlayingStatus.style.borderColor = 'var(--border-color)';
+      nowPlayingStatus.style.background = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)';
+      nowPlayingStatus.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.12)' : 'var(--border-color)';
       nowPlayingStatus.style.color = 'var(--text-muted)';
-      nowPlayingStatus.innerHTML = '<span class="pulse-led" style="background:#64748b;box-shadow:none;"></span> LISTO';
+      nowPlayingStatus.innerHTML = '<span class="pulse-led pulse-gray" style="background:#64748b;box-shadow:none;"></span> LISTO';
     }
 
     // Sync Fullscreen Player Status
     if (fsStatusText && fsPulseLed) {
       if (state === 'playing') {
         fsStatusText.textContent = 'EN VIVO';
-        fsPulseLed.style.background = '#10b981';
-        fsPulseLed.style.boxShadow = '0 0 10px #10b981';
+        fsPulseLed.style.background = '#ef4444';
+        fsPulseLed.style.boxShadow = '0 0 10px #ef4444';
       } else if (state === 'buffering') {
         fsStatusText.textContent = 'CONECTANDO...';
         fsPulseLed.style.background = '#f59e0b';
         fsPulseLed.style.boxShadow = '0 0 10px #f59e0b';
-      } else if (state === 'error') {
-        fsStatusText.textContent = 'NO DISPONIBLE';
-        fsPulseLed.style.background = '#ef4444';
-        fsPulseLed.style.boxShadow = '0 0 10px #ef4444';
+      } else if (state === 'error' || state === 'retrying') {
+        fsStatusText.textContent = state === 'retrying' ? 'REINTENTANDO...' : 'ERROR';
+        fsPulseLed.style.background = '#f97316';
+        fsPulseLed.style.boxShadow = '0 0 10px #f97316';
       } else if (state === 'paused') {
         fsStatusText.textContent = 'PAUSADO';
         fsPulseLed.style.background = '#64748b';
@@ -847,6 +856,12 @@
       playIcon.style.display = playing ? 'none' : 'block';
       pauseIcon.style.display = playing ? 'block' : 'none';
     }
+    if (playBtn) {
+      playBtn.classList.toggle('is-playing', playing);
+    }
+    if (bottomPlayerBar) {
+      bottomPlayerBar.classList.toggle('is-playing', playing);
+    }
     if (fsPlayIcon && fsPauseIcon) {
       fsPlayIcon.style.display = playing ? 'none' : 'block';
       fsPauseIcon.style.display = playing ? 'block' : 'none';
@@ -1018,18 +1033,29 @@
 
   function drawIdleVisualizer() {
     if (!canvas || !canvasCtx) return;
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = canvas.width = canvas.offsetWidth || 130;
+    const height = canvas.height = canvas.offsetHeight || 34;
     if (width <= 0 || height <= 0) return;
+
     canvasCtx.clearRect(0, 0, width, height);
-    canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.1)';
-    canvasCtx.lineWidth = 1;
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const baseColor = isLight ? 'rgba(14, 165, 233, 0.45)' : 'rgba(0, 240, 255, 0.4)';
+    const glowColor = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(0, 240, 255, 0.12)';
+
+    // State 1: Flat static baseline (clean subtle luminous line across center)
+    canvasCtx.strokeStyle = glowColor;
+    canvasCtx.lineWidth = 4;
     canvasCtx.beginPath();
-    canvasCtx.moveTo(0, height / 2);
-    canvasCtx.lineTo(width, height / 2);
+    canvasCtx.moveTo(4, height / 2);
+    canvasCtx.lineTo(width - 4, height / 2);
     canvasCtx.stroke();
-    canvasCtx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-    canvasCtx.fillRect(0, height / 2, width, 1.5);
+
+    canvasCtx.strokeStyle = baseColor;
+    canvasCtx.lineWidth = 1.5;
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(4, height / 2);
+    canvasCtx.lineTo(width - 4, height / 2);
+    canvasCtx.stroke();
   }
 
   function stopVisualizer() {
@@ -1065,19 +1091,12 @@
 
       animFrameId = requestAnimationFrame(renderFrame);
 
-      const width = canvas.width;
-      const height = canvas.height;
+      const width = canvas.width = canvas.offsetWidth || 130;
+      const height = canvas.height = canvas.offsetHeight || 34;
       if (width <= 0 || height <= 0) return;
 
       canvasCtx.clearRect(0, 0, width, height);
-
-      // Subtle horizontal centerline
-      canvasCtx.strokeStyle = 'rgba(56, 189, 248, 0.1)';
-      canvasCtx.lineWidth = 1;
-      canvasCtx.beginPath();
-      canvasCtx.moveTo(0, height / 2);
-      canvasCtx.lineTo(width, height / 2);
-      canvasCtx.stroke();
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
       let hasData = false;
       if (analyser && isAudioContextConnected) {
@@ -1090,52 +1109,90 @@
         }
       }
 
-      // Draw compact frequency bars for mini canvas
-      const barCount = 18;
-      const barWidth = Math.max(2, Math.floor((width - barCount * 2) / barCount));
-      const usableHeight = height - 4;
-
-      const heights = new Float32Array(barCount);
       if (hasData) {
+        // State 2: Real frequency bars from AnalyserNode
+        canvasCtx.strokeStyle = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(56, 189, 248, 0.1)';
+        canvasCtx.lineWidth = 1;
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(0, height / 2);
+        canvasCtx.lineTo(width, height / 2);
+        canvasCtx.stroke();
+
+        const barCount = 18;
+        const barWidth = Math.max(2, Math.floor((width - barCount * 2) / barCount));
+        const usableHeight = height - 4;
+
+        const heights = new Float32Array(barCount);
         for (let i = 0; i < barCount; i++) {
           const dataIndex = Math.floor(i * (bufferLength / barCount));
           heights[i] = Math.max(2, (dataArray[dataIndex] / 255) * usableHeight);
         }
-      } else {
-        const time = Date.now() * 0.0035;
+
+        const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
+        grad.addColorStop(0, '#00f0ff');
+        grad.addColorStop(0.5, '#38bdf8');
+        grad.addColorStop(1, '#a855f7');
+        canvasCtx.fillStyle = grad;
+
+        let x = 2;
         for (let i = 0; i < barCount; i++) {
-          const wave = Math.sin(time + i * 0.35) * 0.5 + 0.5;
-          const wave2 = Math.cos(time * 0.8 + i * 0.25) * 0.5 + 0.5;
-          heights[i] = Math.max(3, (wave * 0.65 + wave2 * 0.35) * usableHeight);
+          const h = heights[i];
+          canvasCtx.fillRect(x, height - h - 1, barWidth, h);
+          x += barWidth + 2;
         }
-      }
 
-      // Batch 1: Bars with cached linear gradient
-      const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
-      grad.addColorStop(0, '#00f0ff');
-      grad.addColorStop(0.5, '#38bdf8');
-      grad.addColorStop(1, '#a855f7');
-      canvasCtx.fillStyle = grad;
+        // Glowing caps
+        canvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
+        x = 2;
+        for (let i = 0; i < barCount; i++) {
+          const h = heights[i];
+          canvasCtx.fillRect(x, height - h - 2, barWidth, 1.5);
+          x += barWidth + 2;
+        }
+      } else {
+        // State 3: Playing with all zeros (CORS stream) -> Soft, smooth, subtle continuous flowing sine wave
+        canvasCtx.strokeStyle = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(0, 240, 255, 0.12)';
+        canvasCtx.lineWidth = 1;
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(0, height / 2);
+        canvasCtx.lineTo(width, height / 2);
+        canvasCtx.stroke();
 
-      let x = 2;
-      for (let i = 0; i < barCount; i++) {
-        const h = heights[i];
-        canvasCtx.fillRect(x, height - h - 1, barWidth, h);
-        x += barWidth + 2;
-      }
+        const time = Date.now() * 0.0022;
+        const amplitude = Math.min(5, height * 0.2); // subtle low amplitude, no fake signal peaks
+        const midY = height / 2;
 
-      // Batch 2: Glowing caps with white fill
-      canvasCtx.fillStyle = '#ffffff';
-      x = 2;
-      for (let i = 0; i < barCount; i++) {
-        const h = heights[i];
-        canvasCtx.fillRect(x, height - h - 2, barWidth, 1.5);
-        x += barWidth + 2;
+        canvasCtx.beginPath();
+        for (let x = 0; x <= width; x += 2) {
+          const taper = Math.sin((x / width) * Math.PI); // Windowing: anchors cleanly at edges
+          const y = midY + Math.sin(x * 0.08 + time) * amplitude * taper;
+          if (x === 0) canvasCtx.moveTo(x, y);
+          else canvasCtx.lineTo(x, y);
+        }
+
+        const waveGrad = canvasCtx.createLinearGradient(0, 0, width, 0);
+        waveGrad.addColorStop(0, isLight ? 'rgba(14, 165, 233, 0.2)' : 'rgba(0, 240, 255, 0.2)');
+        waveGrad.addColorStop(0.5, isLight ? 'rgba(2, 132, 199, 0.85)' : 'rgba(56, 189, 248, 0.9)');
+        waveGrad.addColorStop(1, isLight ? 'rgba(147, 51, 234, 0.5)' : 'rgba(168, 85, 247, 0.6)');
+        canvasCtx.strokeStyle = waveGrad;
+        canvasCtx.lineWidth = 2;
+        canvasCtx.stroke();
       }
     }
 
     renderFrame();
   }
+
+  // Pause visualizer when tab is hidden, resume when tab is visible
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopVisualizer();
+    } else if (isPlaying) {
+      startVisualizer();
+    } else {
+      drawIdleVisualizer();
+    }
+  });
 
   // =========================================================================
   // MEDIA SESSION API (Lockscreen Controls & Album Art)
@@ -1336,6 +1393,34 @@
     isMetadataFetching = false;
   }
 
+  function checkBottomBarMarquee() {
+    if (!bottomBarName) return;
+    const wrapper = bottomBarName.closest('.bottom-bar-name-wrapper') || bottomBarName.parentElement;
+    if (!wrapper) return;
+
+    bottomBarName.classList.remove('has-marquee');
+    bottomBarName.style.removeProperty('--marquee-distance');
+    bottomBarName.style.removeProperty('--marquee-duration');
+
+    requestAnimationFrame(() => {
+      const overflow = bottomBarName.scrollWidth - wrapper.clientWidth;
+      if (overflow > 4) {
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!prefersReducedMotion) {
+          const dist = overflow + 18;
+          const duration = Math.max(5, Math.min(18, dist / 16)) + 's';
+          bottomBarName.style.setProperty('--marquee-distance', `-${dist}px`);
+          bottomBarName.style.setProperty('--marquee-duration', duration);
+          bottomBarName.classList.add('has-marquee');
+        }
+      }
+    });
+  }
+
+  window.addEventListener('resize', () => {
+    checkBottomBarMarquee();
+  });
+
   function applyNowPlayingMetadata(song) {
     if (!song || !currentStation) return;
     const isNewSong = !nowPlayingSong || nowPlayingSong.title !== song.title || nowPlayingSong.artist !== song.artist;
@@ -1394,6 +1479,7 @@
     if (bottomBarName) {
       bottomBarName.textContent = `${song.title} — ${song.artist}`;
       bottomBarName.title = `${song.title} — ${song.artist} (${currentStation.name})`;
+      checkBottomBarMarquee();
     }
     if (bottomBarFreq) {
       bottomBarFreq.textContent = currentStation.name;
@@ -1425,6 +1511,7 @@
       if (bottomBarName) {
         bottomBarName.textContent = currentStation.name;
         bottomBarName.title = currentStation.name;
+        checkBottomBarMarquee();
       }
       if (bottomBarFreq) {
         bottomBarFreq.textContent = currentStation.freq || currentStation.genre || 'WEB STREAM';
@@ -1504,9 +1591,20 @@
     }
     if (bottomBarName) {
       bottomBarName.textContent = station.name;
+      bottomBarName.title = station.name;
+      checkBottomBarMarquee();
     }
     if (bottomBarFreq) {
       bottomBarFreq.textContent = station.freq || station.genre || 'WEB STREAM';
+    }
+    if (bottomBarBitrateBadge) {
+      const b = station.bitrate;
+      if (b && b !== '-- kbps' && b !== '0 kbps') {
+        bottomBarBitrateBadge.textContent = b.includes('kbps') ? b : `${b} kbps`;
+        bottomBarBitrateBadge.style.display = 'inline-block';
+      } else {
+        bottomBarBitrateBadge.style.display = 'none';
+      }
     }
 
     updateFullscreenPlayer(station);
@@ -1756,6 +1854,46 @@
     document.body.style.overflow = 'hidden';
   }
 
+  function deleteStationWithUndo(station) {
+    if (!station) return;
+    if (confirm(`¿Eliminar la emisora "${station.name}"?`)) {
+      const deletedStation = station;
+      const deletedIndex = stations.findIndex(s => s.id === station.id);
+      stations = stations.filter(s => s.id !== station.id);
+      saveStations();
+
+      if (currentStation && currentStation.id === station.id) {
+        currentPlaybackToken++;
+        if (connectionTimeoutTimer) {
+          clearTimeout(connectionTimeoutTimer);
+          connectionTimeoutTimer = null;
+        }
+        if (hls) {
+          try { hls.destroy(); } catch (err) {}
+          hls = null;
+        }
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+        currentStation = null;
+        isBuffering = false;
+        setPlayingState(false);
+      }
+
+      renderStations();
+      showToast('Emisora eliminada', 'Deshacer', () => {
+        if (deletedIndex >= 0) {
+          stations.splice(deletedIndex, 0, deletedStation);
+        } else {
+          stations.push(deletedStation);
+        }
+        saveStations();
+        renderStations();
+        showToast(`Restaurada: ${deletedStation.name}`);
+      });
+    }
+  }
+
   function closeCardActionSheet() {
     activeActionSheetStation = null;
     const overlay = document.getElementById('card-action-sheet-overlay');
@@ -1789,29 +1927,7 @@
         } else if (action === 'edit') {
           openEditStationModal(station);
         } else if (action === 'delete') {
-          if (confirm(`¿Eliminar la emisora "${station.name}"?`)) {
-            stations = stations.filter(s => s.id !== station.id);
-            saveStations();
-            if (currentStation && currentStation.id === station.id) {
-              currentPlaybackToken++;
-              if (connectionTimeoutTimer) {
-                clearTimeout(connectionTimeoutTimer);
-                connectionTimeoutTimer = null;
-              }
-              if (hls) {
-                try { hls.destroy(); } catch (err) {}
-                hls = null;
-              }
-              audio.pause();
-              audio.removeAttribute('src');
-              audio.load();
-              currentStation = null;
-              isBuffering = false;
-              setPlayingState(false);
-            }
-            renderStations();
-            showToast('Emisora eliminada');
-          }
+          deleteStationWithUndo(station);
         }
       }
     });
@@ -1851,29 +1967,7 @@
         } else if (action === 'edit') {
           openEditStationModal(station);
         } else if (action === 'delete') {
-          if (confirm(`¿Eliminar la emisora "${station.name}"?`)) {
-            stations = stations.filter(s => s.id !== stationId);
-            saveStations();
-            if (currentStation && currentStation.id === stationId) {
-              currentPlaybackToken++;
-              if (connectionTimeoutTimer) {
-                clearTimeout(connectionTimeoutTimer);
-                connectionTimeoutTimer = null;
-              }
-              if (hls) {
-                try { hls.destroy(); } catch (e) {}
-                hls = null;
-              }
-              audio.pause();
-              audio.removeAttribute('src');
-              audio.load();
-              currentStation = null;
-              isBuffering = false;
-              setPlayingState(false);
-            }
-            renderStations();
-            showToast('Emisora eliminada');
-          }
+          deleteStationWithUndo(station);
         }
         return;
       }
@@ -2597,11 +2691,11 @@
   let lastToastMsg = '';
   let lastToastTime = 0;
 
-  function showToast(msg) {
+  function showToast(msg, actionText = null, actionCallback = null) {
     if (!msg) return;
     const now = Date.now();
-    // Do not repeat the exact same message within 2.5 seconds
-    if (msg === lastToastMsg && now - lastToastTime < 2500) {
+    // Do not repeat the exact same message within 2.5 seconds unless it has an action button
+    if (!actionText && msg === lastToastMsg && now - lastToastTime < 2500) {
       return;
     }
     lastToastMsg = msg;
@@ -2623,8 +2717,20 @@
     toast.className = 'toast';
     toast.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-      <span>${escapeHtml(msg)}</span>
+      <span class="toast-message">${escapeHtml(msg)}</span>
+      ${actionText ? `<button class="toast-action-btn" type="button">${escapeHtml(actionText)}</button>` : ''}
     `;
+
+    if (actionText && actionCallback) {
+      const btn = toast.querySelector('.toast-action-btn');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          actionCallback();
+          toast.remove();
+        });
+      }
+    }
 
     container.appendChild(toast);
     setTimeout(() => {
@@ -2632,7 +2738,7 @@
       toast.style.transform = 'translateY(6px)';
       toast.style.transition = 'all 0.25s ease';
       setTimeout(() => toast.remove(), 250);
-    }, 3000);
+    }, actionText ? 5000 : 3000);
   }
 
   // PWA Install Manager & Service Worker Registration
@@ -2911,6 +3017,12 @@
 
   if (bottomBarLeft) {
     bottomBarLeft.addEventListener('click', openFullscreenPlayer);
+    bottomBarLeft.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openFullscreenPlayer();
+      }
+    });
   }
 
   if (fsCloseBtn) {
@@ -2982,6 +3094,11 @@
     }
 
     if (e.key === 'Escape') {
+      const openModal = document.querySelector('.modal-backdrop.open');
+      if (openModal) {
+        openModal.classList.remove('open');
+        return;
+      }
       const actionSheet = document.getElementById('card-action-sheet-overlay');
       if (actionSheet && actionSheet.classList.contains('open')) {
         closeCardActionSheet();
