@@ -18,15 +18,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Alexis Radio">
 
-  <!-- Google Fonts -->
+  <!-- Google Fonts: Inter, JetBrains Mono, Outfit con font-display: swap -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Theme Bootstrapper -->
+  <!-- Theme Bootstrapper con soporte para prefers-color-scheme y localStorage -->
   <script>
     (function() {
-      const saved = localStorage.getItem('at_theme') || 'dark';
+      const saved = localStorage.getItem('at_theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
       document.documentElement.setAttribute('data-theme', saved);
     })();
   </script>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alexis-radio-v17';
+const CACHE_NAME = 'alexis-radio-v18';
 const STATIC_ASSETS = [
   '/',
   '/radio.css',
@@ -6,7 +6,8 @@ const STATIC_ASSETS = [
   '/manifest.webmanifest',
   '/radio-icon-192.png',
   '/radio-icon-512.png',
-  'https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js'
+  'https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@600;700;800&display=swap'
 ];
 
 self.addEventListener('install', (event) => {
