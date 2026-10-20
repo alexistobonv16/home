@@ -1599,8 +1599,11 @@
     if (!filtered.length) {
       stationsGrid.innerHTML = `
         <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          <p>No se encontraron emisoras que coincidan con la búsqueda o filtro.</p>
+          <div class="empty-state-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"></path><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path></svg>
+          </div>
+          <p class="empty-state-title">Sin señal de sintonía</p>
+          <p class="empty-state-desc">No se encontraron emisoras que coincidan con la búsqueda o filtro.</p>
           <button class="btn btn-primary" id="reset-filter-btn">Restablecer Filtros</button>
         </div>
       `;

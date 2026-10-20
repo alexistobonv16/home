@@ -31,7 +31,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=6.2">
+  <link rel="stylesheet" href="radio.css?v=6.3">
 </head>
 <body>
 
@@ -54,7 +54,7 @@
       </a>
 
       <div class="header-actions">
-        <button id="pwa-install-btn" class="btn btn-install" title="Instalar Alexis Radio en tu dispositivo">
+        <button id="pwa-install-btn" class="btn btn-install" title="Instalar Alexis Radio en tu dispositivo" aria-label="Instalar Alexis Radio">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           <span>Instalar</span>
         </button>
@@ -97,7 +97,7 @@
       <div class="search-row">
         <div class="search-box-wrap">
           <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="search-input" class="search-input" placeholder="Buscar emisora por nombre, género o frecuencia..." aria-label="Buscar emisora">
+          <input type="text" id="search-input" class="search-input" placeholder="Buscar emisora..." aria-label="Buscar emisora">
           <kbd class="search-shortcut-badge" title="Presiona / para enfocar la búsqueda">/</kbd>
         </div>
 
@@ -105,13 +105,13 @@
           <div class="sort-control-wrap" title="Ordenar lista de emisoras">
             <svg class="sort-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
             <select id="sort-order-select" class="sort-select" aria-label="Ordenar emisoras">
-              <option value="added" selected>Orden de Agregación</option>
-              <option value="alpha-asc">Alfabético (A → Z)</option>
-              <option value="alpha-desc">Alfabético (Z → A)</option>
+              <option value="added" selected>Agregación</option>
+              <option value="alpha-asc">A → Z</option>
+              <option value="alpha-desc">Z → A</option>
             </select>
           </div>
 
-          <button id="reset-defaults-btn" class="btn btn-secondary btn-sm" title="Restaurar las emisoras predeterminadas recomendadas">
+          <button id="reset-defaults-btn" class="btn btn-secondary btn-sm" title="Restaurar emisoras predeterminadas" aria-label="Restaurar emisoras predeterminadas">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             <span>Restaurar</span>
           </button>
@@ -599,6 +599,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" defer></script>
-  <script src="radio.js?v=6.2" defer></script>
+  <script src="radio.js?v=6.3" defer></script>
 </body>
 </html>
