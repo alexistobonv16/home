@@ -31,7 +31,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=6.3">
+  <link rel="stylesheet" href="radio.css?v=7.0">
 </head>
 <body>
 
@@ -104,7 +104,7 @@
         <div class="search-actions-wrap">
           <div class="sort-control-wrap" title="Ordenar lista de emisoras">
             <svg class="sort-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
-            <select id="sort-order-select" class="sort-select" aria-label="Ordenar emisoras">
+            <select id="sort-order-select" class="sort-select" title="Ordenar emisoras" aria-label="Ordenar emisoras">
               <option value="added" selected>Agregación</option>
               <option value="alpha-asc">A → Z</option>
               <option value="alpha-desc">Z → A</option>
@@ -144,7 +144,49 @@
 
     <!-- Stations Grid -->
     <main id="stations-grid" class="stations-grid">
-      <!-- Generated dynamically by radio.js -->
+      <!-- Skeleton Loading Placeholders -->
+      <div class="station-card skeleton-card" aria-hidden="true">
+        <div class="skeleton-logo"></div>
+        <div class="skeleton-content">
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line skeleton-sub"></div>
+        </div>
+      </div>
+      <div class="station-card skeleton-card" aria-hidden="true">
+        <div class="skeleton-logo"></div>
+        <div class="skeleton-content">
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line skeleton-sub"></div>
+        </div>
+      </div>
+      <div class="station-card skeleton-card" aria-hidden="true">
+        <div class="skeleton-logo"></div>
+        <div class="skeleton-content">
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line skeleton-sub"></div>
+        </div>
+      </div>
+      <div class="station-card skeleton-card" aria-hidden="true">
+        <div class="skeleton-logo"></div>
+        <div class="skeleton-content">
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line skeleton-sub"></div>
+        </div>
+      </div>
+      <div class="station-card skeleton-card" aria-hidden="true">
+        <div class="skeleton-logo"></div>
+        <div class="skeleton-content">
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line skeleton-sub"></div>
+        </div>
+      </div>
+      <div class="station-card skeleton-card" aria-hidden="true">
+        <div class="skeleton-logo"></div>
+        <div class="skeleton-content">
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line skeleton-sub"></div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -599,6 +641,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" defer></script>
-  <script src="radio.js?v=6.3" defer></script>
+  <script src="radio.js?v=7.0" defer></script>
 </body>
 </html>

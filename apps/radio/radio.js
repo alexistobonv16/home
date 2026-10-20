@@ -33,6 +33,27 @@
     }[tag] || tag));
   }
 
+  // Extrae ciudad o subtítulo distintivo para emisoras de una misma cadena (ej: La Mega Ibagué -> Ibagué)
+  function getStationVariantBadge(name) {
+    const match = (name || '').match(/^(?:La Mega|Mix|Los 40|Radioacktiva|Caracol|W Radio|Blu Radio|Radio Nacional|RCN)\s+(.+)$/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return null;
+  }
+
+  // Genera un tono HSL estable y único basado en el hash del nombre de la emisora
+  function getStationHue(name) {
+    let hash = 0;
+    const str = name || '';
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    const hues = [190, 215, 255, 280, 315, 340, 160, 35, 140];
+    return hues[Math.abs(hash) % hues.length];
+  }
+
   // Default Curated Stations
   const DEFAULT_STATIONS = [
     {
@@ -155,6 +176,7 @@
   let searchQuery = '';
   let sleepTimerId = null;
   let sleepTimerEnd = null;
+  let isInitialStationLoad = true;
 
   // Station Sorting State ('added', 'alpha-asc', 'alpha-desc')
   let currentSortOrder = localStorage.getItem('at_radio_sort_order') || 'added';
@@ -1620,19 +1642,28 @@
       return;
     }
 
-    stationsGrid.innerHTML = filtered.map(s => {
+    stationsGrid.innerHTML = filtered.map((s, idx) => {
       const isCurrent = currentStation && currentStation.id === s.id;
       const isCardPlaying = isCurrent && isPlaying;
       const fallbackLogo = getStationFallbackSvg(s.name, s.genre);
       const sFmt = detectStreamFormat(s.url);
+      const variantBadge = getStationVariantBadge(s.name);
+      const stationHue = getStationHue(s.name);
+
+      const hasRealFreq = s.freq && !/^(WEB STREAM|WEB HI-FI|WEB|ONLINE)$/i.test(s.freq.trim());
+      const freqGenreLine = hasRealFreq ? `${s.freq.trim()} · ${s.genre || 'Música'}` : `${s.genre || 'Música'}`;
 
       const logoSrc = /^(https?:\/\/|data:image\/)/i.test(s.logo || '') ? s.logo : fallbackLogo;
 
+      const staggerStyle = isInitialStationLoad ? `style="--stagger-delay: ${Math.min(idx * 28, 560)}ms; --station-hue: ${stationHue};"` : `style="--station-hue: ${stationHue};"`;
+      const staggerClass = isInitialStationLoad ? 'stagger-fade-in' : '';
+
       return `
-        <div class="station-card ${isCardPlaying ? 'playing' : ''}" data-station-id="${escapeHtml(s.id)}">
+        <div class="station-card ${isCardPlaying ? 'playing' : ''} ${staggerClass}" data-station-id="${escapeHtml(s.id)}" ${staggerStyle} tabindex="0" role="button" aria-label="${escapeHtml(s.name)} - ${isCardPlaying ? 'Sonando actualmente' : 'Reproducir'}">
           <div class="station-card-logo-wrap">
             <img class="station-card-img" src="${escapeHtml(logoSrc)}" alt="${escapeHtml(s.name)}" data-fallback="${escapeHtml(fallbackLogo)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" loading="lazy">
-            <div class="playing-badge-indicator">
+            ${variantBadge ? `<span class="station-variant-badge" title="${escapeHtml(variantBadge)}">${escapeHtml(variantBadge)}</span>` : ''}
+            <div class="playing-badge-indicator" aria-hidden="true">
               <div class="mini-eq">
                 <span></span><span></span><span></span><span></span>
               </div>
@@ -1640,28 +1671,59 @@
           </div>
 
           <div class="station-card-content">
-            <div class="station-card-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
-            <div class="station-card-meta">
-              <span class="badge-tag">${escapeHtml(s.freq || 'WEB')}</span>
-              <span class="badge-tag">${escapeHtml(s.genre || 'Música')}</span>
-              <span class="badge-tag ${sFmt.badgeClass}">${sFmt.ext}</span>
+            <h3 class="station-card-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</h3>
+            <div class="station-card-sub">
+              <span class="station-sub-text">${escapeHtml(freqGenreLine)}</span>
+              <span class="station-fmt-pill fmt-${sFmt.ext.toLowerCase()}" title="Transmisión ${sFmt.ext}">
+                <span class="station-fmt-dot"></span>${sFmt.ext}
+              </span>
             </div>
           </div>
 
           <div class="station-card-actions">
-            <button class="card-action-btn star-btn ${s.isStarred ? 'starred' : ''}" data-action="star" title="Favorita">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="${s.isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <button class="card-action-btn star-btn ${s.isStarred ? 'starred' : ''}" data-action="star" title="${s.isStarred ? 'Quitar de favoritas' : 'Añadir a favoritas'}" aria-label="${s.isStarred ? 'Quitar de favoritas' : 'Añadir a favoritas'}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${s.isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             </button>
-            <button class="card-action-btn edit-btn" data-action="edit" title="Editar emisora">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-            </button>
-            <button class="card-action-btn delete-btn" data-action="delete" title="Eliminar emisora">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
+
+            <!-- Acciones directas en Desktop (Hover & Focus-Within) -->
+            <div class="desktop-card-actions">
+              <button class="card-action-btn edit-btn" data-action="edit" title="Editar emisora" aria-label="Editar emisora">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <button class="card-action-btn delete-btn" data-action="delete" title="Eliminar emisora" aria-label="Eliminar emisora">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+
+            <!-- Menú '⋯' en Móvil / Táctil -->
+            <div class="card-more-wrap">
+              <button class="card-action-btn card-more-btn" data-action="card-more" title="Más opciones" aria-haspopup="true" aria-expanded="false" aria-label="Más opciones de ${escapeHtml(s.name)}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle><circle cx="5" cy="12" r="1.5"></circle></svg>
+              </button>
+              <div class="card-menu-dropdown" role="menu">
+                <button class="card-action-btn card-menu-item edit-btn" data-action="edit" title="Editar emisora" role="menuitem">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  <span>Editar</span>
+                </button>
+                <button class="card-action-btn card-menu-item delete-btn" data-action="delete" title="Eliminar emisora" role="menuitem">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  <span>Eliminar</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       `;
     }).join('');
+
+    if (isInitialStationLoad) {
+      setTimeout(() => {
+        isInitialStationLoad = false;
+        if (stationsGrid) {
+          stationsGrid.querySelectorAll('.stagger-fade-in').forEach(c => c.classList.remove('stagger-fade-in'));
+        }
+      }, 700);
+    }
   }
 
   // Grid Click Delegator
@@ -1678,6 +1740,34 @@
       if (actionBtn) {
         e.stopPropagation();
         const action = actionBtn.getAttribute('data-action');
+
+        if (action === 'card-more') {
+          const dropdown = card.querySelector('.card-menu-dropdown');
+          const isCurrentlyOpen = dropdown ? dropdown.classList.contains('open') : false;
+          // Close all open card dropdowns and clear z-index elevations
+          document.querySelectorAll('.card-menu-dropdown.open').forEach(d => {
+            d.classList.remove('open');
+            d.closest('.station-card')?.classList.remove('menu-open');
+            d.parentElement.querySelector('.card-more-btn')?.setAttribute('aria-expanded', 'false');
+          });
+          if (dropdown && !isCurrentlyOpen) {
+            dropdown.classList.add('open');
+            card.classList.add('menu-open');
+            actionBtn.setAttribute('aria-expanded', 'true');
+            const firstItem = dropdown.querySelector('.card-menu-item');
+            if (firstItem && e.detail === 0) {
+              setTimeout(() => firstItem.focus(), 50);
+            }
+          }
+          return;
+        }
+
+        // Close any open card dropdowns on action click
+        document.querySelectorAll('.card-menu-dropdown.open').forEach(d => {
+          d.classList.remove('open');
+          d.closest('.station-card')?.classList.remove('menu-open');
+          d.parentElement.querySelector('.card-more-btn')?.setAttribute('aria-expanded', 'false');
+        });
 
         if (action === 'star') {
           station.isStarred = !station.isStarred;
@@ -1697,9 +1787,6 @@
             stations = stations.filter(s => s.id !== stationId);
             saveStations();
             if (currentStation && currentStation.id === stationId) {
-              // Teardown completo: invalida reintentos/timeouts pendientes y
-              // destruye el stream; sin esto seguía descargando en segundo
-              // plano y la barra quedaba con estado inconsistente.
               currentPlaybackToken++;
               if (connectionTimeoutTimer) {
                 clearTimeout(connectionTimeoutTimer);
@@ -1730,7 +1817,54 @@
         playStation(station);
       }
     });
+
+    // Keyboard support on card and open card dropdown
+    stationsGrid.addEventListener('keydown', (e) => {
+      const openDropdown = stationsGrid.querySelector('.card-menu-dropdown.open');
+      if (openDropdown) {
+        const items = Array.from(openDropdown.querySelectorAll('.card-menu-item'));
+        const activeIdx = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          const nextIdx = (activeIdx + 1) % items.length;
+          items[nextIdx]?.focus();
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prevIdx = (activeIdx - 1 + items.length) % items.length;
+          items[prevIdx]?.focus();
+          return;
+        }
+        if (e.key === 'Home') {
+          e.preventDefault();
+          items[0]?.focus();
+          return;
+        }
+        if (e.key === 'End') {
+          e.preventDefault();
+          items[items.length - 1]?.focus();
+          return;
+        }
+      }
+
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('station-card')) {
+        e.preventDefault();
+        e.target.click();
+      }
+    });
   }
+
+  // Close open card dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.card-more-wrap')) {
+      document.querySelectorAll('.card-menu-dropdown.open').forEach(d => {
+        d.classList.remove('open');
+        d.closest('.station-card')?.classList.remove('menu-open');
+        d.parentElement.querySelector('.card-more-btn')?.setAttribute('aria-expanded', 'false');
+      });
+    }
+  });
 
   // =========================================================================
   // CATEGORIES & SEARCH
@@ -2780,6 +2914,17 @@
     }
 
     if (e.key === 'Escape') {
+      const openCardDropdown = document.querySelector('.card-menu-dropdown.open');
+      if (openCardDropdown) {
+        openCardDropdown.classList.remove('open');
+        openCardDropdown.closest('.station-card')?.classList.remove('menu-open');
+        const moreBtn = openCardDropdown.parentElement.querySelector('.card-more-btn');
+        if (moreBtn) {
+          moreBtn.setAttribute('aria-expanded', 'false');
+          moreBtn.focus();
+        }
+        return;
+      }
       if (isFullscreenPlayerOpen) {
         closeFullscreenPlayer();
       }
