@@ -971,7 +971,7 @@ const CANALES_PARTIDO_HOY = [
     Analitica?.evento?.('clic_whatsapp', { accion: 'compartir_app', canal: estado.actual?.nombre || '' });
     const url = new URL(location.origin + location.pathname);
     url.search = '?utm_source=whatsapp&utm_medium=boton_compartir&utm_campaign=viral_app';
-    const datos = { title: 'GolStream IPTV', text: '📺 Mira los partidos en vivo y únete a la comunidad de GolStream IPTV', url: url.href };
+    const datos = { title: 'Alexis TV', text: '📺 Mira los canales y deportes en vivo en Alexis TV', url: url.href };
     const whatsapp = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(datos.text + ' ' + datos.url);
     if (esMovil() && navigator.share) {
       try { await navigator.share(datos); return; }
@@ -1753,7 +1753,7 @@ const CANALES_PARTIDO_HOY = [
     dom.btnFavFicha.setAttribute('aria-pressed', String(fav));
     dom.btnFavFicha.title = fav ? 'Quitar de favoritos (S)' : 'Agregar a favoritos (S)';
     dom.btnCopiar.disabled = !!oficial;
-    document.title = `${c.nombre} · GolStream IPTV`;
+    document.title = `${c.nombre} · Alexis TV`;
     actualizarMediaSession(c);
     pintarFichaEpg();
     if (dom.panelNerd && !dom.panelNerd.hidden) {
@@ -1963,7 +1963,7 @@ const CANALES_PARTIDO_HOY = [
   function obtenerDiagnosticoTexto() {
     const m = obtenerMetricasNerd();
     return [
-      `=== ALEXIS TV / GOLSTREAM · ESTADÍSTICAS PARA NERDS ===`,
+      `=== ALEXIS TV · ESTADÍSTICAS PARA NERDS ===`,
       `Fecha/Hora: ${new Date().toISOString()}`,
       `Canal: ${m.canal}`,
       `Stream URL: ${m.url}`,
@@ -2208,7 +2208,7 @@ const CANALES_PARTIDO_HOY = [
     navigator.mediaSession.metadata = new MediaMetadata({
       title: c.nombre,
       artist: c.grupos.map(traducirGrupo).join(' · '),
-      album: 'GolStream IPTV',
+      album: 'Alexis TV',
       artwork: c.logo ? [{ src: c.logo, sizes: '512x512' }] : [],
     });
   }

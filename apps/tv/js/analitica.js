@@ -52,7 +52,7 @@
     }
     const query = campana.toString();
     gtag('config', GA_ID, { page_location: location.origin + location.pathname + (query ? '?' + query : ''),
-      page_referrer: '', page_title: 'GolStream IPTV' });
+      page_referrer: '', page_title: 'Alexis TV' });
     const s = document.createElement('script');
     s.async = true;
     s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`;
