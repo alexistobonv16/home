@@ -331,6 +331,8 @@ const CANALES_PARTIDO_HOY = [
 
     buscador: $('#buscador'),
     chips: $('#chips'),
+    btnToggleFiltros: $('#btn-toggle-filtros'),
+    cajaFiltrosAvanzados: $('#caja-filtros-avanzados'),
     selGrupo: $('#sel-grupo'),
     chkGlobal: $('#chk-global'),
     estadoGlobal: $('#estado-global'),
@@ -2578,6 +2580,20 @@ const CANALES_PARTIDO_HOY = [
     aplicarFiltros();
   });
   dom.btnVerificar.addEventListener('click', verificarVista);
+  if (dom.btnToggleFiltros && dom.cajaFiltrosAvanzados) {
+    dom.btnToggleFiltros.addEventListener('click', () => {
+      const estaOculto = dom.cajaFiltrosAvanzados.hasAttribute('hidden');
+      if (estaOculto) {
+        dom.cajaFiltrosAvanzados.removeAttribute('hidden');
+        dom.btnToggleFiltros.setAttribute('aria-expanded', 'true');
+        dom.btnToggleFiltros.classList.add('activo');
+      } else {
+        dom.cajaFiltrosAvanzados.setAttribute('hidden', '');
+        dom.btnToggleFiltros.setAttribute('aria-expanded', 'false');
+        dom.btnToggleFiltros.classList.remove('activo');
+      }
+    });
+  }
 
   // Un solo listener por lista (delegación de eventos): lista activa y resultados globales.
   function alClicCanal(e, fuente) {

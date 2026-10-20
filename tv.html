@@ -21,15 +21,15 @@
   <!-- Catálogo curado de canales -->
   <link rel="preload" href="/data/catalogo-pro.json" as="fetch" crossorigin />
   <!-- Estilos compilados (Tailwind CLI + componentes): la página se pinta sin ejecutar JavaScript. -->
-  <link rel="stylesheet" href="./css/app.css?v=v22" />
-  <link rel="stylesheet" href="./css/gestor-listas.css?v=v22" />
+  <link rel="stylesheet" href="./css/app.css?v=v23" />
+  <link rel="stylesheet" href="./css/gestor-listas.css?v=v23" />
   <!-- Motor HLS.js para reproducción universal de streaming -->
-  <script src="./js/hls.min.js?v=v22"></script>
+  <script src="./js/hls.min.js?v=v23"></script>
   <!-- Decodificador de audio WebAssembly MP2/MPEG para streaming de TV -->
   <script src="https://cdn.jsdelivr.net/npm/mpg123-decoder@1.0.3/dist/mpg123-decoder.min.js"></script>
   <!-- Decodificadores software de video para señales entrelazadas PAFF y MPEG-2 -->
-  <script src="./js/mpeg2-player.js?v=v22"></script>
-  <script src="./js/h264w-player.js?v=v22"></script>
+  <script src="./js/mpeg2-player.js?v=v23"></script>
+  <script src="./js/h264w-player.js?v=v23"></script>
   <!-- Tipografía de titulares sin bloquear el primer render (el texto usa la fuente del sistema). -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" media="print" onload="this.media='all'" />
@@ -267,64 +267,71 @@
       <!-- ========== CANALES ========== -->
       <aside class="zona-canales" aria-label="Canales">
         <div id="panel" class="panel-canales scroll-fino">
-          <!-- Buscador y filtros (fijos al inicio del box de canales) -->
+          <!-- Buscador y filtros (fijos al inicio del box de canales, diseño ultra compacto) -->
           <div class="panel-canales-cabecera-fija">
-            <h2 class="titulo-seccion">Canales verificados</h2>
+            <h2 class="titulo-seccion sr-only lg:not-sr-only">Canales verificados</h2>
             <!-- Select oculto para compatibilidad con código existente -->
             <select id="selector-lista-activa" class="sr-only" aria-label="Lista activa (oculto)"></select>
-            <div class="relative">
-              <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-              <label for="buscador" class="sr-only">Buscar canal</label>
-              <input id="buscador" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
-                placeholder="Buscar canal, categoría o país… (ej. ESPN, deportes, CL)"
-                class="w-full rounded-xl border border-linea bg-sup py-2.5 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 focus:border-cancha/60 focus:outline-none focus:ring-2 focus:ring-cancha/20" />
-              <kbd class="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-linea px-1.5 text-[10px] text-slate-500 lg:block">/</kbd>
-            </div>
 
-            <div class="mt-2.5 flex items-center gap-2">
-              <!-- Filtro inteligente: categoría de la lista + palabras clave del nombre -->
-              <div id="chips" class="filtros-contenido" role="tablist" aria-label="Filtrar por tipo de contenido">
-                <button type="button" class="chip" role="tab" data-filtro="todos" aria-pressed="true" aria-selected="true">Todos</button>
-                <button type="button" class="chip" role="tab" data-filtro="deportes" aria-pressed="false" aria-selected="false">⚽ Deportes <span data-cuenta="deportes" class="tabular-nums opacity-70"></span></button>
-                <button type="button" class="chip" role="tab" data-filtro="noticias" aria-pressed="false" aria-selected="false">📰 Noticias <span data-cuenta="noticias" class="tabular-nums opacity-70"></span></button>
-                <button type="button" class="chip" role="tab" data-filtro="peliculas" aria-pressed="false" aria-selected="false">🎬 Películas <span data-cuenta="peliculas" class="tabular-nums opacity-70"></span></button>
-                <button type="button" class="chip" role="tab" data-filtro="entretenimiento" aria-pressed="false" aria-selected="false">🎭 Entretenimiento <span data-cuenta="entretenimiento" class="tabular-nums opacity-70"></span></button>
-                <button type="button" class="chip" role="tab" data-filtro="favoritos" aria-pressed="false" aria-selected="false">⭐ Favoritos <span data-cuenta="favoritos" class="tabular-nums opacity-70"></span></button>
+            <!-- Fila 1: Buscador y botón de filtros avanzados en la misma línea -->
+            <div class="fila-buscador-filtros">
+              <div class="relative flex-1 min-w-0">
+                <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <label for="buscador" class="sr-only">Buscar canal</label>
+                <input id="buscador" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
+                  placeholder="Buscar canal, país, deporte…"
+                  class="input-buscador w-full rounded-lg border border-linea bg-sup text-xs text-white placeholder:text-slate-500 focus:border-cancha/60 focus:outline-none focus:ring-1 focus:ring-cancha/20" />
+                <kbd class="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-linea px-1.5 text-[10px] text-slate-500 lg:block">/</kbd>
               </div>
-            </div>
-            <details class="filtros-avanzados">
-              <summary>Filtros avanzados</summary>
-            <div class="mt-2 flex items-center gap-2">
-              <label for="sel-grupo" class="sr-only">Categoría exacta de la lista</label>
-              <select id="sel-grupo" class="control min-w-0 flex-1 !py-1.5 text-xs" disabled><option value="">Todas las categorías</option></select>
-            </div>
-
-            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
-              <label class="inline-flex cursor-pointer items-center gap-2 hover:text-slate-300">
-                <input id="chk-global" type="checkbox" class="h-3.5 w-3.5 rounded border-linea bg-sup accent-cancha" checked />
-                Buscar en mis listas <span id="estado-global" class="tabular-nums"></span>
-              </label>
-              <label class="inline-flex cursor-pointer items-center gap-2 hover:text-slate-300">
-                <input id="chk-geo" type="checkbox" checked class="h-3.5 w-3.5 rounded border-linea bg-sup accent-cancha" />
-                Ocultar geobloqueados
-              </label>
-              <label class="inline-flex cursor-pointer items-center gap-2 hover:text-slate-300">
-                <input id="chk-muertos" type="checkbox" checked class="h-3.5 w-3.5 rounded border-linea bg-sup accent-cancha" />
-                Ocultar señales interrumpidas
-              </label>
-            </div>
-
-            <!-- Verificador de enlaces -->
-            <div class="mt-2 flex items-center gap-2 text-xs">
-              <button id="btn-verificar" type="button" class="control !px-2.5 !py-1 text-xs" disabled title="Comprueba qué canales de la vista responden">
-                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-                <span id="texto-verificar">Verificar canales</span>
+              <button id="btn-toggle-filtros" type="button" class="btn-toggle-filtros" title="Filtros avanzados" aria-expanded="false" aria-controls="caja-filtros-avanzados">
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                <span class="sr-only">Filtros</span>
               </button>
-              <div id="estado-verificacion" class="min-w-0 flex-1 truncate text-slate-500" role="status"></div>
-              <span id="contador" class="shrink-0 tabular-nums text-slate-500"></span>
             </div>
-            <div id="barra-verificacion-caja" class="mt-1.5 h-0.5 overflow-hidden rounded-full bg-sup-3" hidden><div id="barra-verificacion" class="h-full rounded-full bg-cancha transition-[width]"></div></div>
-            </details>
+
+            <!-- Fila 2: Chips compactos con scroll horizontal -->
+            <div id="chips" class="filtros-contenido" role="tablist" aria-label="Filtrar por tipo de contenido">
+              <button type="button" class="chip" role="tab" data-filtro="todos" aria-pressed="true" aria-selected="true">Todos</button>
+              <button type="button" class="chip" role="tab" data-filtro="deportes" aria-pressed="false" aria-selected="false">⚽ Deportes <span data-cuenta="deportes" class="tabular-nums opacity-70"></span></button>
+              <button type="button" class="chip" role="tab" data-filtro="noticias" aria-pressed="false" aria-selected="false">📰 Noticias <span data-cuenta="noticias" class="tabular-nums opacity-70"></span></button>
+              <button type="button" class="chip" role="tab" data-filtro="peliculas" aria-pressed="false" aria-selected="false">🎬 Películas <span data-cuenta="peliculas" class="tabular-nums opacity-70"></span></button>
+              <button type="button" class="chip" role="tab" data-filtro="entretenimiento" aria-pressed="false" aria-selected="false">🎭 Entretenimiento <span data-cuenta="entretenimiento" class="tabular-nums opacity-70"></span></button>
+              <button type="button" class="chip" role="tab" data-filtro="favoritos" aria-pressed="false" aria-selected="false">⭐ Favoritos <span data-cuenta="favoritos" class="tabular-nums opacity-70"></span></button>
+            </div>
+
+            <!-- Desplegable de filtros avanzados (oculto por defecto para ahorrar 100% del espacio) -->
+            <div id="caja-filtros-avanzados" class="caja-filtros-avanzados" hidden>
+              <div class="flex items-center gap-2">
+                <label for="sel-grupo" class="sr-only">Categoría exacta de la lista</label>
+                <select id="sel-grupo" class="control min-w-0 flex-1 !py-1 text-xs" disabled><option value="">Todas las categorías</option></select>
+              </div>
+
+              <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                <label class="inline-flex cursor-pointer items-center gap-1.5 hover:text-slate-300">
+                  <input id="chk-global" type="checkbox" class="h-3.5 w-3.5 rounded border-linea bg-sup accent-cancha" checked />
+                  Buscar en mis listas <span id="estado-global" class="tabular-nums"></span>
+                </label>
+                <label class="inline-flex cursor-pointer items-center gap-1.5 hover:text-slate-300">
+                  <input id="chk-geo" type="checkbox" checked class="h-3.5 w-3.5 rounded border-linea bg-sup accent-cancha" />
+                  Ocultar geobloqueados
+                </label>
+                <label class="inline-flex cursor-pointer items-center gap-1.5 hover:text-slate-300">
+                  <input id="chk-muertos" type="checkbox" checked class="h-3.5 w-3.5 rounded border-linea bg-sup accent-cancha" />
+                  Ocultar señales interrumpidas
+                </label>
+              </div>
+
+              <!-- Verificador de enlaces -->
+              <div class="mt-2 flex items-center gap-2 text-xs">
+                <button id="btn-verificar" type="button" class="control !px-2 !py-1 text-xs" disabled title="Comprueba qué canales de la vista responden">
+                  <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                  <span id="texto-verificar">Verificar canales</span>
+                </button>
+                <div id="estado-verificacion" class="min-w-0 flex-1 truncate text-slate-500" role="status"></div>
+                <span id="contador" class="shrink-0 tabular-nums text-slate-500"></span>
+              </div>
+              <div id="barra-verificacion-caja" class="mt-1.5 h-0.5 overflow-hidden rounded-full bg-sup-3" hidden><div id="barra-verificacion" class="h-full rounded-full bg-cancha transition-[width]"></div></div>
+            </div>
           </div>
 
           <!-- Sin lista cargada -->
@@ -495,15 +502,15 @@
     </div>
   </div>
 
-  <script src="./js/analitica.js?v=v22"></script>
-  <script src="./js/parser.js?v=v22"></script>
-  <script src="./js/player.js?v=v22"></script>
-  <script src="./js/verificador.js?v=v22"></script>
-  <script src="./js/estados-canales.js?v=v22"></script>
-  <script src="./js/epg.js?v=v22"></script>
-  <script src="./js/servidores.js?v=v22"></script>
-  <script src="./js/app.js?v=v22"></script>
-  <script src="./js/gestor-listas.js?v=v22"></script>
-  <script src="./js/actualizador.js?v=v22"></script>
+  <script src="./js/analitica.js?v=v23"></script>
+  <script src="./js/parser.js?v=v23"></script>
+  <script src="./js/player.js?v=v23"></script>
+  <script src="./js/verificador.js?v=v23"></script>
+  <script src="./js/estados-canales.js?v=v23"></script>
+  <script src="./js/epg.js?v=v23"></script>
+  <script src="./js/servidores.js?v=v23"></script>
+  <script src="./js/app.js?v=v23"></script>
+  <script src="./js/gestor-listas.js?v=v23"></script>
+  <script src="./js/actualizador.js?v=v23"></script>
 </body>
 </html>

@@ -612,13 +612,70 @@ body {
     position: sticky !important;
     top: 0 !important;
     z-index: 20 !important;
-    background: rgba(7, 9, 13, 0.96) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    padding-top: 0.2rem !important;
-    padding-bottom: 0.5rem !important;
+    background: #07090d !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.4rem !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
+    border-bottom: 1px solid #141b24;
+  }
+
+  .fila-buscador-filtros {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .input-buscador {
+    height: 34px !important;
+    padding: 0 0.75rem 0 2rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .btn-toggle-filtros {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 0.5rem;
+    border: 1px solid #1f2730;
+    background: #141a22;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-toggle-filtros:hover,
+  .btn-toggle-filtros.activo {
+    border-color: rgba(61, 220, 132, 0.5);
+    color: #3ddc84;
+    background: rgba(61, 220, 132, 0.12);
+  }
+
+  .filtros-contenido {
+    display: flex;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filtros-contenido .chip {
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 0.6rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 9999px !important;
+    white-space: nowrap !important;
+  }
+
+  .caja-filtros-avanzados {
+    background: #0c1117;
+    border: 1px solid #1f2730;
+    border-radius: 0.65rem;
+    padding: 0.5rem;
+    margin-top: 0.35rem;
   }
 }
 
@@ -756,19 +813,85 @@ body {
     position: sticky !important;
     top: 0 !important;
     z-index: 20 !important;
-    padding-top: 0.2rem !important;
-    padding-bottom: 0.4rem !important;
-    background: rgba(7, 9, 13, 0.96) !important;
+    padding: 0.3rem 0.65rem 0.35rem !important;
+    background: #07090d !important;
+    border-bottom: 1px solid #1f2730 !important;
+    margin-left: -0.65rem !important;
+    margin-right: -0.65rem !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .fila-buscador-filtros {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+  }
+
+  .input-buscador {
+    height: 32px !important;
+    padding: 0 0.65rem 0 1.85rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 0.5rem !important;
+    background: #0f141c !important;
+  }
+
+  .btn-toggle-filtros {
+    display: grid !important;
+    place-items: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 0.5rem !important;
+    border: 1px solid #1f2730 !important;
+    background: #141a22 !important;
+    color: #94a3b8 !important;
+    cursor: pointer !important;
+  }
+
+  .btn-toggle-filtros:hover,
+  .btn-toggle-filtros.activo {
+    border-color: rgba(61, 220, 132, 0.6) !important;
+    color: #3ddc84 !important;
+    background: rgba(61, 220, 132, 0.15) !important;
   }
 
   .filtros-contenido {
+    display: flex !important;
     flex-wrap: nowrap !important;
     overflow-x: auto !important;
-    padding-bottom: 0.2rem !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 0.25rem !important;
+    margin-top: 0.25rem !important;
+    padding-bottom: 1px !important;
     scrollbar-width: none !important;
   }
 
   .filtros-contenido::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .filtros-contenido .chip {
+    min-height: 26px !important;
+    height: 26px !important;
+    padding: 0 0.5rem !important;
+    font-size: 0.7rem !important;
+    border-radius: 9999px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
+  }
+
+  .caja-filtros-avanzados {
+    background: #0d1219 !important;
+    border: 1px solid #1f2730 !important;
+    border-radius: 0.65rem !important;
+    padding: 0.5rem !important;
+    margin-top: 0.35rem !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .caja-filtros-avanzados[hidden] {
     display: none !important;
   }
 
@@ -780,8 +903,7 @@ body {
   }
 
   .titulo-seccion {
-    font-size: 0.65rem !important;
-    margin: 0 0 0.25rem 0 !important;
+    display: none !important;
   }
 }
 
