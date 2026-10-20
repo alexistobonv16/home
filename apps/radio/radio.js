@@ -1589,7 +1589,11 @@
     const filtered = getFilteredAndSortedStations();
 
     if (stationCountDisplay) {
-      stationCountDisplay.textContent = `${filtered.length} de ${stations.length} emisoras`;
+      if (filtered.length === stations.length) {
+        stationCountDisplay.textContent = `${stations.length} emisoras`;
+      } else {
+        stationCountDisplay.textContent = `${filtered.length} de ${stations.length} emisoras`;
+      }
     }
 
     if (!filtered.length) {
@@ -1731,10 +1735,14 @@
   function updateCategoryPills() {
     const pills = document.querySelectorAll('.cat-pill');
     pills.forEach(p => {
-      if (p.getAttribute('data-category') === activeFilter) {
+      const isActive = p.getAttribute('data-category') === activeFilter;
+      if (isActive) {
         p.classList.add('active');
+        p.setAttribute('aria-selected', 'true');
+        p.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       } else {
         p.classList.remove('active');
+        p.setAttribute('aria-selected', 'false');
       }
     });
   }
@@ -2491,6 +2499,70 @@
     });
   }
 
+  // Header More Options Menu Controller (Accesibilidad, Clic fuera, Teclado)
+  const headerMoreBtn = document.getElementById('header-more-btn');
+  const headerMoreMenu = document.getElementById('header-more-menu');
+  const headerMoreWrap = document.getElementById('header-more-wrap');
+
+  if (headerMoreBtn && headerMoreMenu) {
+    function toggleMoreMenu(open) {
+      const isOpen = open !== undefined ? open : !headerMoreMenu.classList.contains('open');
+      headerMoreMenu.classList.toggle('open', isOpen);
+      headerMoreBtn.setAttribute('aria-expanded', String(isOpen));
+      if (isOpen) {
+        const firstItem = headerMoreMenu.querySelector('button, a');
+        if (firstItem) firstItem.focus();
+      }
+    }
+
+    headerMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMoreMenu();
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+      if (headerMoreWrap && !headerMoreWrap.contains(e.target)) {
+        toggleMoreMenu(false);
+      }
+    });
+
+    // Keyboard navigation inside dropdown menu
+    headerMoreMenu.addEventListener('keydown', (e) => {
+      const menuItems = Array.from(headerMoreMenu.querySelectorAll('button:not([disabled]), a:not([disabled])'));
+      const currentIndex = menuItems.indexOf(document.activeElement);
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        toggleMoreMenu(false);
+        headerMoreBtn.focus();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = (currentIndex + 1) % menuItems.length;
+        menuItems[next]?.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = (currentIndex - 1 + menuItems.length) % menuItems.length;
+        menuItems[prev]?.focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        menuItems[0]?.focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        menuItems[menuItems.length - 1]?.focus();
+      } else if (e.key === 'Tab') {
+        toggleMoreMenu(false);
+      }
+    });
+
+    // Close menu when any menu item is activated
+    headerMoreMenu.querySelectorAll('button, a').forEach(item => {
+      item.addEventListener('click', () => {
+        toggleMoreMenu(false);
+      });
+    });
+  }
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(reg => {
@@ -2685,8 +2757,22 @@
 
   // Global Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
+    // Shortcut / focuses search input unless typing in input/textarea/select/contenteditable or modifier keys are held
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT' || activeEl.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+      return;
+    }
+
     const activeEl = document.activeElement;
-    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT' || activeEl.isContentEditable)) {
       return;
     }
 
