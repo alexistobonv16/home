@@ -1575,46 +1575,48 @@ body, button, input, select, textarea {
   z-index: 2;
 }
 
-/* Playing badge overlay on logo */
+/* Playing badge: crisp mini equalizer pill in corner of logo (no blur, 100% sharp logo) */
 .playing-badge-indicator {
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: rgba(3, 10, 24, 0.72);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  top: 4px;
+  right: 4px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: rgba(3, 7, 18, 0.85);
+  border: 1px solid var(--accent-cyan);
   display: none;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  color: var(--accent-cyan);
-  z-index: 3;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 8px rgba(0, 240, 255, 0.3);
+  z-index: 4;
 }
 
 .station-card.playing .playing-badge-indicator {
   display: flex;
 }
 
-/* Mini equalizer animation (GPU transform-accelerated) */
+/* Mini equalizer animation inside corner pill */
 .mini-eq {
   display: flex;
   align-items: flex-end;
-  gap: 2.5px;
-  height: 18px;
+  gap: 2px;
+  height: 12px;
 }
 
 .mini-eq span {
-  width: 3.5px;
-  height: 16px;
+  width: 2.5px;
+  height: 11px;
   background: var(--accent-cyan);
-  border-radius: 2px;
+  border-radius: 1px;
   transform-origin: bottom;
   animation: mini-eq-anim 0.8s ease-in-out infinite alternate;
   will-change: transform;
 }
 
-.mini-eq span:nth-child(1) { transform: scaleY(0.5); animation-delay: 0.1s; }
+.mini-eq span:nth-child(1) { transform: scaleY(0.4); animation-delay: 0.1s; }
 .mini-eq span:nth-child(2) { transform: scaleY(1.0); animation-delay: 0.3s; }
-.mini-eq span:nth-child(3) { transform: scaleY(0.4); animation-delay: 0.2s; }
+.mini-eq span:nth-child(3) { transform: scaleY(0.3); animation-delay: 0.2s; }
 .mini-eq span:nth-child(4) { transform: scaleY(0.8); animation-delay: 0.4s; }
 
 @keyframes mini-eq-anim {
@@ -1622,7 +1624,7 @@ body, button, input, select, textarea {
   100% { transform: scaleY(1); }
 }
 
-/* Station Card Content: Title + Single Secondary Line */
+/* Station Card Content: Title (up to 2 lines before ellipsis) + Full Secondary Line */
 .station-card-content {
   flex: 1;
   min-width: 0;
@@ -1630,7 +1632,8 @@ body, button, input, select, textarea {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
+  padding-right: 0;
 }
 
 .station-card-name {
@@ -1638,29 +1641,32 @@ body, button, input, select, textarea {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary);
-  white-space: nowrap;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  word-break: break-word;
   margin: 0;
 }
 
 .station-card-sub {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--text-muted);
   min-width: 0;
-  overflow: hidden;
 }
 
 .station-sub-text {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 1;
+  flex-shrink: 0;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 /* Micro Format Pill with Colored Status Dot */
@@ -1677,6 +1683,7 @@ body, button, input, select, textarea {
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   flex-shrink: 0;
+  margin-left: auto;
   letter-spacing: 0.03em;
 }
 
@@ -1708,8 +1715,7 @@ body, button, input, select, textarea {
 .station-card-actions {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
-  margin-left: auto;
+  gap: 0.2rem;
 }
 
 .card-action-btn {
@@ -1742,15 +1748,40 @@ body, button, input, select, textarea {
 }
 
 .star-btn.starred {
-  color: var(--accent-amber);
+  color: var(--accent-amber) !important;
 }
 
 .star-btn.starred svg {
-  fill: currentColor;
+  fill: currentColor !important;
 }
 
-/* Desktop Actions: revealed on hover and :focus-within */
+/* Desktop Actions: Absolute in top right so they NEVER steal card width or truncate station name */
 @media (min-width: 681px) and (hover: hover) {
+  .station-card-actions {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    margin-left: 0;
+    z-index: 5;
+    pointer-events: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .station-card:hover .station-card-actions,
+  .station-card:focus-within .station-card-actions {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(9, 14, 26, 0.92);
+    backdrop-filter: blur(4px);
+  }
+
+  .station-card-actions button {
+    pointer-events: auto;
+  }
+
   .desktop-card-actions {
     display: flex;
     align-items: center;
@@ -1773,10 +1804,15 @@ body, button, input, select, textarea {
   }
 
   .station-card:hover .station-card-actions .star-btn,
-  .station-card:focus-within .station-card-actions .star-btn,
-  .station-card-actions .star-btn.starred {
+  .station-card:focus-within .station-card-actions .star-btn {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  /* Starred station star is ALWAYS visible on desktop without hover */
+  .station-card-actions .star-btn.starred {
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
 
   .card-more-wrap {
@@ -1786,6 +1822,16 @@ body, button, input, select, textarea {
 
 /* Touch & Mobile Actions: Star visible + ⋯ menu */
 @media (max-width: 680px), (hover: none) {
+  .station-card-actions {
+    position: static;
+    margin-left: auto;
+    flex-shrink: 0;
+    pointer-events: auto;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0;
+  }
+
   .desktop-card-actions {
     display: none !important;
   }
@@ -1805,81 +1851,168 @@ body, button, input, select, textarea {
   }
 }
 
-/* Elevation for card when its options dropdown is open */
-.station-card.menu-open,
-.station-card:has(.card-menu-dropdown.open) {
-  z-index: 100 !important;
-}
-
-/* Card Dropdown Menu for Mobile */
-.card-more-wrap {
-  position: relative;
-}
-
-.card-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 100;
-  min-width: 140px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.5),
-              0 4px 10px rgba(0, 0, 0, 0.3);
-  padding: 0.3rem;
-  display: none;
-  flex-direction: column;
-  gap: 0.2rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.card-menu-dropdown.open {
+/* Action Sheet / Bottom Sheet for Mobile Station Actions */
+.action-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(3, 7, 18, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
-  animation: dropdown-fade 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
-.card-menu-dropdown .card-menu-item {
-  width: 100% !important;
-  min-width: 100% !important;
-  height: 38px !important;
-  min-height: 38px !important;
-  border-radius: var(--radius-xs);
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 0.65rem !important;
-  padding: 0 0.75rem !important;
+.action-sheet-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.action-sheet-content {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  border-radius: 20px 20px 0 0;
+  padding: 0.75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 12px));
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 540px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.action-sheet-overlay.open .action-sheet-content {
+  transform: translateY(0);
+}
+
+.action-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 auto 0.85rem;
+}
+
+.action-sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.75rem;
+}
+
+.action-sheet-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #090e1a;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.action-sheet-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-sheet-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--text-primary);
-  font-size: 0.82rem;
-  font-weight: 500;
-  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-sheet-sub {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.action-sheet-close {
   background: transparent;
   border: none;
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.action-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.action-sheet-item {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
-  white-space: nowrap !important;
 }
 
-.card-menu-dropdown .card-menu-item svg {
-  flex-shrink: 0 !important;
-  width: 14px !important;
-  height: 14px !important;
-  stroke: currentColor;
-}
-
-.card-menu-item:hover,
-.card-menu-item:focus-visible {
-  background: rgba(0, 240, 255, 0.1);
+.action-sheet-item:hover,
+.action-sheet-item:active {
+  background: rgba(0, 240, 255, 0.08);
   color: var(--accent-cyan);
-  outline: none;
 }
 
-.card-menu-item.delete-btn:hover,
-.card-menu-item.delete-btn:focus-visible {
+.action-sheet-item.delete-action {
+  color: #ef4444;
+}
+
+.action-sheet-item.delete-action:hover,
+.action-sheet-item.delete-action:active {
   background: rgba(239, 68, 68, 0.12);
   color: #ef4444;
+}
+
+.action-sheet-cancel {
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.action-sheet-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 
 /* Skeleton Loading Cards */
@@ -2822,36 +2955,87 @@ body, button, input, select, textarea {
 [data-theme="light"] .star-btn.starred {
   color: #d97706 !important;
 }
-[data-theme="light"] .card-menu-dropdown {
+
+[data-theme="light"] .playing-badge-indicator {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15) !important;
+}
+
+[data-theme="light"] .mini-eq span {
+  background: #0284c7 !important;
+}
+
+[data-theme="light"] .station-card-actions {
+  background: transparent !important;
+  border-color: transparent !important;
+  backdrop-filter: none !important;
+}
+
+[data-theme="light"] .station-card:hover .station-card-actions,
+[data-theme="light"] .station-card:focus-within .station-card-actions {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Station counter with WCAG AAA 18.1:1 contrast in light mode */
+[data-theme="light"] .station-counter,
+[data-theme="light"] #station-count-info {
   background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+  border: 1px solid #94a3b8 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
 }
-[data-theme="light"] .card-menu-item {
-  color: #1e293b !important;
+
+/* Action Sheet in Light Mode */
+[data-theme="light"] .action-sheet-overlay {
+  background: rgba(15, 23, 42, 0.5) !important;
 }
-[data-theme="light"] .card-menu-item svg {
-  stroke: #475569 !important;
-}
-[data-theme="light"] .card-menu-item:hover {
-  background: #e0f2fe !important;
-  color: #0284c7 !important;
-}
-[data-theme="light"] .card-menu-item:hover svg {
-  stroke: #0284c7 !important;
-}
-[data-theme="light"] .card-menu-item.delete-btn:hover {
-  background: #fee2e2 !important;
-  color: #dc2626 !important;
-}
-[data-theme="light"] .card-menu-item.delete-btn:hover svg {
-  stroke: #dc2626 !important;
-}
-[data-theme="light"] .station-counter {
+
+[data-theme="light"] .action-sheet-content {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
-  color: #334155 !important;
-  font-weight: 600 !important;
+  box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.18) !important;
+}
+
+[data-theme="light"] .action-sheet-handle {
+  background: #cbd5e1 !important;
+}
+
+[data-theme="light"] .action-sheet-logo {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .action-sheet-item {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .action-sheet-item:hover {
+  background: #f0f9ff !important;
+  color: #0284c7 !important;
+  border-color: #bae6fd !important;
+}
+
+[data-theme="light"] .action-sheet-item.delete-action {
+  color: #dc2626 !important;
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+}
+
+[data-theme="light"] .action-sheet-item.delete-action:hover {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+[data-theme="light"] .action-sheet-cancel {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
 /* Bottom Player Bar */
@@ -3320,17 +3504,32 @@ body, button, input, select, textarea {
 
   .station-card-name {
     font-size: 0.96rem;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
     margin-bottom: 0.15rem;
   }
 
   .station-card-sub {
     font-size: 0.68rem;
     gap: 0.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .station-sub-text {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .station-fmt-pill {
     font-size: 0.58rem;
     padding: 0.08rem 0.35rem;
+    margin-left: auto;
   }
 
   .station-card-actions {

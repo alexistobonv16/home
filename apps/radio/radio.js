@@ -33,12 +33,10 @@
     }[tag] || tag));
   }
 
-  // Extrae ciudad o subtítulo distintivo para emisoras de una misma cadena (ej: La Mega Ibagué -> Ibagué)
+  // Evita sobreimprimir insignias sobre el logo cuando el nombre ya incluye la ciudad/variante
   function getStationVariantBadge(name) {
-    const match = (name || '').match(/^(?:La Mega|Mix|Los 40|Radioacktiva|Caracol|W Radio|Blu Radio|Radio Nacional|RCN)\s+(.+)$/i);
-    if (match && match[1]) {
-      return match[1].trim();
-    }
+    // Las emisoras ya indican su ciudad en su nombre ('La Mega Montería', 'Mix Manizales', etc.)
+    // Evitamos cubrir el logo y el texto del arte con badges repetitivos
     return null;
   }
 
@@ -1662,8 +1660,7 @@
         <div class="station-card ${isCardPlaying ? 'playing' : ''} ${staggerClass}" data-station-id="${escapeHtml(s.id)}" ${staggerStyle} tabindex="0" role="button" aria-label="${escapeHtml(s.name)} - ${isCardPlaying ? 'Sonando actualmente' : 'Reproducir'}">
           <div class="station-card-logo-wrap">
             <img class="station-card-img" src="${escapeHtml(logoSrc)}" alt="${escapeHtml(s.name)}" data-fallback="${escapeHtml(fallbackLogo)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" loading="lazy">
-            ${variantBadge ? `<span class="station-variant-badge" title="${escapeHtml(variantBadge)}">${escapeHtml(variantBadge)}</span>` : ''}
-            <div class="playing-badge-indicator" aria-hidden="true">
+            <div class="playing-badge-indicator" aria-hidden="true" title="Sonando">
               <div class="mini-eq">
                 <span></span><span></span><span></span><span></span>
               </div>
@@ -1688,7 +1685,7 @@
             <!-- Acciones directas en Desktop (Hover & Focus-Within) -->
             <div class="desktop-card-actions">
               <button class="card-action-btn edit-btn" data-action="edit" title="Editar emisora" aria-label="Editar emisora">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
               <button class="card-action-btn delete-btn" data-action="delete" title="Eliminar emisora" aria-label="Eliminar emisora">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -1697,19 +1694,9 @@
 
             <!-- Menú '⋯' en Móvil / Táctil -->
             <div class="card-more-wrap">
-              <button class="card-action-btn card-more-btn" data-action="card-more" title="Más opciones" aria-haspopup="true" aria-expanded="false" aria-label="Más opciones de ${escapeHtml(s.name)}">
+              <button class="card-action-btn card-more-btn" data-action="card-more" title="Más opciones" aria-haspopup="dialog" aria-expanded="false" aria-label="Más opciones de ${escapeHtml(s.name)}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle><circle cx="5" cy="12" r="1.5"></circle></svg>
               </button>
-              <div class="card-menu-dropdown" role="menu">
-                <button class="card-action-btn card-menu-item edit-btn" data-action="edit" title="Editar emisora" role="menuitem">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                  <span>Editar</span>
-                </button>
-                <button class="card-action-btn card-menu-item delete-btn" data-action="delete" title="Eliminar emisora" role="menuitem">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                  <span>Eliminar</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -1724,6 +1711,110 @@
         }
       }, 700);
     }
+  }
+
+  // Mobile Bottom Sheet / Action Sheet for Station Options
+  let activeActionSheetStation = null;
+
+  function openCardActionSheet(station) {
+    if (!station) return;
+    activeActionSheetStation = station;
+    const overlay = document.getElementById('card-action-sheet-overlay');
+    if (!overlay) return;
+
+    const logo = document.getElementById('action-sheet-logo');
+    const title = document.getElementById('action-sheet-station-name');
+    const sub = document.getElementById('action-sheet-station-sub');
+    const starBtn = document.getElementById('action-sheet-star-btn');
+    const starText = document.getElementById('action-sheet-star-text');
+    const starSvg = starBtn ? starBtn.querySelector('polygon') : null;
+
+    const fallbackLogo = getStationFallbackSvg(station.name, station.genre);
+    const logoSrc = /^(https?:\/\/|data:image\/)/i.test(station.logo || '') ? station.logo : fallbackLogo;
+
+    if (logo) {
+      logo.src = logoSrc;
+      logo.alt = station.name;
+    }
+    if (title) title.textContent = station.name;
+    if (sub) {
+      const hasRealFreq = station.freq && !/^(WEB STREAM|WEB HI-FI|WEB|ONLINE)$/i.test(station.freq.trim());
+      sub.textContent = hasRealFreq ? `${station.freq.trim()} · ${station.genre || 'Música'}` : `${station.genre || 'Música'}`;
+    }
+    if (starText) {
+      starText.textContent = station.isStarred ? 'Quitar de favoritas' : 'Añadir a favoritas';
+    }
+    if (starSvg) {
+      starSvg.setAttribute('fill', station.isStarred ? 'currentColor' : 'none');
+    }
+    if (starBtn) {
+      starBtn.classList.toggle('starred', !!station.isStarred);
+    }
+
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCardActionSheet() {
+    activeActionSheetStation = null;
+    const overlay = document.getElementById('card-action-sheet-overlay');
+    if (overlay) {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    document.body.style.overflow = '';
+  }
+
+  // Action Sheet Handlers
+  const actionSheetOverlay = document.getElementById('card-action-sheet-overlay');
+  if (actionSheetOverlay) {
+    actionSheetOverlay.addEventListener('click', (e) => {
+      if (e.target === actionSheetOverlay || e.target.closest('#action-sheet-close-btn') || e.target.closest('#action-sheet-cancel-btn')) {
+        closeCardActionSheet();
+        return;
+      }
+
+      const itemBtn = e.target.closest('.action-sheet-item');
+      if (itemBtn && activeActionSheetStation) {
+        const action = itemBtn.getAttribute('data-action');
+        const station = activeActionSheetStation;
+        closeCardActionSheet();
+
+        if (action === 'star') {
+          station.isStarred = !station.isStarred;
+          saveStations();
+          renderStations();
+          showToast(station.isStarred ? `Añadida a favoritas: ${station.name}` : `Eliminada de favoritas`);
+        } else if (action === 'edit') {
+          openEditStationModal(station);
+        } else if (action === 'delete') {
+          if (confirm(`¿Eliminar la emisora "${station.name}"?`)) {
+            stations = stations.filter(s => s.id !== station.id);
+            saveStations();
+            if (currentStation && currentStation.id === station.id) {
+              currentPlaybackToken++;
+              if (connectionTimeoutTimer) {
+                clearTimeout(connectionTimeoutTimer);
+                connectionTimeoutTimer = null;
+              }
+              if (hls) {
+                try { hls.destroy(); } catch (err) {}
+                hls = null;
+              }
+              audio.pause();
+              audio.removeAttribute('src');
+              audio.load();
+              currentStation = null;
+              isBuffering = false;
+              setPlayingState(false);
+            }
+            renderStations();
+            showToast('Emisora eliminada');
+          }
+        }
+      }
+    });
   }
 
   // Grid Click Delegator
@@ -1742,32 +1833,9 @@
         const action = actionBtn.getAttribute('data-action');
 
         if (action === 'card-more') {
-          const dropdown = card.querySelector('.card-menu-dropdown');
-          const isCurrentlyOpen = dropdown ? dropdown.classList.contains('open') : false;
-          // Close all open card dropdowns and clear z-index elevations
-          document.querySelectorAll('.card-menu-dropdown.open').forEach(d => {
-            d.classList.remove('open');
-            d.closest('.station-card')?.classList.remove('menu-open');
-            d.parentElement.querySelector('.card-more-btn')?.setAttribute('aria-expanded', 'false');
-          });
-          if (dropdown && !isCurrentlyOpen) {
-            dropdown.classList.add('open');
-            card.classList.add('menu-open');
-            actionBtn.setAttribute('aria-expanded', 'true');
-            const firstItem = dropdown.querySelector('.card-menu-item');
-            if (firstItem && e.detail === 0) {
-              setTimeout(() => firstItem.focus(), 50);
-            }
-          }
+          openCardActionSheet(station);
           return;
         }
-
-        // Close any open card dropdowns on action click
-        document.querySelectorAll('.card-menu-dropdown.open').forEach(d => {
-          d.classList.remove('open');
-          d.closest('.station-card')?.classList.remove('menu-open');
-          d.parentElement.querySelector('.card-more-btn')?.setAttribute('aria-expanded', 'false');
-        });
 
         if (action === 'star') {
           station.isStarred = !station.isStarred;
@@ -2914,15 +2982,9 @@
     }
 
     if (e.key === 'Escape') {
-      const openCardDropdown = document.querySelector('.card-menu-dropdown.open');
-      if (openCardDropdown) {
-        openCardDropdown.classList.remove('open');
-        openCardDropdown.closest('.station-card')?.classList.remove('menu-open');
-        const moreBtn = openCardDropdown.parentElement.querySelector('.card-more-btn');
-        if (moreBtn) {
-          moreBtn.setAttribute('aria-expanded', 'false');
-          moreBtn.focus();
-        }
+      const actionSheet = document.getElementById('card-action-sheet-overlay');
+      if (actionSheet && actionSheet.classList.contains('open')) {
+        closeCardActionSheet();
         return;
       }
       if (isFullscreenPlayerOpen) {
