@@ -292,6 +292,7 @@
   const fsSongTitle = document.getElementById('fs-song-title');
   const fsSongArtist = document.getElementById('fs-song-artist');
   const fsAppleLink = document.getElementById('fs-apple-link');
+  const fsRetryBtn = document.getElementById('fs-retry-btn');
 
   let isFullscreenPlayerOpen = false;
 
@@ -613,27 +614,56 @@
     }
 
     // Sync Fullscreen Player Status
+    const fsBadge = document.querySelector('.fs-header-badge');
+    if (fsBadge) {
+      fsBadge.classList.remove('status-playing', 'status-buffering', 'status-error', 'status-paused', 'status-ready');
+      const badgeState = (state === 'retrying' || state === 'error') ? 'error' : state;
+      fsBadge.classList.add(`status-${badgeState}`);
+    }
+
     if (fsStatusText && fsPulseLed) {
       if (state === 'playing') {
         fsStatusText.textContent = 'EN VIVO';
         fsPulseLed.style.background = '#ef4444';
         fsPulseLed.style.boxShadow = '0 0 10px #ef4444';
+        if (fsRetryBtn) fsRetryBtn.style.display = 'none';
+        if (fsSongCard) {
+          const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+          if (eqBars) eqBars.style.display = 'inline-flex';
+        }
+        if (isFullscreenPlayerOpen) startFsVisualizer();
       } else if (state === 'buffering') {
         fsStatusText.textContent = 'CONECTANDO...';
         fsPulseLed.style.background = '#f59e0b';
         fsPulseLed.style.boxShadow = '0 0 10px #f59e0b';
+        if (fsRetryBtn) fsRetryBtn.style.display = 'none';
       } else if (state === 'error' || state === 'retrying') {
         fsStatusText.textContent = state === 'retrying' ? 'REINTENTANDO...' : 'ERROR';
         fsPulseLed.style.background = '#f97316';
         fsPulseLed.style.boxShadow = '0 0 10px #f97316';
+        stopFsVisualizer();
+        drawIdleFsVisualizer();
+        if (fsSongCard) {
+          if (fsSongTitle) fsSongTitle.textContent = 'Sin señal de emisión';
+          if (fsSongArtist) fsSongArtist.textContent = 'Error al conectar con el servidor de audio';
+          const badgeText = document.getElementById('fs-song-badge-text');
+          if (badgeText) badgeText.textContent = 'SIN SEÑAL';
+          const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+          if (eqBars) eqBars.style.display = 'none';
+          if (fsAppleLink) fsAppleLink.style.display = 'none';
+          if (fsRetryBtn) fsRetryBtn.style.display = 'inline-flex';
+          fsSongCard.style.display = 'flex';
+        }
       } else if (state === 'paused') {
         fsStatusText.textContent = 'PAUSADO';
         fsPulseLed.style.background = '#64748b';
         fsPulseLed.style.boxShadow = 'none';
+        if (fsRetryBtn) fsRetryBtn.style.display = 'none';
       } else {
         fsStatusText.textContent = 'LISTO';
         fsPulseLed.style.background = '#64748b';
         fsPulseLed.style.boxShadow = 'none';
+        if (fsRetryBtn) fsRetryBtn.style.display = 'none';
       }
     }
   }
@@ -695,12 +725,15 @@
     if (!station) return;
     currentStation = station;
 
+    // Reset song metadata immediately on station change
+    nowPlayingSong = null;
+    clearNowPlayingMetadata();
+
     // Increment token for fresh user requests, keep token for internal proxy retry
     if (!isProxyRetry) {
       currentPlaybackToken++;
       hasAttemptedProxyForCurrent = false;
       stopMetadataPolling();
-      clearNowPlayingMetadata();
       consecutiveNoSongCount = 0;
       lastSongTimestamp = 0;
     }
@@ -1438,7 +1471,11 @@
   });
 
   function applyNowPlayingMetadata(song) {
-    if (!song || !currentStation) return;
+    if (!song) {
+      clearNowPlayingMetadata();
+      return;
+    }
+    if (!currentStation) return;
     const isNewSong = !nowPlayingSong || nowPlayingSong.title !== song.title || nowPlayingSong.artist !== song.artist;
     nowPlayingSong = song;
 
@@ -1446,17 +1483,26 @@
     if (fsSongCard && fsSongTitle && fsSongArtist) {
       fsSongTitle.textContent = song.title;
       fsSongArtist.textContent = song.artist + (song.album ? ` • ${song.album}` : '');
+      fsSongCard.classList.remove('no-metadata');
+      fsSongCard.classList.add('has-metadata');
       fsSongCard.style.display = 'flex';
+      const badgeText = document.getElementById('fs-song-badge-text');
+      if (badgeText) badgeText.textContent = 'SONANDO AHORA';
+      const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+      if (eqBars) eqBars.style.display = 'inline-flex';
     }
 
     if (fsAppleLink) {
       if (song.appleMusicUrl) {
         fsAppleLink.href = song.appleMusicUrl;
+        fsAppleLink.setAttribute('aria-label', `Escuchar ${song.title} de ${song.artist} en Apple Music`);
         fsAppleLink.style.display = 'inline-flex';
       } else {
         fsAppleLink.style.display = 'none';
+        fsAppleLink.href = '#';
       }
     }
+    if (fsRetryBtn) fsRetryBtn.style.display = 'none';
 
     // 2. Carga progresiva instantánea de carátula
     const instantCover = song.artwork100 || song.artwork300 || song.artwork;
@@ -1509,20 +1555,19 @@
   }
 
   function clearNowPlayingMetadata() {
-    if (!nowPlayingSong) return;
     nowPlayingSong = null;
-
-    if (fsSongCard) {
-      fsSongCard.style.display = 'none';
-    }
 
     if (currentStation) {
       const fallback = getStationFallbackSvg(currentStation.name, currentStation.genre);
       if (fsStationLogo) {
         fsStationLogo.src = currentStation.logo || fallback;
+        fsStationLogo.onerror = () => { fsStationLogo.src = fallback; };
+        fsStationLogo.alt = currentStation.name;
       }
       if (bottomBarLogo) {
         bottomBarLogo.src = currentStation.logo || fallback;
+        bottomBarLogo.onerror = () => { bottomBarLogo.src = fallback; };
+        bottomBarLogo.alt = currentStation.name;
       }
       if (bottomBarName) {
         bottomBarName.textContent = currentStation.name;
@@ -1534,6 +1579,32 @@
       }
       updateMediaSession(currentStation);
     }
+
+    if (fsSongCard) {
+      if (fsSongTitle) fsSongTitle.textContent = 'Sintonía en vivo';
+      if (fsSongArtist) {
+        fsSongArtist.textContent = currentStation 
+          ? `${currentStation.freq || 'WEB STREAM'} • ${currentStation.genre || 'Transmisión digital'}`
+          : 'Transmisión digital';
+      }
+      fsSongCard.classList.remove('has-metadata');
+      fsSongCard.classList.add('no-metadata');
+      fsSongCard.style.display = 'flex';
+      const badgeText = document.getElementById('fs-song-badge-text');
+      if (badgeText) badgeText.textContent = 'SEÑAL EN VIVO';
+      const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+      if (eqBars) eqBars.style.display = 'inline-flex';
+    }
+
+    if (fsAppleLink) {
+      fsAppleLink.style.display = 'none';
+      fsAppleLink.href = '#';
+    }
+
+    if (fsRetryBtn) {
+      fsRetryBtn.style.display = 'none';
+    }
+
     updateDocumentTitle();
   }
 
@@ -1666,6 +1737,8 @@
         fsSongCard.style.display = 'flex';
         const badgeText = document.getElementById('fs-song-badge-text');
         if (badgeText) badgeText.textContent = 'SONANDO AHORA';
+        const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+        if (eqBars) eqBars.style.display = 'inline-flex';
       }
       if (fsAppleLink) {
         if (nowPlayingSong.appleMusicUrl) {
@@ -1674,8 +1747,10 @@
           fsAppleLink.style.display = 'inline-flex';
         } else {
           fsAppleLink.style.display = 'none';
+          fsAppleLink.href = '#';
         }
       }
+      if (fsRetryBtn) fsRetryBtn.style.display = 'none';
     } else {
       if (fsStationLogo) {
         fsStationLogo.src = station.logo || fallback;
@@ -1683,21 +1758,25 @@
         fsStationLogo.alt = station.name;
       }
       if (fsSongCard && fsSongTitle && fsSongArtist) {
-        fsSongTitle.textContent = station.name;
+        fsSongTitle.textContent = 'Sintonía en vivo';
         fsSongArtist.textContent = `${station.freq || 'WEB STREAM'} • ${station.genre || 'Transmisión digital'}`;
         fsSongCard.classList.remove('has-metadata');
         fsSongCard.classList.add('no-metadata');
         fsSongCard.style.display = 'flex';
         const badgeText = document.getElementById('fs-song-badge-text');
         if (badgeText) badgeText.textContent = 'SEÑAL EN VIVO';
+        const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+        if (eqBars) eqBars.style.display = 'inline-flex';
       }
       if (fsAppleLink) {
         fsAppleLink.style.display = 'none';
+        fsAppleLink.href = '#';
       }
+      if (fsRetryBtn) fsRetryBtn.style.display = 'none';
     }
 
     if (fsStationName) {
-      fsStationName.textContent = station.name;
+      fsStationName.textContent = (station.name || '').trim().replace(/\s+/g, ' ');
     }
     if (fsStationGenre) {
       fsStationGenre.textContent = station.genre || 'General';
@@ -2153,6 +2232,15 @@
   if (prevBtn) prevBtn.addEventListener('click', playPrevStation);
   if (playerRetryBtn) {
     playerRetryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentStation) {
+        showToast(`Reintentando "${currentStation.name}"...`);
+        playStation(currentStation, true);
+      }
+    });
+  }
+  if (fsRetryBtn) {
+    fsRetryBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (currentStation) {
         showToast(`Reintentando "${currentStation.name}"...`);
