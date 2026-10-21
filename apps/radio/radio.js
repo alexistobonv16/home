@@ -3246,15 +3246,31 @@
 
   window.addEventListener('keydown', handleFsFocusTrap);
 
+  let savedScrollY = 0;
+
+  function lockBodyScroll() {
+    savedScrollY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    document.documentElement.classList.add('fs-scroll-locked');
+    document.body.classList.add('fs-scroll-locked');
+    document.body.style.top = `-${savedScrollY}px`;
+  }
+
+  function unlockBodyScroll() {
+    document.documentElement.classList.remove('fs-scroll-locked');
+    document.body.classList.remove('fs-scroll-locked');
+    document.body.style.top = '';
+    window.scrollTo(0, savedScrollY);
+  }
+
   function openFullscreenPlayer() {
     if (!fsOverlay) return;
     const wasAlreadyOpen = isFullscreenPlayerOpen;
     lastFocusedElementBeforeFullscreen = document.activeElement;
     isFullscreenPlayerOpen = true;
     stopVisualizer();
+    lockBodyScroll();
     fsOverlay.classList.add('open');
     fsOverlay.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
 
     // Registrar estado en el historial para que el gesto "Atrás" en celular cierre esta vista y vuelva a las emisoras
     if (!wasAlreadyOpen && !hasPushedFullscreenHistory && window.history && typeof history.pushState === 'function') {
@@ -3281,7 +3297,7 @@
     isFullscreenPlayerOpen = false;
     fsOverlay.classList.remove('open');
     fsOverlay.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
+    unlockBodyScroll();
     stopFsVisualizer();
     if (isPlaying && window.innerWidth > 680) {
       startVisualizer();
@@ -3556,6 +3572,16 @@
   let touchStartX = 0;
 
   if (fsOverlay) {
+    fsOverlay.addEventListener('wheel', (e) => {
+      // Prevent background page from scrolling via mouse wheel while fullscreen overlay is active
+      e.preventDefault();
+    }, { passive: false });
+
+    fsOverlay.addEventListener('touchmove', (e) => {
+      // Prevent background page from scrolling via touch gestures while fullscreen overlay is active
+      e.preventDefault();
+    }, { passive: false });
+
     fsOverlay.addEventListener('touchstart', (e) => {
       if (e.touches && e.touches.length === 1) {
         touchStartY = e.touches[0].clientY;
@@ -3697,6 +3723,9 @@
     window.updatePlayerStatus = updatePlayerStatus;
     window.applyNowPlayingMetadata = applyNowPlayingMetadata;
     window.setPlayingState = setPlayingState;
+    window.openFullscreenPlayer = openFullscreenPlayer;
+    window.closeFullscreenPlayer = closeFullscreenPlayer;
+    window.playStation = playStation;
   });
 
 })();

@@ -2768,21 +2768,14 @@ button:active:not(:disabled),
 
 .fs-artwork-wrapper {
   position: relative;
-  width: clamp(160px, 28vh, 340px);
-  height: clamp(160px, 28vh, 340px);
+  width: min(340px, 36vh);
+  height: min(340px, 36vh);
   margin: 0 auto;
   border-radius: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-@media (min-height: 800px) {
-  .fs-artwork-wrapper {
-    width: clamp(240px, 34vh, 340px);
-    height: clamp(240px, 34vh, 340px);
-  }
 }
 
 .fs-artwork-glow {
@@ -4334,13 +4327,20 @@ button:active:not(:disabled),
   }
 
   .fs-artwork-wrapper {
-    width: clamp(130px, 20vh, 185px) !important;
-    height: clamp(130px, 20vh, 185px) !important;
-    border-radius: 20px !important;
+    width: min(340px, 36vh) !important;
+    height: min(340px, 36vh) !important;
+    border-radius: 24px !important;
+  }
+
+  @media (max-height: 680px) {
+    .fs-artwork-wrapper {
+      width: clamp(130px, 26vh, 200px) !important;
+      height: clamp(130px, 26vh, 200px) !important;
+    }
   }
 
   .fs-station-logo {
-    border-radius: 20px !important;
+    border-radius: 24px !important;
   }
 
   .fs-artwork-glow {
@@ -4403,22 +4403,37 @@ button:active:not(:disabled),
   }
 }
 
-/* Desktop 2-Column Deck for viewports <= 800px high (1366x768, 1280x720) */
-@media (min-width: 769px) and (max-height: 800px) {
+/* Scroll-Lock utilities for Fullscreen Overlay */
+html.fs-scroll-locked,
+body.fs-scroll-locked {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+body.fs-scroll-locked {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+}
+
+/* Desktop 2-Column Deck for wide / horizontal viewports (>= 1024px landscape, or >= 769px landscape with <= 800px height) */
+@media (min-width: 1024px) and (orientation: landscape),
+       (min-width: 769px) and (max-height: 800px) and (orientation: landscape) {
   .fs-player-container {
-    max-width: 1100px !important;
-    padding: 0.5rem 2rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) !important;
-    justify-content: center !important;
+    max-width: 1360px !important;
+    padding: clamp(0.5rem, 1.8vh, 1.25rem) clamp(1.5rem, 3.5vw, 3rem) calc(clamp(0.5rem, 1.8vh, 1.25rem) + env(safe-area-inset-bottom, 0px)) !important;
+    justify-content: space-between !important;
   }
 
   .fs-body-deck {
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    max-width: 1050px !important;
+    max-width: 1300px !important;
     width: 100% !important;
     margin: 0 auto !important;
-    gap: clamp(1.5rem, 3.5vw, 3rem) !important;
+    gap: clamp(1.75rem, 4.5vw, 4.5rem) !important;
     flex: 1 1 auto !important;
     min-height: 0 !important;
   }
@@ -4431,90 +4446,110 @@ button:active:not(:disabled),
   }
 
   .fs-artwork-wrapper {
-    width: clamp(260px, 34vh, 320px) !important;
-    height: clamp(260px, 34vh, 320px) !important;
+    width: min(420px, 55vh) !important;
+    height: min(420px, 55vh) !important;
+    border-radius: 24px !important;
     margin: 0 !important;
+  }
+
+  .fs-station-logo {
+    border-radius: 24px !important;
   }
 
   .fs-col-content {
     flex: 1 1 auto !important;
-    max-width: 580px !important;
+    max-width: 640px !important;
     width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
+    justify-content: center !important;
     text-align: center !important;
-    gap: clamp(0.25rem, 0.9vh, 0.55rem) !important;
+    gap: clamp(0.25rem, 1vh, 0.75rem) !important;
   }
 
   .fs-info-group {
-    gap: clamp(0.2rem, 0.7vh, 0.45rem) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: clamp(0.2rem, 0.8vh, 0.5rem) !important;
     width: 100% !important;
   }
 
   .fs-station-name {
-    font-size: clamp(1.35rem, 2.4vw, 1.95rem) !important;
+    font-size: clamp(1.4rem, 2.4vw, 2.2rem) !important;
     margin: 0.1rem 0 !important;
   }
 
   .fs-visualizer-wrapper {
-    height: 32px !important;
+    height: clamp(28px, 4vh, 38px) !important;
     margin: 0.1rem 0 !important;
-    max-width: 380px !important;
+    max-width: 440px !important;
+    width: 100% !important;
   }
 
   .fs-song-card {
-    padding: 0.35rem 1.1rem !important;
+    padding: clamp(0.35rem, 1vh, 0.75rem) clamp(1rem, 2vw, 1.5rem) !important;
     margin: 0.1rem 0 !important;
+    max-width: 480px !important;
+    width: 100% !important;
   }
 
   .fs-telemetry-row {
-    font-size: 0.7rem !important;
+    font-size: clamp(0.68rem, 0.9vh, 0.76rem) !important;
     margin-top: 0.1rem !important;
-    gap: 0.4rem !important;
+    gap: 0.45rem !important;
   }
 
   .fs-footer {
-    gap: clamp(0.35rem, 1vh, 0.65rem) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: clamp(0.35rem, 1vh, 0.75rem) !important;
     padding-top: 0.1rem !important;
     width: 100% !important;
   }
 
   .fs-tools-row {
-    gap: 0.65rem !important;
+    gap: 0.75rem !important;
   }
 
   .fs-tools-row .sleep-btn,
   .fs-tools-row .proxy-toggle-btn {
-    height: 2rem !important;
-    padding: 0 0.85rem !important;
-    font-size: 0.72rem !important;
+    height: 2.15rem !important;
+    padding: 0 0.95rem !important;
+    font-size: 0.75rem !important;
   }
 
   .fs-playback-row {
-    gap: 1.35rem !important;
+    gap: clamp(1.2rem, 2vw, 1.8rem) !important;
   }
 
   .fs-play-btn {
-    width: 3.8rem !important;
-    height: 3.8rem !important;
+    width: clamp(3.8rem, 5.5vh, 4.5rem) !important;
+    height: clamp(3.8rem, 5.5vh, 4.5rem) !important;
   }
 
   .fs-play-btn svg {
-    width: 26px !important;
-    height: 26px !important;
+    width: clamp(26px, 3.5vh, 32px) !important;
+    height: clamp(26px, 3.5vh, 32px) !important;
   }
 
   .fs-nav-btn {
-    width: 2.85rem !important;
-    height: 2.85rem !important;
+    width: clamp(2.8rem, 4.2vh, 3.2rem) !important;
+    height: clamp(2.8rem, 4.2vh, 3.2rem) !important;
   }
 
   .fs-nav-btn svg {
-    width: 19px !important;
-    height: 19px !important;
+    width: clamp(18px, 2.5vh, 22px) !important;
+    height: clamp(18px, 2.5vh, 22px) !important;
   }
 
   .fs-volume-row {
-    max-width: 340px !important;
+    max-width: 380px !important;
+    width: 100% !important;
   }
 }
 
