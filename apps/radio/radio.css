@@ -997,26 +997,33 @@ button:active:not(:disabled),
 
 .visualizer-debug-overlay {
   position: absolute;
-  inset: 0;
+  top: 1px;
+  left: 50%;
+  transform: translateX(-50%);
   pointer-events: none;
   font-family: var(--font-mono, monospace);
   font-size: 7.5px;
-  line-height: 1.1;
+  font-weight: 700;
+  line-height: 1.2;
   color: #00f0ff;
-  background: rgba(3, 7, 18, 0.9);
-  padding: 2px 4px;
+  background: rgba(3, 7, 18, 0.75);
+  padding: 1px 6px;
   z-index: 10;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  border-radius: inherit;
-  border: 1px solid rgba(0, 240, 255, 0.45);
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  max-width: 96%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-theme="light"] .visualizer-debug-overlay {
-  background: rgba(240, 249, 255, 0.94);
+  background: rgba(240, 249, 255, 0.88);
   color: #0284c7;
   border-color: rgba(2, 132, 199, 0.5);
 }
@@ -3008,6 +3015,7 @@ button:active:not(:disabled),
 
 /* Fullscreen Spectrum & Sine Visualizer */
 .fs-visualizer-wrapper {
+  position: relative;
   width: 100%;
   max-width: 400px;
   height: 38px;
@@ -3015,6 +3023,8 @@ button:active:not(:disabled),
   align-items: center;
   justify-content: center;
   margin: 0.15rem 0;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .fs-visualizer-canvas {
@@ -4635,10 +4645,13 @@ body.fs-scroll-locked {
   }
 
   .fs-visualizer-wrapper {
+    position: relative !important;
     height: clamp(28px, 4vh, 38px) !important;
     margin: 0.1rem 0 !important;
     max-width: 440px !important;
     width: 100% !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
   }
 
   .fs-song-card {

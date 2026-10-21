@@ -1359,7 +1359,6 @@
       if (document.hidden) return;
 
       const sounding = isAudioElementSounding();
-      const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let sum = 0;
       let dataArray = null;
@@ -1374,7 +1373,7 @@
       }
 
       let mode = 'PLANO';
-      if (sounding && !isReduced) {
+      if (sounding) {
         mode = (sum > 0) ? 'BARRAS' : 'ONDA';
       }
 
