@@ -31,7 +31,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=8.8">
+  <link rel="stylesheet" href="radio.css?v=8.9">
 </head>
 <body>
 
@@ -102,9 +102,52 @@
         </div>
 
         <div class="search-actions-wrap">
-          <div class="sort-control-wrap" title="Ordenar lista de emisoras">
-            <svg class="sort-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
-            <select id="sort-order-select" class="sort-select" title="Ordenar emisoras" aria-label="Ordenar emisoras">
+          <div class="sort-control-wrap" id="sort-control-wrap">
+            <button type="button" id="sort-dropdown-btn" class="sort-dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="sort-dropdown-menu" aria-label="Ordenar lista de emisoras" title="Ordenar lista de emisoras">
+              <svg class="sort-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
+              <span id="sort-dropdown-label" class="sort-dropdown-label">Agregación</span>
+              <svg class="sort-chevron-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div id="sort-dropdown-menu" class="sort-dropdown-menu" role="listbox" aria-label="Criterios de ordenación" tabindex="-1">
+              <button type="button" class="sort-option active" role="option" data-value="added" aria-selected="true" tabindex="0">
+                <div class="sort-option-main">
+                  <span class="sort-option-badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  </span>
+                  <div class="sort-option-text">
+                    <span class="sort-option-title">Agregación</span>
+                    <span class="sort-option-desc">Orden por defecto</span>
+                  </div>
+                </div>
+                <svg class="sort-option-check" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="sort-option" role="option" data-value="alpha-asc" aria-selected="false" tabindex="-1">
+                <div class="sort-option-main">
+                  <span class="sort-option-badge font-mono">A↓</span>
+                  <div class="sort-option-text">
+                    <span class="sort-option-title">A → Z</span>
+                    <span class="sort-option-desc">Nombre ascendente</span>
+                  </div>
+                </div>
+                <svg class="sort-option-check" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="sort-option" role="option" data-value="alpha-desc" aria-selected="false" tabindex="-1">
+                <div class="sort-option-main">
+                  <span class="sort-option-badge font-mono">Z↓</span>
+                  <div class="sort-option-text">
+                    <span class="sort-option-title">Z → A</span>
+                    <span class="sort-option-desc">Nombre descendente</span>
+                  </div>
+                </div>
+                <svg class="sort-option-check" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+            </div>
+
+            <!-- Native select visually hidden for programmatic and assistive compatibility -->
+            <select id="sort-order-select" class="sr-only" tabindex="-1" aria-hidden="true" title="Ordenar emisoras">
               <option value="added" selected>Agregación</option>
               <option value="alpha-asc">A → Z</option>
               <option value="alpha-desc">Z → A</option>
@@ -710,6 +753,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" defer></script>
-  <script src="radio.js?v=8.8" defer></script>
+  <script src="radio.js?v=8.9" defer></script>
 </body>
 </html>
