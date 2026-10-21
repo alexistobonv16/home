@@ -3816,7 +3816,8 @@
   window.updateDocumentTitle = updateDocumentTitle;
   window.fitIslandSecondaryLine = fitIslandSecondaryLine;
   window.updateIslandSecondaryLine = updateIslandSecondaryLine;
-  window.updateActiveStationCard = updateActiveStationCard;
+  window.updateCardPlayingState = updateCardPlayingState;
+  window.updateActiveStationCard = updateCardPlayingState;
   window.setCurrentStation = (s) => { currentStation = s; };
 
   // Initialize
