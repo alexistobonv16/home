@@ -253,9 +253,12 @@
   const bottomBarExpandBtn = document.getElementById('bottom-bar-expand-btn');
   const bottomBarLeft = document.getElementById('bottom-bar-left');
   const fullscreenPlayerBtn = document.getElementById('fullscreen-player-btn');
+  const playerRetryBtn = document.getElementById('player-retry-btn');
 
   // Fullscreen Player Overlay Elements
   const fsOverlay = document.getElementById('fullscreen-player-overlay');
+  const fsAmbientGlow = document.getElementById('fs-ambient-glow');
+  const fsDragHandle = document.getElementById('fs-drag-handle');
   const fsCloseBtn = document.getElementById('fs-close-btn');
   const fsPulseLed = document.getElementById('fs-pulse-led');
   const fsStatusText = document.getElementById('fs-status-text');
@@ -270,6 +273,8 @@
   const fsStationFormatBadge = document.getElementById('fs-station-format-badge');
   const fsStationBitrateBadge = document.getElementById('fs-station-bitrate-badge');
   const fsStationName = document.getElementById('fs-station-name');
+  const fsCanvas = document.getElementById('fs-visualizer-canvas');
+  const fsCanvasCtx = fsCanvas ? fsCanvas.getContext('2d') : null;
   const fsTelemetrySpeed = document.getElementById('fs-telemetry-speed');
   const fsTelemetryData = document.getElementById('fs-telemetry-data');
   const fsProxyIndicator = document.getElementById('fs-proxy-indicator');
@@ -569,18 +574,21 @@
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
     if (state === 'playing') {
+      if (playerRetryBtn) playerRetryBtn.style.display = 'none';
       nowPlayingStatus.className = 'bottom-bar-status status-playing';
       nowPlayingStatus.style.background = isLight ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.14)';
       nowPlayingStatus.style.borderColor = isLight ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.45)';
       nowPlayingStatus.style.color = '#ef4444';
       nowPlayingStatus.innerHTML = '<span class="pulse-led pulse-red" style="background:#ef4444;box-shadow:0 0 8px #ef4444;"></span> EN VIVO';
     } else if (state === 'buffering') {
+      if (playerRetryBtn) playerRetryBtn.style.display = 'none';
       nowPlayingStatus.className = 'bottom-bar-status status-buffering';
       nowPlayingStatus.style.background = isLight ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.16)';
       nowPlayingStatus.style.borderColor = isLight ? 'rgba(245, 158, 11, 0.4)' : 'rgba(245, 158, 11, 0.45)';
       nowPlayingStatus.style.color = 'var(--accent-amber)';
       nowPlayingStatus.innerHTML = '<span class="pulse-led pulse-amber" style="background:#f59e0b;box-shadow:0 0 8px #f59e0b;"></span> CONECTANDO...';
     } else if (state === 'error' || state === 'retrying') {
+      if (playerRetryBtn) playerRetryBtn.style.display = 'inline-flex';
       nowPlayingStatus.className = 'bottom-bar-status status-error';
       nowPlayingStatus.style.background = isLight ? 'rgba(249, 115, 22, 0.12)' : 'rgba(249, 115, 22, 0.16)';
       nowPlayingStatus.style.borderColor = isLight ? 'rgba(249, 115, 22, 0.4)' : 'rgba(249, 115, 22, 0.45)';
@@ -588,6 +596,7 @@
       const label = state === 'retrying' ? 'REINTENTANDO...' : 'ERROR';
       nowPlayingStatus.innerHTML = `<span class="pulse-led pulse-orange" style="background:#f97316;box-shadow:0 0 8px #f97316;"></span> ${label}`;
     } else if (state === 'paused') {
+      if (playerRetryBtn) playerRetryBtn.style.display = 'none';
       nowPlayingStatus.className = 'bottom-bar-status status-paused';
       nowPlayingStatus.style.background = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)';
       nowPlayingStatus.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.12)' : 'var(--border-color)';
@@ -595,6 +604,7 @@
       nowPlayingStatus.innerHTML = '<span class="pulse-led pulse-gray" style="background:#64748b;box-shadow:none;"></span> PAUSADO';
     } else {
       // ready / idle
+      if (playerRetryBtn) playerRetryBtn.style.display = 'none';
       nowPlayingStatus.className = 'bottom-bar-status status-ready';
       nowPlayingStatus.style.background = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)';
       nowPlayingStatus.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.12)' : 'var(--border-color)';
@@ -1187,10 +1197,16 @@
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       stopVisualizer();
+      stopFsVisualizer();
     } else if (isPlaying) {
-      startVisualizer();
+      if (isFullscreenPlayerOpen) {
+        startFsVisualizer();
+      } else if (window.innerWidth > 680) {
+        startVisualizer();
+      }
     } else {
       drawIdleVisualizer();
+      drawIdleFsVisualizer();
     }
   });
 
@@ -1611,9 +1627,29 @@
     updateTelemetryDisplay();
   }
 
+  function updateFsAmbientGlow(station) {
+    if (!fsAmbientGlow) return;
+    if (!station) {
+      fsAmbientGlow.style.background = '';
+      return;
+    }
+    const hue = getStationHue(station.name);
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const op1 = isLight ? 0.22 : 0.38;
+    const op2 = isLight ? 0.08 : 0.16;
+    fsAmbientGlow.style.background = `radial-gradient(circle at 50% 36%, hsla(${hue}, 85%, 50%, ${op1}) 0%, hsla(${(hue + 45) % 360}, 80%, 45%, ${op2}) 45%, transparent 72%)`;
+
+    if (fsOverlay) {
+      fsOverlay.style.setProperty('--station-glow', `hsla(${hue}, 90%, 55%, 0.45)`);
+      fsOverlay.style.setProperty('--station-color', `hsl(${hue}, 85%, 50%)`);
+    }
+  }
+
   function updateFullscreenPlayer(station) {
     if (!station) return;
     const fallback = getStationFallbackSvg(station.name, station.genre);
+
+    updateFsAmbientGlow(station);
 
     const activeCover = nowPlayingSong ? (nowPlayingSong.artwork || nowPlayingSong.artwork300 || nowPlayingSong.artwork100) : null;
     if (activeCover) {
@@ -1625,11 +1661,16 @@
       if (fsSongCard && fsSongTitle && fsSongArtist) {
         fsSongTitle.textContent = nowPlayingSong.title;
         fsSongArtist.textContent = nowPlayingSong.artist + (nowPlayingSong.album ? ` • ${nowPlayingSong.album}` : '');
+        fsSongCard.classList.remove('no-metadata');
+        fsSongCard.classList.add('has-metadata');
         fsSongCard.style.display = 'flex';
+        const badgeText = document.getElementById('fs-song-badge-text');
+        if (badgeText) badgeText.textContent = 'SONANDO AHORA';
       }
       if (fsAppleLink) {
         if (nowPlayingSong.appleMusicUrl) {
           fsAppleLink.href = nowPlayingSong.appleMusicUrl;
+          fsAppleLink.setAttribute('aria-label', `Escuchar ${nowPlayingSong.title} de ${nowPlayingSong.artist} en Apple Music`);
           fsAppleLink.style.display = 'inline-flex';
         } else {
           fsAppleLink.style.display = 'none';
@@ -1641,8 +1682,17 @@
         fsStationLogo.onerror = () => { fsStationLogo.src = fallback; };
         fsStationLogo.alt = station.name;
       }
-      if (fsSongCard) {
-        fsSongCard.style.display = 'none';
+      if (fsSongCard && fsSongTitle && fsSongArtist) {
+        fsSongTitle.textContent = station.name;
+        fsSongArtist.textContent = `${station.freq || 'WEB STREAM'} • ${station.genre || 'Transmisión digital'}`;
+        fsSongCard.classList.remove('has-metadata');
+        fsSongCard.classList.add('no-metadata');
+        fsSongCard.style.display = 'flex';
+        const badgeText = document.getElementById('fs-song-badge-text');
+        if (badgeText) badgeText.textContent = 'SEÑAL EN VIVO';
+      }
+      if (fsAppleLink) {
+        fsAppleLink.style.display = 'none';
       }
     }
 
@@ -1657,6 +1707,14 @@
     }
 
     updateFullscreenStarState();
+
+    const fsArtwork = document.querySelector('.fs-artwork-wrapper');
+    if (fsArtwork) {
+      fsArtwork.classList.toggle('is-playing', isPlaying);
+    }
+    if (fsPlayBtn) {
+      fsPlayBtn.classList.toggle('is-playing', isPlaying);
+    }
 
     if (fsPlayIcon && fsPauseIcon) {
       fsPlayIcon.style.display = isPlaying ? 'none' : 'block';
@@ -1856,42 +1914,40 @@
 
   function deleteStationWithUndo(station) {
     if (!station) return;
-    if (confirm(`¿Eliminar la emisora "${station.name}"?`)) {
-      const deletedStation = station;
-      const deletedIndex = stations.findIndex(s => s.id === station.id);
-      stations = stations.filter(s => s.id !== station.id);
-      saveStations();
+    const deletedStation = station;
+    const deletedIndex = stations.findIndex(s => s.id === station.id);
+    stations = stations.filter(s => s.id !== station.id);
+    saveStations();
 
-      if (currentStation && currentStation.id === station.id) {
-        currentPlaybackToken++;
-        if (connectionTimeoutTimer) {
-          clearTimeout(connectionTimeoutTimer);
-          connectionTimeoutTimer = null;
-        }
-        if (hls) {
-          try { hls.destroy(); } catch (err) {}
-          hls = null;
-        }
-        audio.pause();
-        audio.removeAttribute('src');
-        audio.load();
-        currentStation = null;
-        isBuffering = false;
-        setPlayingState(false);
+    if (currentStation && currentStation.id === station.id) {
+      currentPlaybackToken++;
+      if (connectionTimeoutTimer) {
+        clearTimeout(connectionTimeoutTimer);
+        connectionTimeoutTimer = null;
       }
-
-      renderStations();
-      showToast('Emisora eliminada', 'Deshacer', () => {
-        if (deletedIndex >= 0) {
-          stations.splice(deletedIndex, 0, deletedStation);
-        } else {
-          stations.push(deletedStation);
-        }
-        saveStations();
-        renderStations();
-        showToast(`Restaurada: ${deletedStation.name}`);
-      });
+      if (hls) {
+        try { hls.destroy(); } catch (err) {}
+        hls = null;
+      }
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      currentStation = null;
+      isBuffering = false;
+      setPlayingState(false);
     }
+
+    renderStations();
+    showToast(`Eliminada: ${deletedStation.name}`, 'Deshacer', () => {
+      if (deletedIndex >= 0) {
+        stations.splice(deletedIndex, 0, deletedStation);
+      } else {
+        stations.push(deletedStation);
+      }
+      saveStations();
+      renderStations();
+      showToast(`Restaurada: ${deletedStation.name}`);
+    });
   }
 
   function closeCardActionSheet() {
@@ -2095,6 +2151,15 @@
   if (playBtn) playBtn.addEventListener('click', togglePlayPause);
   if (nextBtn) nextBtn.addEventListener('click', playNextStation);
   if (prevBtn) prevBtn.addEventListener('click', playPrevStation);
+  if (playerRetryBtn) {
+    playerRetryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentStation) {
+        showToast(`Reintentando "${currentStation.name}"...`);
+        playStation(currentStation, true);
+      }
+    });
+  }
 
   function updateVolumeVisual(val) {
     const pct = Math.round((parseFloat(val) || 0) * 100);
@@ -2738,7 +2803,7 @@
       toast.style.transform = 'translateY(6px)';
       toast.style.transition = 'all 0.25s ease';
       setTimeout(() => toast.remove(), 250);
-    }, actionText ? 5000 : 3000);
+    }, actionText ? 6000 : 3000);
   }
 
   // PWA Install Manager & Service Worker Registration
@@ -2888,7 +2953,9 @@
   // FULLSCREEN PLAYER CONTROLLER (Modo Pantalla Completa / Now Playing)
   // =========================================================================
   let fsAnimFrameId = null;
+  let fsVisualizerPhase = 0;
   let hasPushedFullscreenHistory = false;
+  let lastFocusedElementBeforeFullscreen = null;
 
   // Limpiar cualquier estado residual de pantalla completa si el usuario recargó la página
   if (window.history && history.state && history.state.fullscreenPlayer) {
@@ -2897,9 +2964,37 @@
     } catch (e) {}
   }
 
+  function handleFsFocusTrap(e) {
+    if (!isFullscreenPlayerOpen || !fsOverlay) return;
+    if (e.key !== 'Tab') return;
+
+    const focusables = Array.from(fsOverlay.querySelectorAll('button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')).filter(el => {
+      return el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement;
+    });
+    if (!focusables || focusables.length === 0) return;
+
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first || !fsOverlay.contains(document.activeElement)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last || !fsOverlay.contains(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  window.addEventListener('keydown', handleFsFocusTrap);
+
   function openFullscreenPlayer() {
     if (!fsOverlay) return;
     const wasAlreadyOpen = isFullscreenPlayerOpen;
+    lastFocusedElementBeforeFullscreen = document.activeElement;
     isFullscreenPlayerOpen = true;
     stopVisualizer();
     fsOverlay.classList.add('open');
@@ -2919,6 +3014,10 @@
     }
     resizeFsCanvas();
     startFsVisualizer();
+
+    setTimeout(() => {
+      if (fsCloseBtn) fsCloseBtn.focus();
+    }, 60);
   }
 
   function closeFullscreenPlayer(fromPopState = false) {
@@ -2931,6 +3030,12 @@
     stopFsVisualizer();
     if (isPlaying && window.innerWidth > 680) {
       startVisualizer();
+    }
+
+    if (lastFocusedElementBeforeFullscreen && typeof lastFocusedElementBeforeFullscreen.focus === 'function') {
+      try {
+        lastFocusedElementBeforeFullscreen.focus();
+      } catch (e) {}
     }
 
     if (isPop) {
@@ -2992,16 +3097,152 @@
   document.addEventListener('fullscreenchange', syncBrowserFullscreenIcons);
   document.addEventListener('webkitfullscreenchange', syncBrowserFullscreenIcons);
 
-  // Fullscreen Visualizer (Cleanly retired for minimalist Now Playing view)
+  // =========================================================================
+  // FULLSCREEN SPECTRUM / SINE VISUALIZER (3-STATE DUAL ENGINE)
+  // =========================================================================
   function stopFsVisualizer() {
     if (fsAnimFrameId) {
       cancelAnimationFrame(fsAnimFrameId);
       fsAnimFrameId = null;
     }
   }
-  function resizeFsCanvas() {}
-  function drawIdleFsVisualizer() {}
-  function startFsVisualizer() {}
+
+  function resizeFsCanvas() {
+    if (!fsCanvas) return;
+    const rect = fsCanvas.getBoundingClientRect();
+    const w = Math.floor(rect.width || 360);
+    const h = Math.floor(rect.height || 38);
+    if (fsCanvas.width !== w || fsCanvas.height !== h) {
+      fsCanvas.width = w;
+      fsCanvas.height = h;
+    }
+  }
+
+  function drawIdleFsVisualizer() {
+    if (!fsCanvas || !fsCanvasCtx) return;
+    resizeFsCanvas();
+    const w = fsCanvas.width;
+    const h = fsCanvas.height;
+    fsCanvasCtx.clearRect(0, 0, w, h);
+
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const grad = fsCanvasCtx.createLinearGradient(0, 0, w, 0);
+    grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+    grad.addColorStop(0.2, isLight ? 'rgba(2, 132, 199, 0.35)' : 'rgba(0, 240, 255, 0.45)');
+    grad.addColorStop(0.5, isLight ? 'rgba(2, 132, 199, 0.7)' : 'rgba(0, 240, 255, 0.85)');
+    grad.addColorStop(0.8, isLight ? 'rgba(2, 132, 199, 0.35)' : 'rgba(0, 240, 255, 0.45)');
+    grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+
+    fsCanvasCtx.fillStyle = grad;
+    fsCanvasCtx.fillRect(0, Math.floor(h / 2), w, 1.5);
+  }
+
+  function startFsVisualizer() {
+    if (!fsCanvas || !fsCanvasCtx) return;
+    stopFsVisualizer();
+
+    if (!isFullscreenPlayerOpen || document.hidden) {
+      return;
+    }
+
+    if (!isPlaying) {
+      drawIdleFsVisualizer();
+      return;
+    }
+
+    resizeFsCanvas();
+
+    function renderFsFrame() {
+      if (!isFullscreenPlayerOpen || document.hidden || !isPlaying) {
+        stopFsVisualizer();
+        drawIdleFsVisualizer();
+        return;
+      }
+
+      fsAnimFrameId = requestAnimationFrame(renderFsFrame);
+
+      const w = fsCanvas.width;
+      const h = fsCanvas.height;
+      fsCanvasCtx.clearRect(0, 0, w, h);
+
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      let hasRealAudio = false;
+
+      if (analyser) {
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+          if (sum > 0) {
+            hasRealAudio = true;
+            break;
+          }
+        }
+
+        if (hasRealAudio) {
+          const barCount = Math.min(36, Math.floor(w / 9));
+          const barWidth = Math.max(3, Math.floor((w - (barCount * 3)) / barCount));
+          const step = Math.floor(bufferLength / barCount) || 1;
+
+          for (let i = 0; i < barCount; i++) {
+            const val = dataArray[i * step] || 0;
+            const percent = val / 255;
+            const barHeight = Math.max(2, percent * (h - 4));
+            const x = i * (barWidth + 3) + 2;
+            const y = h - barHeight - 1;
+
+            const grad = fsCanvasCtx.createLinearGradient(0, h, 0, y);
+            grad.addColorStop(0, isLight ? '#0284c7' : '#00f0ff');
+            grad.addColorStop(1, isLight ? '#7c3aed' : '#a855f7');
+            fsCanvasCtx.fillStyle = grad;
+
+            fsCanvasCtx.beginPath();
+            if (fsCanvasCtx.roundRect) {
+              fsCanvasCtx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
+            } else {
+              fsCanvasCtx.rect(x, y, barWidth, barHeight);
+            }
+            fsCanvasCtx.fill();
+          }
+          return;
+        }
+      }
+
+      // CORS Fallback: Soft, harmonious flowing sine wave (zero fake peaks)
+      fsVisualizerPhase += 0.04;
+      const centerY = h / 2;
+      const amplitude = Math.min(h * 0.28, 8);
+
+      const grad = fsCanvasCtx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+      grad.addColorStop(0.2, isLight ? '#0284c7' : '#00f0ff');
+      grad.addColorStop(0.5, isLight ? '#7c3aed' : '#a855f7');
+      grad.addColorStop(0.8, isLight ? '#0284c7' : '#00f0ff');
+      grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+
+      fsCanvasCtx.lineWidth = 2;
+      fsCanvasCtx.strokeStyle = grad;
+      fsCanvasCtx.beginPath();
+
+      for (let x = 0; x <= w; x += 2) {
+        const wave1 = Math.sin((x / 40) + fsVisualizerPhase);
+        const wave2 = Math.sin((x / 75) - (fsVisualizerPhase * 0.7)) * 0.5;
+        const envelope = Math.sin((x / w) * Math.PI);
+        const y = centerY + ((wave1 + wave2) * amplitude * envelope);
+        if (x === 0) {
+          fsCanvasCtx.moveTo(x, y);
+        } else {
+          fsCanvasCtx.lineTo(x, y);
+        }
+      }
+      fsCanvasCtx.stroke();
+    }
+
+    renderFsFrame();
+  }
 
   // Fullscreen Player Event Listeners
   if (fullscreenPlayerBtn) {
@@ -3015,10 +3256,14 @@
     });
   }
 
+  if (fsDragHandle) {
+    fsDragHandle.addEventListener('click', () => closeFullscreenPlayer());
+  }
+
   if (bottomBarLeft) {
     bottomBarLeft.addEventListener('click', openFullscreenPlayer);
     bottomBarLeft.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
         openFullscreenPlayer();
       }
@@ -3181,6 +3426,11 @@
     if (localStorage.getItem('at_radio_autosync') === 'true') {
       downloadStationsFromCloud();
     }
+
+    // Testing and debug hooks
+    window.updatePlayerStatus = updatePlayerStatus;
+    window.applyNowPlayingMetadata = applyNowPlayingMetadata;
+    window.setPlayingState = setPlayingState;
   });
 
 })();
