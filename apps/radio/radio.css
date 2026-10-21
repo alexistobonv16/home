@@ -627,6 +627,10 @@ button:active:not(:disabled),
   border-color: rgba(0, 240, 255, 0.35) !important;
   color: var(--accent-cyan) !important;
   font-weight: 700;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 /* Stream Extension Badges (MP3, AAC, HLS, OGG) */
@@ -846,7 +850,7 @@ button:active:not(:disabled),
   align-items: center;
   gap: 0.85rem;
   min-width: 240px;
-  max-width: 400px;
+  max-width: min(500px, 42vw);
   flex: 1 1 auto;
   cursor: pointer;
   outline: none;
@@ -1051,6 +1055,10 @@ button:active:not(:disabled),
   font-size: 0.65rem;
   color: var(--text-secondary);
   opacity: 0.8;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
 }
 
 .bottom-bar-expand-btn {
@@ -2760,14 +2768,21 @@ button:active:not(:disabled),
 
 .fs-artwork-wrapper {
   position: relative;
-  width: clamp(150px, 25vh, 260px);
-  height: clamp(150px, 25vh, 260px);
+  width: clamp(160px, 28vh, 340px);
+  height: clamp(160px, 28vh, 340px);
   margin: 0 auto;
   border-radius: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+@media (min-height: 800px) {
+  .fs-artwork-wrapper {
+    width: clamp(240px, 34vh, 340px);
+    height: clamp(240px, 34vh, 340px);
+  }
 }
 
 .fs-artwork-glow {

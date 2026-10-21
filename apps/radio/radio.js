@@ -562,8 +562,56 @@
     ctx: audioCtx ? audioCtx.state : null,
     ctxUsed: isAudioContextConnected,
     coarse: !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches),
+    animFrameRunning: !!animFrameId,
+    fsAnimFrameRunning: !!fsAnimFrameId,
     station: currentStation ? currentStation.name : null
   });
+
+  window.__sampleVisualizer = (durationMs = 2000) => {
+    return new Promise((resolve) => {
+      const samples = [];
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        let sum = 0;
+        if (analyser) {
+          const buf = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(buf);
+          for (let i = 0; i < buf.length; i++) sum += buf[i];
+        }
+        const isAct = isPlaying || (!audio.paused && audio.currentTime > 0);
+        samples.push({
+          t: ((Date.now() - startTime) / 1000).toFixed(2) + 's',
+          station: currentStation ? currentStation.name : 'none',
+          format: currentFormat,
+          isPlaying: isPlaying,
+          paused: audio.paused,
+          currentTime: Number(audio.currentTime.toFixed(2)),
+          anim: !!animFrameId,
+          fsAnim: !!fsAnimFrameId,
+          freqSum: sum,
+          renderMode: !isAct ? 'FLAT_IDLE' : (sum > 0 ? 'REAL_BARS' : 'SINE_FALLBACK')
+        });
+        if (Date.now() - startTime >= durationMs) {
+          clearInterval(interval);
+          console.table(samples);
+          const avgSum = samples.reduce((a, b) => a + b.freqSum, 0) / samples.length;
+          const summary = {
+            station: currentStation ? currentStation.name : 'none',
+            format: currentFormat,
+            isPlaying: isPlaying,
+            audioPaused: audio.paused,
+            currentTime: audio.currentTime,
+            avgFrequencySum: Math.round(avgSum),
+            visualizerMode: avgSum > 0 ? 'REAL_BARS' : (isAct ? 'SINE_FALLBACK' : 'FLAT_IDLE'),
+            animFrameRunning: !!animFrameId,
+            fsAnimFrameRunning: !!fsAnimFrameId
+          };
+          console.log('[Diagnostic Summary]', summary);
+          resolve(summary);
+        }
+      }, 100);
+    });
+  };
 
   // =========================================================================
   // AUDIO CONTROLLER & HLS
@@ -772,6 +820,9 @@
       connectionTimeoutTimer = null;
     }
 
+    updateTunerDisplay(station);
+    setBufferingState(true);
+
     // Reset audio and HLS instances safely
     if (hls) {
       try { hls.destroy(); } catch (e) {}
@@ -788,9 +839,6 @@
     networkSpeedBytesPerSec = Math.round((fmt.defaultBitrate * 1000) / 8);
 
     const isM3U8 = fmt.ext === 'M3U8';
-
-    updateTunerDisplay(station);
-    setBufferingState(true);
 
     let streamUrl = getPlayableUrl(station.url);
     if ((isProxyRetry || useProxyForced) && !streamUrl.startsWith('/api/radio-proxy')) {
@@ -827,12 +875,35 @@
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         if (token !== currentPlaybackToken) return;
         setupAudioContext();
-        audio.play().catch((err) => {
+        audio.play().then(() => {
+          if (token === currentPlaybackToken && !audio.paused) {
+            setPlayingState(true);
+            if (window.innerWidth > 680 && !isFullscreenPlayerOpen && !document.hidden) {
+              startVisualizer();
+            }
+            if (isFullscreenPlayerOpen && !document.hidden) {
+              startFsVisualizer();
+            }
+          }
+        }).catch((err) => {
           if (err.name !== 'AbortError') {
             console.warn('HLS audio.play() rejected:', err);
             handleStreamError(station, err.message, token);
           }
         });
+      });
+
+      hls.on(Hls.Events.FRAG_BUFFERED, () => {
+        if (token !== currentPlaybackToken) return;
+        if (!audio.paused && (audio.currentTime > 0 || isPlaying)) {
+          if (!isPlaying) setPlayingState(true);
+          if (window.innerWidth > 680 && !animFrameId && !isFullscreenPlayerOpen && !document.hidden) {
+            startVisualizer();
+          }
+          if (isFullscreenPlayerOpen && !fsAnimFrameId && !document.hidden) {
+            startFsVisualizer();
+          }
+        }
       });
 
       hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
@@ -886,7 +957,17 @@
       // Standard MP3 / AAC / Icecast audio stream or Safari Native HLS
       audio.src = streamUrl;
       setupAudioContext();
-      audio.play().catch((err) => {
+      audio.play().then(() => {
+        if (token === currentPlaybackToken && !audio.paused) {
+          setPlayingState(true);
+          if (window.innerWidth > 680 && !isFullscreenPlayerOpen && !document.hidden) {
+            startVisualizer();
+          }
+          if (isFullscreenPlayerOpen && !document.hidden) {
+            startFsVisualizer();
+          }
+        }
+      }).catch((err) => {
         if (token !== currentPlaybackToken) return;
         if (err.name === 'AbortError') return;
         console.warn('Standard audio.play() rejected:', err);
@@ -970,12 +1051,39 @@
   }
 
   // Audio Element Events
+  audio.addEventListener('play', () => {
+    if (connectionTimeoutTimer) {
+      clearTimeout(connectionTimeoutTimer);
+      connectionTimeoutTimer = null;
+    }
+  });
+
   audio.addEventListener('playing', () => {
     if (connectionTimeoutTimer) {
       clearTimeout(connectionTimeoutTimer);
       connectionTimeoutTimer = null;
     }
     setPlayingState(true);
+    if (window.innerWidth > 680 && !isFullscreenPlayerOpen && !document.hidden) {
+      startVisualizer();
+    }
+    if (isFullscreenPlayerOpen && !document.hidden) {
+      startFsVisualizer();
+    }
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.paused && audio.currentTime > 0) {
+      if (!isPlaying) {
+        setPlayingState(true);
+      }
+      if (window.innerWidth > 680 && !animFrameId && !isFullscreenPlayerOpen && !document.hidden) {
+        startVisualizer();
+      }
+      if (isFullscreenPlayerOpen && !fsAnimFrameId && !document.hidden) {
+        startFsVisualizer();
+      }
+    }
   });
 
   audio.addEventListener('pause', () => {
@@ -1054,8 +1162,6 @@
   // WEB AUDIO API & REALTIME SPECTRUM VISUALIZER
   // =========================================================================
   function setupAudioContext() {
-    if (isAudioContextConnected) return;
-
     // Sólo desktop: si el puntero primario es coarse (móvil/tablet) NO se
     // enruta el audio por WebAudio. El pipeline nativo del <audio> tolera
     // mucho mejor las interrupciones del sistema (notificaciones, cambio de
@@ -1074,22 +1180,27 @@
       }
 
       if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        const r = audioCtx.resume();
+        if (r && typeof r.catch === 'function') r.catch(() => {});
       }
 
-      analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 128;
-      analyser.smoothingTimeConstant = 0.8;
+      if (!analyser) {
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 128;
+        analyser.smoothingTimeConstant = 0.8;
+      }
 
-      sourceNode = audioCtx.createMediaElementSource(audio);
-      sourceNode.connect(analyser);
-      analyser.connect(audioCtx.destination);
+      if (!sourceNode) {
+        sourceNode = audioCtx.createMediaElementSource(audio);
+        sourceNode.connect(analyser);
+        analyser.connect(audioCtx.destination);
+      }
 
       // Si el sistema suspende/interrumpe el contexto (notificación, otra app
       // con audio, cambio de ruta), reanudarlo mientras haya reproducción:
       // sin esto el audio conectado al contexto queda mudo o entrecortado.
       audioCtx.onstatechange = () => {
-        if (audioCtx && audioCtx.state !== 'running' && isPlaying) {
+        if (audioCtx && audioCtx.state !== 'running' && (isPlaying || !audio.paused)) {
           const r = audioCtx.resume();
           if (r && typeof r.catch === 'function') r.catch(() => {});
         }
@@ -1154,7 +1265,8 @@
       return;
     }
 
-    if (!isPlaying) {
+    const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
+    if (!isActuallyPlaying) {
       drawIdleVisualizer();
       return;
     }
@@ -1163,7 +1275,8 @@
     const dataArray = new Uint8Array(bufferLength);
 
     function renderFrame() {
-      if (window.innerWidth <= 680 || document.hidden || !isPlaying || isFullscreenPlayerOpen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
+      if (window.innerWidth <= 680 || document.hidden || !isActuallyPlaying || isFullscreenPlayerOpen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         stopVisualizer();
         drawIdleVisualizer();
         return;
@@ -1178,18 +1291,15 @@
       canvasCtx.clearRect(0, 0, width, height);
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
-      let hasData = false;
-      if (analyser && isAudioContextConnected) {
+      let sum = 0;
+      if (analyser) {
         analyser.getByteFrequencyData(dataArray);
         for (let i = 0; i < bufferLength; i++) {
-          if (dataArray[i] > 0) {
-            hasData = true;
-            break;
-          }
+          sum += dataArray[i];
         }
       }
 
-      if (hasData) {
+      if (sum > 0) {
         // State 2: Real frequency bars from AnalyserNode
         canvasCtx.strokeStyle = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(56, 189, 248, 0.1)';
         canvasCtx.lineWidth = 1;
@@ -3295,7 +3405,8 @@
       return;
     }
 
-    if (!isPlaying) {
+    const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
+    if (!isActuallyPlaying) {
       drawIdleFsVisualizer();
       return;
     }
@@ -3303,7 +3414,8 @@
     resizeFsCanvas();
 
     function renderFsFrame() {
-      if (!isFullscreenPlayerOpen || document.hidden || !isPlaying || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
+      if (!isFullscreenPlayerOpen || document.hidden || !isActuallyPlaying || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         stopFsVisualizer();
         drawIdleFsVisualizer();
         return;
@@ -3313,26 +3425,22 @@
 
       const w = fsCanvas.width;
       const h = fsCanvas.height;
+      if (w <= 0 || h <= 0) return;
       fsCanvasCtx.clearRect(0, 0, w, h);
 
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      let hasRealAudio = false;
+      let sum = 0;
+      const bufferLength = analyser ? analyser.frequencyBinCount : 32;
+      const dataArray = new Uint8Array(bufferLength);
 
       if (analyser) {
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
-
-        let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
           sum += dataArray[i];
-          if (sum > 0) {
-            hasRealAudio = true;
-            break;
-          }
         }
+      }
 
-        if (hasRealAudio) {
+      if (sum > 0) {
           const barCount = Math.min(36, Math.floor(w / 9));
           const barWidth = Math.max(3, Math.floor((w - (barCount * 3)) / barCount));
           const step = Math.floor(bufferLength / barCount) || 1;
@@ -3359,7 +3467,6 @@
           }
           return;
         }
-      }
 
       // CORS Fallback: Soft, harmonious flowing sine wave (zero fake peaks)
       fsVisualizerPhase += 0.04;
