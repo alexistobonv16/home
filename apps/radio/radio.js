@@ -807,6 +807,7 @@
       fsPauseIcon.style.display = 'none';
     }
     updatePlayerStatus('error');
+    updateMediaSessionPlaybackState('none');
 
     networkSpeedBytesPerSec = 0;
     updateTelemetryDisplay();
@@ -1023,6 +1024,7 @@
   function setPlayingState(playing) {
     isPlaying = playing;
     if (playing) isBuffering = false;
+    updateMediaSessionPlaybackState(playing ? 'playing' : 'paused');
     if (playIcon && pauseIcon) {
       playIcon.style.display = playing ? 'none' : 'block';
       pauseIcon.style.display = playing ? 'block' : 'none';
@@ -1127,29 +1129,20 @@
   });
 
   // =========================================================================
-  // DYNAMIC TAB TITLE ON TAB SWITCH (Page Visibility API)
+  // DYNAMIC TAB TITLE (Page Visibility & Real-Time Song Updates)
+  // Formato: "Artista – Canción | Alexis Radio". Sin canción: "Emisora | Alexis Radio". En pausa: "Alexis Radio"
   // =========================================================================
-  const DEFAULT_DOCUMENT_TITLE = document.title || 'Alexis Radio | Sintonizador & Streaming Online M3U';
-
   function updateDocumentTitle() {
-    if (document.hidden) {
-      if (nowPlayingSong && nowPlayingSong.title && isPlaying) {
-        document.title = `▶ ${nowPlayingSong.title} - ${nowPlayingSong.artist} • Alexis Radio`;
-      } else if (currentStation && isPlaying) {
-        document.title = `▶ ${currentStation.name} • Alexis Radio`;
-      } else if (currentStation && isBuffering) {
-        document.title = `⏳ ${currentStation.name} • Alexis Radio`;
-      } else if (currentStation) {
-        document.title = `⏸ ${currentStation.name} • Alexis Radio`;
+    if ((isPlaying || isBuffering) && currentStation) {
+      if (nowPlayingSong && nowPlayingSong.title) {
+        const artist = nowPlayingSong.artist ? nowPlayingSong.artist.trim() : '';
+        const title = nowPlayingSong.title.trim();
+        document.title = artist ? `${artist} – ${title} | Alexis Radio` : `${title} | Alexis Radio`;
       } else {
-        document.title = DEFAULT_DOCUMENT_TITLE;
+        document.title = `${currentStation.name} | Alexis Radio`;
       }
     } else {
-      if (nowPlayingSong && nowPlayingSong.title && isPlaying) {
-        document.title = `🎵 ${nowPlayingSong.title} - ${nowPlayingSong.artist} | Alexis Radio`;
-      } else {
-        document.title = DEFAULT_DOCUMENT_TITLE;
-      }
+      document.title = 'Alexis Radio';
     }
   }
 
@@ -1445,39 +1438,118 @@
   });
 
   // =========================================================================
-  // MEDIA SESSION API (Lockscreen Controls & Album Art)
+  // MEDIA SESSION API (Lockscreen Controls, SMTC & Real-Time Album Art)
   // =========================================================================
-  function updateMediaSession(station, songData = null) {
-    if ('mediaSession' in navigator && station) {
-      if (songData && songData.title) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: songData.title,
-          artist: `${songData.artist} • ${station.name}`,
-          album: songData.album || station.name,
-          artwork: songData.artwork ? [
-            { src: songData.artwork, sizes: '600x600', type: 'image/jpeg' },
-            { src: songData.artwork100 || songData.artwork, sizes: '100x100', type: 'image/jpeg' }
-          ] : [
-            { src: station.logo || '/radio-icon-192.png', sizes: '192x192', type: 'image/png' }
-          ]
-        });
-      } else {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: station.name,
-          artist: 'Alexis Radio // ' + (station.genre || 'En Vivo'),
-          album: station.freq || 'Online Stream',
-          artwork: [
-            { src: station.logo || '/radio-icon-192.png', sizes: '192x192', type: 'image/png' },
-            { src: station.logo || '/radio-icon-512.png', sizes: '512x512', type: 'image/png' }
-          ]
-        });
+  function getMediaSessionArtwork(artworkUrl, fallbackLogo) {
+    const toAbs = (url) => {
+      try {
+        return new URL(url, window.location.href).href;
+      } catch (e) {
+        return url;
       }
+    };
 
-      navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
-      navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
-      navigator.mediaSession.setActionHandler('previoustrack', () => playPrevStation());
-      navigator.mediaSession.setActionHandler('nexttrack', () => playNextStation());
+    if (artworkUrl && typeof artworkUrl === 'string' && !artworkUrl.startsWith('data:')) {
+      const isAppleCdn = /\b\d+x\d+\b/.test(artworkUrl);
+      const art96 = isAppleCdn ? artworkUrl.replace(/\b\d+x\d+\b/, '96x96') : artworkUrl;
+      const art256 = isAppleCdn ? artworkUrl.replace(/\b\d+x\d+\b/, '256x256') : artworkUrl;
+      const art512 = isAppleCdn ? artworkUrl.replace(/\b\d+x\d+\b/, '512x512') : artworkUrl;
+
+      return [
+        { src: toAbs(art96), sizes: '96x96', type: 'image/jpeg' },
+        { src: toAbs(art256), sizes: '256x256', type: 'image/jpeg' },
+        { src: toAbs(art512), sizes: '512x512', type: 'image/jpeg' }
+      ];
     }
+
+    const stationLogoUrl = (fallbackLogo && typeof fallbackLogo === 'string' && !fallbackLogo.startsWith('data:'))
+      ? fallbackLogo
+      : '/radio-icon-512.png';
+
+    return [
+      { src: toAbs(stationLogoUrl), sizes: '96x96', type: 'image/png' },
+      { src: toAbs(stationLogoUrl), sizes: '256x256', type: 'image/png' },
+      { src: toAbs(stationLogoUrl), sizes: '512x512', type: 'image/png' }
+    ];
+  }
+
+  function updateMediaSessionPlaybackState(state) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState = state; // 'playing' | 'paused' | 'none'
+    } catch (e) {
+      console.warn('Error setting mediaSession.playbackState:', e);
+    }
+  }
+
+  function setupMediaSessionActionHandlers() {
+    if (!('mediaSession' in navigator)) return;
+
+    const actionHandlers = [
+      ['play', () => {
+        if (!isPlaying) togglePlayPause();
+      }],
+      ['pause', () => {
+        if (isPlaying) togglePlayPause();
+      }],
+      ['previoustrack', () => playPrevStation()],
+      ['nexttrack', () => playNextStation()],
+      ['stop', () => {
+        if (isPlaying) {
+          audio.pause();
+          if (hls) hls.stopLoad();
+          setPlayingState(false);
+          updateMediaSessionPlaybackState('none');
+        }
+      }]
+    ];
+
+    for (const [action, handler] of actionHandlers) {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch (err) {
+        console.warn(`MediaSession action "${action}" not supported:`, err);
+      }
+    }
+
+    // Streams en vivo: explícitamente no registrar seekto ni seekbackward
+    const disabledActions = ['seekbackward', 'seekforward', 'seekto', 'skipad'];
+    for (const action of disabledActions) {
+      try {
+        navigator.mediaSession.setActionHandler(action, null);
+      } catch (err) {}
+    }
+  }
+
+  function updateMediaSession(station, songData = null) {
+    if (!('mediaSession' in navigator)) return;
+
+    if (!station) {
+      navigator.mediaSession.metadata = null;
+      updateMediaSessionPlaybackState('none');
+      return;
+    }
+
+    const fallbackLogo = station.logo;
+
+    if (songData && songData.title) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: songData.title,
+        artist: songData.artist || 'Alexis Radio',
+        album: songData.album || station.name,
+        artwork: getMediaSessionArtwork(songData.artwork, fallbackLogo)
+      });
+    } else {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: station.name,
+        artist: 'Alexis Radio',
+        album: station.freq || station.genre || 'En Vivo',
+        artwork: getMediaSessionArtwork(null, fallbackLogo)
+      });
+    }
+
+    setupMediaSessionActionHandlers();
+    updateMediaSessionPlaybackState(isPlaying ? 'playing' : 'paused');
   }
 
   // =========================================================================
@@ -3641,6 +3713,7 @@
     startVisualizer();
     startTelemetryLoop();
     updateTelemetryDisplay();
+    setupMediaSessionActionHandlers();
 
     // If auto-sync is enabled, download updates from cloud
     if (localStorage.getItem('at_radio_autosync') === 'true') {
@@ -3654,6 +3727,8 @@
     window.openFullscreenPlayer = openFullscreenPlayer;
     window.closeFullscreenPlayer = closeFullscreenPlayer;
     window.playStation = playStation;
+    window.updateMediaSession = updateMediaSession;
+    window.updateDocumentTitle = updateDocumentTitle;
   });
 
 })();
