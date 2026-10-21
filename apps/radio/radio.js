@@ -490,8 +490,14 @@
       fsStationFormatBadge.className = `format-badge ${fmt.badgeClass}`;
     }
     if (fsProxyIndicator) {
-      fsProxyIndicator.textContent = useProxyForced ? 'PROXY ACTIVO' : 'DIRECTO';
-      fsProxyIndicator.style.color = useProxyForced ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+      if (isPlaying) {
+        fsProxyIndicator.textContent = useProxyForced ? 'PROXY ACTIVO' : 'DIRECTO';
+        fsProxyIndicator.style.color = useProxyForced ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+        fsProxyIndicator.style.display = 'inline-block';
+      } else {
+        fsProxyIndicator.textContent = '';
+        fsProxyIndicator.style.display = 'none';
+      }
     }
   }
 
@@ -668,12 +674,24 @@
         fsPulseLed.style.background = '#64748b';
         fsPulseLed.style.boxShadow = 'none';
         if (fsRetryBtn) fsRetryBtn.style.display = 'none';
+        if (fsSongCard) {
+          const badgeText = document.getElementById('fs-song-badge-text');
+          if (badgeText) badgeText.textContent = 'EN PAUSA';
+          const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+          if (eqBars) eqBars.style.display = 'none';
+        }
       } else {
         fsStatusText.textContent = 'LISTO';
         fsPulseLed.className = 'pulse-led pulse-gray';
         fsPulseLed.style.background = '#64748b';
         fsPulseLed.style.boxShadow = 'none';
         if (fsRetryBtn) fsRetryBtn.style.display = 'none';
+        if (fsSongCard) {
+          const badgeText = document.getElementById('fs-song-badge-text');
+          if (badgeText) badgeText.textContent = 'LISTO';
+          const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
+          if (eqBars) eqBars.style.display = 'none';
+        }
       }
     }
   }
@@ -1080,9 +1098,13 @@
       isAudioContextConnected = true;
     } catch (e) {
       // If CORS blocks MediaElementAudioSource, we will use synthetic frequency visualization
-      console.log('Web Audio context connected with synthetic fallback fallback available.');
+      console.log('Web Audio context connected with synthetic fallback available.');
     }
   }
+
+  // Diagnostic & automated testing inspection hook for AnalyserNode pipeline
+  window.__setVisualizerAnalyser = (node) => { analyser = node; };
+  window.__getVisualizerAnalyser = () => analyser;
 
   function drawIdleVisualizer() {
     if (!canvas || !canvasCtx) return;
@@ -1596,19 +1618,21 @@
     }
 
     if (fsSongCard) {
-      if (fsSongTitle) fsSongTitle.textContent = 'Sintonía en vivo';
+      if (fsSongTitle) fsSongTitle.textContent = isPlaying ? 'Sintonía en vivo' : (currentStation ? 'Transmisión pausada' : 'Sintonizador listo');
       if (fsSongArtist) {
         fsSongArtist.textContent = currentStation 
           ? `${currentStation.freq || 'WEB STREAM'} • ${currentStation.genre || 'Transmisión digital'}`
-          : 'Transmisión digital';
+          : 'Selecciona una emisora para sintonizar';
       }
       fsSongCard.classList.remove('has-metadata');
       fsSongCard.classList.add('no-metadata');
       fsSongCard.style.display = 'flex';
       const badgeText = document.getElementById('fs-song-badge-text');
-      if (badgeText) badgeText.textContent = 'SEÑAL EN VIVO';
+      if (badgeText) {
+        badgeText.textContent = isPlaying ? 'SEÑAL EN VIVO' : (currentStation ? 'EN PAUSA' : 'LISTO');
+      }
       const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
-      if (eqBars) eqBars.style.display = 'inline-flex';
+      if (eqBars) eqBars.style.display = isPlaying ? 'inline-flex' : 'none';
     }
 
     if (fsAppleLink) {
@@ -1773,15 +1797,17 @@
         fsStationLogo.alt = station.name;
       }
       if (fsSongCard && fsSongTitle && fsSongArtist) {
-        fsSongTitle.textContent = 'Sintonía en vivo';
+        fsSongTitle.textContent = isPlaying ? 'Sintonía en vivo' : 'Transmisión pausada';
         fsSongArtist.textContent = `${station.freq || 'WEB STREAM'} • ${station.genre || 'Transmisión digital'}`;
         fsSongCard.classList.remove('has-metadata');
         fsSongCard.classList.add('no-metadata');
         fsSongCard.style.display = 'flex';
         const badgeText = document.getElementById('fs-song-badge-text');
-        if (badgeText) badgeText.textContent = 'SEÑAL EN VIVO';
+        if (badgeText) {
+          badgeText.textContent = isPlaying ? 'SEÑAL EN VIVO' : 'EN PAUSA';
+        }
         const eqBars = fsSongCard.querySelector('.fs-song-eq-bars');
-        if (eqBars) eqBars.style.display = 'inline-flex';
+        if (eqBars) eqBars.style.display = isPlaying ? 'inline-flex' : 'none';
       }
       if (fsAppleLink) {
         fsAppleLink.style.display = 'none';
@@ -1907,7 +1933,7 @@
       const staggerClass = isInitialStationLoad ? 'stagger-fade-in' : '';
 
       return `
-        <div class="station-card ${isCardPlaying ? 'playing' : ''} ${staggerClass}" data-station-id="${escapeHtml(s.id)}" ${staggerStyle} tabindex="0" role="button" aria-label="${escapeHtml(s.name)} - ${isCardPlaying ? 'Sonando actualmente' : 'Reproducir'}">
+        <div class="station-card ${isCardPlaying ? 'playing' : ''} ${staggerClass}" data-station-id="${escapeHtml(s.id)}" ${staggerStyle} tabindex="0" role="button">
           <div class="station-card-logo-wrap">
             <img class="station-card-img" src="${escapeHtml(logoSrc)}" alt="${escapeHtml(s.name)}" data-fallback="${escapeHtml(fallbackLogo)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" loading="lazy">
             <div class="playing-badge-indicator" aria-hidden="true" title="Sonando">
@@ -2001,8 +2027,11 @@
       starBtn.classList.toggle('starred', !!station.isStarred);
     }
 
-    overlay.classList.add('open');
-    overlay.setAttribute('aria-hidden', 'false');
+    overlay.style.display = 'flex';
+    requestAnimationFrame(() => {
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+    });
     document.body.style.overflow = 'hidden';
   }
 
@@ -2050,6 +2079,11 @@
     if (overlay) {
       overlay.classList.remove('open');
       overlay.setAttribute('aria-hidden', 'true');
+      setTimeout(() => {
+        if (!overlay.classList.contains('open')) {
+          overlay.style.display = 'none';
+        }
+      }, 260);
     }
     document.body.style.overflow = '';
   }
@@ -2324,8 +2358,14 @@
     if (proxyToggleBtn) proxyToggleBtn.classList.toggle('active', useProxyForced);
     if (fsProxyBtn) fsProxyBtn.classList.toggle('active', useProxyForced);
     if (fsProxyIndicator) {
-      fsProxyIndicator.textContent = useProxyForced ? 'PROXY ACTIVO' : 'DIRECTO';
-      fsProxyIndicator.style.color = useProxyForced ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+      if (isPlaying) {
+        fsProxyIndicator.textContent = useProxyForced ? 'PROXY ACTIVO' : 'DIRECTO';
+        fsProxyIndicator.style.color = useProxyForced ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+        fsProxyIndicator.style.display = 'inline-block';
+      } else {
+        fsProxyIndicator.textContent = '';
+        fsProxyIndicator.style.display = 'none';
+      }
     }
     showToast(useProxyForced ? 'Cloudflare Proxy activado (Mayor compatibilidad)' : 'Modo Directo activado');
     if (currentStation && isPlaying) {

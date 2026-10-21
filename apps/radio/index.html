@@ -2,7 +2,7 @@
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alexis Radio | Sintonizador & Streaming Online M3U</title>
   <meta name="description" content="Sintonizador de radio web moderno con soporte para streams de audio directos (MP3, AAC, HLS M3U8), listas M3U personalizadas y visualizador de espectro en tiempo real.">
   
@@ -31,7 +31,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=7.5">
+  <link rel="stylesheet" href="radio.css?v=7.6">
 </head>
 <body>
 
@@ -143,6 +143,7 @@
     </div>
 
     <!-- Stations Grid -->
+    <h2 class="sr-only">Emisoras en Vivo</h2>
     <main id="stations-grid" class="stations-grid">
       <!-- Skeleton Loading Placeholders -->
       <div class="station-card skeleton-card" aria-hidden="true">
@@ -665,7 +666,7 @@
   </div>
 
   <!-- Mobile Card Options Action Sheet (Bottom Sheet Popover) -->
-  <div id="card-action-sheet-overlay" class="action-sheet-overlay" aria-hidden="true">
+  <div id="card-action-sheet-overlay" class="action-sheet-overlay" aria-hidden="true" style="display: none;">
     <div class="action-sheet-content" role="dialog" aria-modal="true" aria-labelledby="action-sheet-station-name">
       <div class="action-sheet-handle"></div>
       <div class="action-sheet-header">
@@ -698,6 +699,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" defer></script>
-  <script src="radio.js?v=7.5" defer></script>
+  <script src="radio.js?v=7.6" defer></script>
 </body>
 </html>

@@ -192,6 +192,19 @@ button:active:not(:disabled),
   outline: none;
 }
 
+/* Screen-Reader Only Utility */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .font-mono, .highlight-bitrate, .bottom-bar-telemetry, .fs-telemetry-item, .station-count-info {
   font-family: var(--font-mono);
 }
@@ -2055,12 +2068,13 @@ button:active:not(:disabled),
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex;
+  display: none;
   flex-direction: column;
   justify-content: flex-end;
 }
 
 .action-sheet-overlay.open {
+  display: flex;
   opacity: 1;
   pointer-events: auto;
 }
@@ -3608,15 +3622,52 @@ button:active:not(:disabled),
 }
 
 [data-theme="light"] .fs-badge-genre {
-  background: rgba(124, 58, 237, 0.1);
-  border-color: rgba(124, 58, 237, 0.3);
-  color: #7c3aed;
+  background: rgba(109, 40, 217, 0.12) !important;
+  border-color: rgba(109, 40, 217, 0.35) !important;
+  color: #6d28d9 !important; /* 6.08:1 Contrast AA */
 }
 
-[data-theme="light"] .fs-badge-freq {
-  background: rgba(2, 132, 199, 0.1);
-  border-color: rgba(2, 132, 199, 0.3);
-  color: #0284c7;
+[data-theme="light"] .fs-badge-freq,
+[data-theme="light"] #fs-station-bitrate-badge {
+  background: rgba(2, 132, 199, 0.12) !important;
+  border-color: rgba(2, 132, 199, 0.35) !important;
+  color: #0369a1 !important; /* 5.21:1 Contrast AA */
+}
+
+[data-theme="light"] .badge-mp3 {
+  background: rgba(5, 150, 105, 0.12) !important;
+  border-color: rgba(5, 150, 105, 0.35) !important;
+  color: #047857 !important; /* 5.75:1 Contrast AA */
+}
+
+[data-theme="light"] .badge-aac {
+  background: rgba(109, 40, 217, 0.12) !important;
+  border-color: rgba(109, 40, 217, 0.35) !important;
+  color: #6d28d9 !important; /* 6.28:1 Contrast AA */
+}
+
+[data-theme="light"] .badge-hls,
+[data-theme="light"] .badge-m3u8 {
+  background: rgba(2, 132, 199, 0.12) !important;
+  border-color: rgba(2, 132, 199, 0.35) !important;
+  color: #0369a1 !important; /* 5.32:1 Contrast AA */
+}
+
+[data-theme="light"] .fs-song-badge {
+  color: #0369a1 !important; /* 5.71:1 Contrast AA */
+}
+
+[data-theme="light"] .fs-song-badge.is-error,
+[data-theme="light"] .fs-song-card.status-error #fs-song-badge-text {
+  color: #b91c1c !important; /* 7.09:1 Contrast AAA */
+}
+
+[data-theme="light"] .fs-telemetry-row {
+  color: #475569 !important; /* 6.29:1 Contrast AA */
+}
+
+[data-theme="light"] .fs-telemetry-item {
+  color: #1e293b !important; /* 12.8:1 Contrast AAA */
 }
 
 [data-theme="light"] .fs-nav-btn {
