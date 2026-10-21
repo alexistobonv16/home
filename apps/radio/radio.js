@@ -584,23 +584,24 @@
       const startTime = Date.now();
       const interval = setInterval(() => {
         let sum = 0;
-        if (analyser) {
+        if (analyser && audioCtx && audioCtx.state === 'running') {
           const buf = new Uint8Array(analyser.frequencyBinCount);
           analyser.getByteFrequencyData(buf);
           for (let i = 0; i < buf.length; i++) sum += buf[i];
         }
-        const isAct = isPlaying || (!audio.paused && audio.currentTime > 0);
+        const sounding = isAudioElementSounding();
+        const mode = !sounding ? 'PLANO' : (sum > 0 ? 'BARRAS' : 'ONDA');
         samples.push({
           t: ((Date.now() - startTime) / 1000).toFixed(2) + 's',
           station: currentStation ? currentStation.name : 'none',
           format: currentFormat,
+          sounding,
           isPlaying: isPlaying,
           paused: audio.paused,
           currentTime: Number(audio.currentTime.toFixed(2)),
-          anim: !!animFrameId,
-          fsAnim: !!fsAnimFrameId,
+          anim: !!unifiedVisualizerRafId,
           freqSum: sum,
-          renderMode: !isAct ? 'FLAT_IDLE' : (sum > 0 ? 'REAL_BARS' : 'SINE_FALLBACK')
+          renderMode: mode
         });
         if (Date.now() - startTime >= durationMs) {
           clearInterval(interval);
@@ -609,19 +610,26 @@
           const summary = {
             station: currentStation ? currentStation.name : 'none',
             format: currentFormat,
+            sounding,
             isPlaying: isPlaying,
             audioPaused: audio.paused,
             currentTime: audio.currentTime,
             avgFrequencySum: Math.round(avgSum),
-            visualizerMode: avgSum > 0 ? 'REAL_BARS' : (isAct ? 'SINE_FALLBACK' : 'FLAT_IDLE'),
-            animFrameRunning: !!animFrameId,
-            fsAnimFrameRunning: !!fsAnimFrameId
+            visualizerMode: !sounding ? 'PLANO' : (avgSum > 0 ? 'BARRAS' : 'ONDA'),
+            animFrameRunning: !!unifiedVisualizerRafId
           };
           console.log('[Diagnostic Summary]', summary);
           resolve(summary);
         }
       }, 100);
     });
+  };
+
+  window.__playStation = (station) => playStation(station);
+  window.__addStation = (station) => {
+    stations.unshift(station);
+    saveStations();
+    renderStations();
   };
 
   // =========================================================================
