@@ -551,21 +551,32 @@
 
   // Diagnóstico (tests E2E / soporte): estado de reproducción, ruta de audio
   // (¿el stream pasa por WebAudio?) y salud del pipeline.
-  window.__radioDiag = () => ({
-    playing: isPlaying,
-    buffering: isBuffering,
-    paused: audio.paused,
-    ct: +audio.currentTime.toFixed(2),
-    ready: audio.readyState,
-    src: (audio.currentSrc || audio.src || '').slice(0, 140),
-    hls: !!hls,
-    ctx: audioCtx ? audioCtx.state : null,
-    ctxUsed: isAudioContextConnected,
-    coarse: !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches),
-    animFrameRunning: !!animFrameId,
-    fsAnimFrameRunning: !!fsAnimFrameId,
-    station: currentStation ? currentStation.name : null
-  });
+  window.__radioDiag = () => {
+    let sum = 0;
+    if (analyser && audioCtx && audioCtx.state === 'running') {
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(buf);
+      for (let i = 0; i < buf.length; i++) sum += buf[i];
+    }
+    const sounding = isAudioElementSounding();
+    const mode = !sounding ? 'PLANO' : (sum > 0 ? 'BARRAS' : 'ONDA');
+    return {
+      sounding,
+      playing: isPlaying,
+      buffering: isBuffering,
+      paused: audio ? audio.paused : true,
+      ended: audio ? audio.ended : false,
+      ct: audio ? +audio.currentTime.toFixed(2) : 0,
+      ready: audio ? audio.readyState : 0,
+      src: (audio ? (audio.currentSrc || audio.src || '') : '').slice(0, 140),
+      hls: !!hls,
+      ctx: audioCtx ? audioCtx.state : null,
+      analyserSum: sum,
+      visualizerMode: mode,
+      loopRunning: !!unifiedVisualizerRafId,
+      station: currentStation ? currentStation.name : null
+    };
+  };
 
   window.__sampleVisualizer = (durationMs = 2000) => {
     return new Promise((resolve) => {
@@ -1161,16 +1172,17 @@
   // =========================================================================
   // WEB AUDIO API & REALTIME SPECTRUM VISUALIZER
   // =========================================================================
-  function setupAudioContext() {
-    // Sólo desktop: si el puntero primario es coarse (móvil/tablet) NO se
-    // enruta el audio por WebAudio. El pipeline nativo del <audio> tolera
-    // mucho mejor las interrupciones del sistema (notificaciones, cambio de
-    // app, pantalla en off, cambio de ruta de audio) — el audio por
-    // MediaElementSource se corta o queda tartamudeando cuando el sistema
-    // suspende el AudioContext en segundo plano. Sin contexto, el visualizador
-    // usa la animación sintética (fallback ya contemplado en el bucle).
-    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
 
+  // Universal Audio Sounding detector derived directly from <audio> element
+  function isAudioElementSounding() {
+    if (!audio) return false;
+    if (audio.paused || audio.ended || !audio.src) return false;
+    // readyState >= 2 (HAVE_CURRENT_DATA) or currentTime > 0
+    if (audio.readyState >= 2 || audio.currentTime > 0) return true;
+    return false;
+  }
+
+  function setupAudioContext() {
     try {
       const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtxClass) return;
@@ -1184,23 +1196,20 @@
         if (r && typeof r.catch === 'function') r.catch(() => {});
       }
 
-      if (!analyser) {
+      if (!analyser && audioCtx) {
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 128;
         analyser.smoothingTimeConstant = 0.8;
       }
 
-      if (!sourceNode) {
+      if (!sourceNode && audioCtx && analyser) {
         sourceNode = audioCtx.createMediaElementSource(audio);
         sourceNode.connect(analyser);
         analyser.connect(audioCtx.destination);
       }
 
-      // Si el sistema suspende/interrumpe el contexto (notificación, otra app
-      // con audio, cambio de ruta), reanudarlo mientras haya reproducción:
-      // sin esto el audio conectado al contexto queda mudo o entrecortado.
       audioCtx.onstatechange = () => {
-        if (audioCtx && audioCtx.state !== 'running' && (isPlaying || !audio.paused)) {
+        if (audioCtx && audioCtx.state !== 'running' && isAudioElementSounding()) {
           const r = audioCtx.resume();
           if (r && typeof r.catch === 'function') r.catch(() => {});
         }
@@ -1213,164 +1222,202 @@
     }
   }
 
+  // Resume AudioContext on any user gesture (clicks, touch, keys)
+  ['click', 'touchstart', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, () => {
+      setupAudioContext();
+    }, { passive: true });
+  });
+
   // Diagnostic & automated testing inspection hook for AnalyserNode pipeline
   window.__setVisualizerAnalyser = (node) => { analyser = node; };
   window.__getVisualizerAnalyser = () => analyser;
 
-  function drawIdleVisualizer() {
-    if (!canvas || !canvasCtx) return;
-    const width = canvas.width = canvas.offsetWidth || 130;
-    const height = canvas.height = canvas.offsetHeight || 34;
-    if (width <= 0 || height <= 0) return;
+  let unifiedVisualizerRafId = null;
+  let visualizerPhase = 0;
+  const isDebugMode = (new URLSearchParams(window.location.search).get('debug') === '1');
 
-    canvasCtx.clearRect(0, 0, width, height);
+  function updateDebugOverlay(badgeId, sounding, sum, mode) {
+    if (!isDebugMode) return;
+    let el = document.getElementById(badgeId);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = badgeId;
+      el.className = 'visualizer-debug-overlay';
+      const parent = (badgeId === 'island-debug-badge')
+        ? document.getElementById('mini-visualizer-container')
+        : document.querySelector('.fs-visualizer-wrapper');
+      if (parent) parent.appendChild(el);
+    }
+    const ct = audio ? audio.currentTime.toFixed(1) : '0';
+    const paused = audio ? audio.paused : true;
+    const ready = audio ? audio.readyState : 0;
+    const ctxState = audioCtx ? audioCtx.state : 'null';
+
+    el.textContent = `A: ${paused ? 'PAUSED' : 'PLAY'} ct:${ct}s rdy:${ready} | CTX:${ctxState} | SUM:${sum} | ${mode}`;
+  }
+
+  function drawVisualizerOnCanvas(targetCanvas, ctx, mode, dataArray, sum, isFs) {
+    const w = targetCanvas.width;
+    const h = targetCanvas.height;
+    if (w <= 0 || h <= 0) return;
+
+    ctx.clearRect(0, 0, w, h);
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const baseColor = isLight ? 'rgba(14, 165, 233, 0.45)' : 'rgba(0, 240, 255, 0.4)';
-    const glowColor = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(0, 240, 255, 0.12)';
 
-    // State 1: Flat static baseline (clean subtle luminous line across center)
-    canvasCtx.strokeStyle = glowColor;
-    canvasCtx.lineWidth = 4;
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(4, height / 2);
-    canvasCtx.lineTo(width - 4, height / 2);
-    canvasCtx.stroke();
-
-    canvasCtx.strokeStyle = baseColor;
-    canvasCtx.lineWidth = 1.5;
-    canvasCtx.beginPath();
-    canvasCtx.moveTo(4, height / 2);
-    canvasCtx.lineTo(width - 4, height / 2);
-    canvasCtx.stroke();
-  }
-
-  function stopVisualizer() {
-    if (animFrameId) {
-      cancelAnimationFrame(animFrameId);
-      animFrameId = null;
-    }
-  }
-
-  function startVisualizer() {
-    if (!canvas || !canvasCtx) return;
-    stopVisualizer();
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      drawIdleVisualizer();
+    if (mode === 'PLANO') {
+      const midY = Math.floor(h / 2);
+      const grad = ctx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+      grad.addColorStop(0.2, isLight ? 'rgba(2, 132, 199, 0.35)' : 'rgba(0, 240, 255, 0.45)');
+      grad.addColorStop(0.5, isLight ? 'rgba(2, 132, 199, 0.7)' : 'rgba(0, 240, 255, 0.85)');
+      grad.addColorStop(0.8, isLight ? 'rgba(2, 132, 199, 0.35)' : 'rgba(0, 240, 255, 0.45)');
+      grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, midY, w, 1.5);
       return;
     }
 
-    // Do not run canvas loop on mobile (hidden) or when tab is backgrounded
-    if (window.innerWidth <= 680 || document.hidden) {
-      return;
-    }
+    if (mode === 'BARRAS' && dataArray) {
+      const barCount = isFs ? Math.min(36, Math.floor(w / 9)) : 18;
+      const barSpacing = isFs ? 3 : 2;
+      const barWidth = Math.max(2, Math.floor((w - barCount * barSpacing) / barCount));
+      const step = Math.floor(dataArray.length / barCount) || 1;
 
-    const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
-    if (!isActuallyPlaying) {
-      drawIdleVisualizer();
-      return;
-    }
+      // Draw baseline
+      ctx.strokeStyle = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(56, 189, 248, 0.1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
 
-    const bufferLength = analyser ? analyser.frequencyBinCount : 32;
-    const dataArray = new Uint8Array(bufferLength);
+      for (let i = 0; i < barCount; i++) {
+        const val = dataArray[i * step] || 0;
+        const percent = val / 255;
+        const barHeight = Math.max(2, percent * (h - 4));
+        const x = i * (barWidth + barSpacing) + 2;
+        const y = h - barHeight - 1;
 
-    function renderFrame() {
-      const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
-      if (window.innerWidth <= 680 || document.hidden || !isActuallyPlaying || isFullscreenPlayerOpen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        stopVisualizer();
-        drawIdleVisualizer();
-        return;
+        const grad = ctx.createLinearGradient(0, h, 0, y);
+        grad.addColorStop(0, isLight ? '#0284c7' : '#00f0ff');
+        grad.addColorStop(1, isLight ? '#7c3aed' : '#a855f7');
+        ctx.fillStyle = grad;
+
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
+        } else {
+          ctx.rect(x, y, barWidth, barHeight);
+        }
+        ctx.fill();
       }
+      return;
+    }
 
-      animFrameId = requestAnimationFrame(renderFrame);
+    if (mode === 'ONDA') {
+      const centerY = h / 2;
+      const amplitude = Math.min(h * 0.28, isFs ? 8 : 5);
 
-      const width = canvas.width = canvas.offsetWidth || 130;
-      const height = canvas.height = canvas.offsetHeight || 34;
-      if (width <= 0 || height <= 0) return;
+      const grad = ctx.createLinearGradient(0, 0, w, 0);
+      grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+      grad.addColorStop(0.2, isLight ? '#0284c7' : '#00f0ff');
+      grad.addColorStop(0.5, isLight ? '#7c3aed' : '#a855f7');
+      grad.addColorStop(0.8, isLight ? '#0284c7' : '#00f0ff');
+      grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
 
-      canvasCtx.clearRect(0, 0, width, height);
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = grad;
+      ctx.beginPath();
+
+      for (let x = 0; x <= w; x += 2) {
+        const wave1 = Math.sin((x / 35) + visualizerPhase);
+        const wave2 = Math.sin((x / 65) - (visualizerPhase * 0.7)) * 0.5;
+        const envelope = Math.sin((x / w) * Math.PI);
+        const y = centerY + ((wave1 + wave2) * amplitude * envelope);
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function startUnifiedVisualizerLoop() {
+    if (unifiedVisualizerRafId) return;
+
+    function renderUnifiedFrame() {
+      unifiedVisualizerRafId = requestAnimationFrame(renderUnifiedFrame);
+
+      if (document.hidden) return;
+
+      const sounding = isAudioElementSounding();
+      const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       let sum = 0;
-      if (analyser) {
+      let dataArray = null;
+
+      if (sounding && analyser && audioCtx && audioCtx.state === 'running') {
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
         for (let i = 0; i < bufferLength; i++) {
           sum += dataArray[i];
         }
       }
 
-      if (sum > 0) {
-        // State 2: Real frequency bars from AnalyserNode
-        canvasCtx.strokeStyle = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(56, 189, 248, 0.1)';
-        canvasCtx.lineWidth = 1;
-        canvasCtx.beginPath();
-        canvasCtx.moveTo(0, height / 2);
-        canvasCtx.lineTo(width, height / 2);
-        canvasCtx.stroke();
+      let mode = 'PLANO';
+      if (sounding && !isReduced) {
+        mode = (sum > 0) ? 'BARRAS' : 'ONDA';
+      }
 
-        const barCount = 18;
-        const barWidth = Math.max(2, Math.floor((width - barCount * 2) / barCount));
-        const usableHeight = height - 4;
+      visualizerPhase += 0.04;
 
-        const heights = new Float32Array(barCount);
-        for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.floor(i * (bufferLength / barCount));
-          heights[i] = Math.max(2, (dataArray[dataIndex] / 255) * usableHeight);
+      // 1. Draw on Island Canvas
+      if (canvas && canvasCtx && window.innerWidth > 680 && !isFullscreenPlayerOpen) {
+        drawVisualizerOnCanvas(canvas, canvasCtx, mode, dataArray, sum, false);
+        if (isDebugMode) {
+          updateDebugOverlay('island-debug-badge', sounding, sum, mode);
         }
+      }
 
-        const grad = canvasCtx.createLinearGradient(0, height, 0, 0);
-        grad.addColorStop(0, '#00f0ff');
-        grad.addColorStop(0.5, '#38bdf8');
-        grad.addColorStop(1, '#a855f7');
-        canvasCtx.fillStyle = grad;
-
-        let x = 2;
-        for (let i = 0; i < barCount; i++) {
-          const h = heights[i];
-          canvasCtx.fillRect(x, height - h - 1, barWidth, h);
-          x += barWidth + 2;
+      // 2. Draw on Fullscreen Canvas
+      if (fsCanvas && fsCanvasCtx && isFullscreenPlayerOpen) {
+        drawVisualizerOnCanvas(fsCanvas, fsCanvasCtx, mode, dataArray, sum, true);
+        if (isDebugMode) {
+          updateDebugOverlay('fs-debug-badge', sounding, sum, mode);
         }
-
-        // Glowing caps
-        canvasCtx.fillStyle = isLight ? '#0284c7' : '#ffffff';
-        x = 2;
-        for (let i = 0; i < barCount; i++) {
-          const h = heights[i];
-          canvasCtx.fillRect(x, height - h - 2, barWidth, 1.5);
-          x += barWidth + 2;
-        }
-      } else {
-        // State 3: Playing with all zeros (CORS stream) -> Soft, smooth, subtle continuous flowing sine wave
-        canvasCtx.strokeStyle = isLight ? 'rgba(14, 165, 233, 0.12)' : 'rgba(0, 240, 255, 0.12)';
-        canvasCtx.lineWidth = 1;
-        canvasCtx.beginPath();
-        canvasCtx.moveTo(0, height / 2);
-        canvasCtx.lineTo(width, height / 2);
-        canvasCtx.stroke();
-
-        const time = Date.now() * 0.0022;
-        const amplitude = Math.min(5, height * 0.2); // subtle low amplitude, no fake signal peaks
-        const midY = height / 2;
-
-        canvasCtx.beginPath();
-        for (let x = 0; x <= width; x += 2) {
-          const taper = Math.sin((x / width) * Math.PI); // Windowing: anchors cleanly at edges
-          const y = midY + Math.sin(x * 0.08 + time) * amplitude * taper;
-          if (x === 0) canvasCtx.moveTo(x, y);
-          else canvasCtx.lineTo(x, y);
-        }
-
-        const waveGrad = canvasCtx.createLinearGradient(0, 0, width, 0);
-        waveGrad.addColorStop(0, isLight ? 'rgba(14, 165, 233, 0.2)' : 'rgba(0, 240, 255, 0.2)');
-        waveGrad.addColorStop(0.5, isLight ? 'rgba(2, 132, 199, 0.85)' : 'rgba(56, 189, 248, 0.9)');
-        waveGrad.addColorStop(1, isLight ? 'rgba(147, 51, 234, 0.5)' : 'rgba(168, 85, 247, 0.6)');
-        canvasCtx.strokeStyle = waveGrad;
-        canvasCtx.lineWidth = 2;
-        canvasCtx.stroke();
       }
     }
 
-    renderFrame();
+    unifiedVisualizerRafId = requestAnimationFrame(renderUnifiedFrame);
+  }
+
+  function drawIdleVisualizer() {
+    if (canvas && canvasCtx) {
+      drawVisualizerOnCanvas(canvas, canvasCtx, 'PLANO', null, 0, false);
+    }
+  }
+
+  function drawIdleFsVisualizer() {
+    if (fsCanvas && fsCanvasCtx) {
+      drawVisualizerOnCanvas(fsCanvas, fsCanvasCtx, 'PLANO', null, 0, true);
+    }
+  }
+
+  function startVisualizer() {
+    startUnifiedVisualizerLoop();
+  }
+
+  function startFsVisualizer() {
+    startUnifiedVisualizerLoop();
+  }
+
+  function stopVisualizer() {
+    // Keep unified loop running smoothly
+  }
+
+  function stopFsVisualizer() {
+    // Keep unified loop running smoothly
   }
 
   // Pause visualizer when tab is hidden, resume when tab is visible
@@ -3389,133 +3436,7 @@
     }
   }
 
-  function drawIdleFsVisualizer() {
-    if (!fsCanvas || !fsCanvasCtx) return;
-    resizeFsCanvas();
-    const w = fsCanvas.width;
-    const h = fsCanvas.height;
-    fsCanvasCtx.clearRect(0, 0, w, h);
 
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const grad = fsCanvasCtx.createLinearGradient(0, 0, w, 0);
-    grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
-    grad.addColorStop(0.2, isLight ? 'rgba(2, 132, 199, 0.35)' : 'rgba(0, 240, 255, 0.45)');
-    grad.addColorStop(0.5, isLight ? 'rgba(2, 132, 199, 0.7)' : 'rgba(0, 240, 255, 0.85)');
-    grad.addColorStop(0.8, isLight ? 'rgba(2, 132, 199, 0.35)' : 'rgba(0, 240, 255, 0.45)');
-    grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
-
-    fsCanvasCtx.fillStyle = grad;
-    fsCanvasCtx.fillRect(0, Math.floor(h / 2), w, 1.5);
-  }
-
-  function startFsVisualizer() {
-    if (!fsCanvas || !fsCanvasCtx) return;
-    stopFsVisualizer();
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      drawIdleFsVisualizer();
-      return;
-    }
-
-    if (!isFullscreenPlayerOpen || document.hidden) {
-      return;
-    }
-
-    const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
-    if (!isActuallyPlaying) {
-      drawIdleFsVisualizer();
-      return;
-    }
-
-    resizeFsCanvas();
-
-    function renderFsFrame() {
-      const isActuallyPlaying = isPlaying || (!audio.paused && audio.currentTime > 0);
-      if (!isFullscreenPlayerOpen || document.hidden || !isActuallyPlaying || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        stopFsVisualizer();
-        drawIdleFsVisualizer();
-        return;
-      }
-
-      fsAnimFrameId = requestAnimationFrame(renderFsFrame);
-
-      const w = fsCanvas.width;
-      const h = fsCanvas.height;
-      if (w <= 0 || h <= 0) return;
-      fsCanvasCtx.clearRect(0, 0, w, h);
-
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      let sum = 0;
-      const bufferLength = analyser ? analyser.frequencyBinCount : 32;
-      const dataArray = new Uint8Array(bufferLength);
-
-      if (analyser) {
-        analyser.getByteFrequencyData(dataArray);
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
-        }
-      }
-
-      if (sum > 0) {
-          const barCount = Math.min(36, Math.floor(w / 9));
-          const barWidth = Math.max(3, Math.floor((w - (barCount * 3)) / barCount));
-          const step = Math.floor(bufferLength / barCount) || 1;
-
-          for (let i = 0; i < barCount; i++) {
-            const val = dataArray[i * step] || 0;
-            const percent = val / 255;
-            const barHeight = Math.max(2, percent * (h - 4));
-            const x = i * (barWidth + 3) + 2;
-            const y = h - barHeight - 1;
-
-            const grad = fsCanvasCtx.createLinearGradient(0, h, 0, y);
-            grad.addColorStop(0, isLight ? '#0284c7' : '#00f0ff');
-            grad.addColorStop(1, isLight ? '#7c3aed' : '#a855f7');
-            fsCanvasCtx.fillStyle = grad;
-
-            fsCanvasCtx.beginPath();
-            if (fsCanvasCtx.roundRect) {
-              fsCanvasCtx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
-            } else {
-              fsCanvasCtx.rect(x, y, barWidth, barHeight);
-            }
-            fsCanvasCtx.fill();
-          }
-          return;
-        }
-
-      // CORS Fallback: Soft, harmonious flowing sine wave (zero fake peaks)
-      fsVisualizerPhase += 0.04;
-      const centerY = h / 2;
-      const amplitude = Math.min(h * 0.28, 8);
-
-      const grad = fsCanvasCtx.createLinearGradient(0, 0, w, 0);
-      grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
-      grad.addColorStop(0.2, isLight ? '#0284c7' : '#00f0ff');
-      grad.addColorStop(0.5, isLight ? '#7c3aed' : '#a855f7');
-      grad.addColorStop(0.8, isLight ? '#0284c7' : '#00f0ff');
-      grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
-
-      fsCanvasCtx.lineWidth = 2;
-      fsCanvasCtx.strokeStyle = grad;
-      fsCanvasCtx.beginPath();
-
-      for (let x = 0; x <= w; x += 2) {
-        const wave1 = Math.sin((x / 40) + fsVisualizerPhase);
-        const wave2 = Math.sin((x / 75) - (fsVisualizerPhase * 0.7)) * 0.5;
-        const envelope = Math.sin((x / w) * Math.PI);
-        const y = centerY + ((wave1 + wave2) * amplitude * envelope);
-        if (x === 0) {
-          fsCanvasCtx.moveTo(x, y);
-        } else {
-          fsCanvasCtx.lineTo(x, y);
-        }
-      }
-      fsCanvasCtx.stroke();
-    }
-
-    renderFsFrame();
-  }
 
   // Fullscreen Player Event Listeners
   if (fullscreenPlayerBtn) {

@@ -31,7 +31,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=7.9">
+  <link rel="stylesheet" href="radio.css?v=8.0">
 </head>
 <body>
 
@@ -204,22 +204,29 @@
             </div>
           </div>
           <div class="bottom-bar-sub-row">
-            <span id="now-playing-status" class="bottom-bar-status" aria-live="polite"><span class="pulse-led pulse-gray"></span> LISTO</span>
-            <button id="player-retry-btn" class="player-retry-btn" type="button" title="Reintentar reproducción" aria-label="Reintentar reproducción" style="display: none;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Reintentar</span>
-            </button>
-            <span class="telemetry-dot-divider">•</span>
-            <span id="bottom-bar-freq" class="bottom-bar-freq">WEB STREAM</span>
-            <span id="bottom-bar-format-badge" class="format-badge badge-mp3">MP3</span>
-            <span id="bottom-bar-bitrate-badge" class="highlight-bitrate" style="display: none;">-- kbps</span>
-            <span class="telemetry-dot-divider telemetry-tech-divider">•</span>
-            <span id="bottom-bar-telemetry" class="bottom-bar-telemetry">VEL: 0.0 KB/s • RED: 0.00 MB</span>
+            <!-- Prioridad 1: Estado del Reproductor (SIEMPRE VISIBLE) -->
+            <div class="sub-item sub-status-item">
+              <span id="now-playing-status" class="bottom-bar-status" aria-live="polite"><span class="pulse-led pulse-gray"></span> LISTO</span>
+              <button id="player-retry-btn" class="player-retry-btn" type="button" title="Reintentar reproducción" aria-label="Reintentar reproducción" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Reintentar</span>
+              </button>
+            </div>
+
+            <!-- Prioridad 2: Emisora / Frecuencia con su separador -->
+            <div class="sub-item sub-freq-item">
+              <span class="telemetry-dot-divider">•</span>
+              <span id="bottom-bar-freq" class="bottom-bar-freq">WEB STREAM</span>
+            </div>
+
+            <!-- Prioridad 3: Formato y Bitrate con su separador -->
+            <div class="sub-item sub-format-item">
+              <span class="telemetry-dot-divider">•</span>
+              <span id="bottom-bar-format-badge" class="format-badge badge-mp3">MP3</span>
+              <span id="bottom-bar-bitrate-badge" class="highlight-bitrate" style="display: none;">-- kbps</span>
+            </div>
           </div>
         </div>
-        <button id="bottom-bar-expand-btn" class="bottom-bar-expand-btn" title="Pantalla Completa (F)" aria-label="Abrir reproductor en pantalla completa">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-        </button>
       </div>
 
       <!-- Center: High-Tech Transport Controls -->
@@ -699,6 +706,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" defer></script>
-  <script src="radio.js?v=7.9" defer></script>
+  <script src="radio.js?v=8.0" defer></script>
 </body>
 </html>
