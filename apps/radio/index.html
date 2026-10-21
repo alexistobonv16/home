@@ -31,7 +31,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=8.3">
+  <link rel="stylesheet" href="radio.css?v=8.4">
 </head>
 <body>
 
@@ -203,9 +203,9 @@
               <span id="bottom-bar-name" class="bottom-bar-name">Selecciona una Emisora</span>
             </div>
           </div>
-          <div class="bottom-bar-sub-row">
+          <div class="bottom-bar-sub-row" id="bottom-bar-sub-row">
             <!-- Prioridad 4 (Máxima, siempre visible): Estado -->
-            <div class="sub-item sub-item-status">
+            <div class="sub-item sub-item-status" id="sub-item-status">
               <span id="now-playing-status" class="bottom-bar-status" aria-live="polite"><span class="pulse-led pulse-gray"></span> LISTO</span>
               <button id="player-retry-btn" class="player-retry-btn" type="button" title="Reintentar reproducción" aria-label="Reintentar reproducción" style="display: none;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
@@ -213,20 +213,20 @@
               </button>
             </div>
 
-            <!-- Prioridad 3: Emisora con separador -->
-            <div class="sub-item sub-item-freq">
+            <!-- Prioridad 3: Emisora / Frecuencia con separador (solo si existe frecuencia real o canción activa) -->
+            <div class="sub-item sub-item-freq" id="sub-item-freq" style="display: none;">
               <span class="sub-sep" aria-hidden="true">·</span>
-              <span id="bottom-bar-freq" class="bottom-bar-freq">WEB STREAM</span>
+              <span id="bottom-bar-freq" class="bottom-bar-freq"></span>
             </div>
 
             <!-- Prioridad 2: Formato con separador -->
-            <div class="sub-item sub-item-format">
+            <div class="sub-item sub-item-format" id="sub-item-format">
               <span class="sub-sep" aria-hidden="true">·</span>
               <span id="bottom-bar-format-badge" class="format-badge badge-mp3">MP3</span>
             </div>
 
             <!-- Prioridad 1 (Menor, se oculta primero): Bitrate aparte -->
-            <div class="sub-item sub-item-bitrate" id="sub-item-bitrate">
+            <div class="sub-item sub-item-bitrate" id="sub-item-bitrate" style="display: none;">
               <span id="bottom-bar-bitrate-badge" class="bottom-bar-bitrate" style="display: none;">-- kbps</span>
             </div>
           </div>
@@ -710,6 +710,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" defer></script>
-  <script src="radio.js?v=8.3" defer></script>
+  <script src="radio.js?v=8.4" defer></script>
 </body>
 </html>

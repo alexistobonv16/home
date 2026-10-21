@@ -473,6 +473,8 @@
       bottomBarTelemetry.textContent = `VEL: ${activeSpeedText} • RED: ${activeDataText}`;
     }
 
+    fitIslandSecondaryLine();
+
     // 9. Fullscreen Player elements
     if (fsTelemetrySpeed) {
       fsTelemetrySpeed.textContent = `VEL: ${activeSpeedText}`;
@@ -1744,7 +1746,94 @@
 
   window.addEventListener('resize', () => {
     checkBottomBarMarquee();
+    fitIslandSecondaryLine();
   });
+
+  function updateIslandSecondaryLine(station, song) {
+    const subFreq = document.getElementById('sub-item-freq');
+    const bottomBarFreq = document.getElementById('bottom-bar-freq');
+
+    if (song && song.title) {
+      // Con canción activa: título principal muestra canción/artista y fila secundaria muestra la emisora
+      const stName = station ? (station.name || '') : '';
+      if (bottomBarFreq) bottomBarFreq.textContent = stName;
+      if (subFreq) subFreq.style.display = stName ? 'inline-flex' : 'none';
+    } else if (station) {
+      // Sin canción activa: solo muestra frecuencia si es real (no redundante con EN VIVO ni 'WEB STREAM')
+      const hasRealFreq = station.freq && !/^(WEB STREAM|WEB HI-FI|WEB|ONLINE)$/i.test(station.freq.trim());
+      if (hasRealFreq) {
+        if (bottomBarFreq) bottomBarFreq.textContent = station.freq.trim();
+        if (subFreq) subFreq.style.display = 'inline-flex';
+      } else {
+        if (bottomBarFreq) bottomBarFreq.textContent = '';
+        if (subFreq) subFreq.style.display = 'none';
+      }
+    } else {
+      if (bottomBarFreq) bottomBarFreq.textContent = '';
+      if (subFreq) subFreq.style.display = 'none';
+    }
+
+    fitIslandSecondaryLine();
+  }
+
+  function fitIslandSecondaryLine() {
+    const subRow = document.getElementById('bottom-bar-sub-row');
+    if (!subRow) return;
+
+    const statusItem = document.getElementById('sub-item-status');
+    const freqItem = document.getElementById('sub-item-freq');
+    const formatItem = document.getElementById('sub-item-format');
+    const bitrateItem = document.getElementById('sub-item-bitrate');
+
+    const bottomBarFormatBadge = document.getElementById('bottom-bar-format-badge');
+    const bottomBarBitrateBadge = document.getElementById('bottom-bar-bitrate-badge');
+    const bottomBarFreq = document.getElementById('bottom-bar-freq');
+
+    const hasFreq = !!(bottomBarFreq && bottomBarFreq.textContent.trim().length > 0);
+    const hasFormat = !!(bottomBarFormatBadge && bottomBarFormatBadge.textContent.trim().length > 0);
+    const bText = bottomBarBitrateBadge ? bottomBarBitrateBadge.textContent.trim() : '';
+    const hasBitrate = !!(bText && bText !== '-- kbps' && bText !== '0 kbps');
+
+    // Restaurar visibilidad inicial para calcular scrollWidth real
+    if (statusItem) statusItem.style.display = 'inline-flex';
+    if (freqItem) freqItem.style.display = hasFreq ? 'inline-flex' : 'none';
+    if (formatItem) formatItem.style.display = hasFormat ? 'inline-flex' : 'none';
+    if (bitrateItem) bitrateItem.style.display = hasBitrate ? 'inline-flex' : 'none';
+
+    // Ocultar progresivamente por prioridad atómica hasta que scrollWidth <= clientWidth
+    // Prioridad 1 (menor): Bitrate
+    if (subRow.scrollWidth > subRow.clientWidth && bitrateItem && hasBitrate) {
+      bitrateItem.style.display = 'none';
+    }
+    // Prioridad 2: Formato
+    if (subRow.scrollWidth > subRow.clientWidth && formatItem && hasFormat) {
+      formatItem.style.display = 'none';
+    }
+    // Prioridad 3: Frecuencia / Emisora
+    if (subRow.scrollWidth > subRow.clientWidth && freqItem && hasFreq) {
+      freqItem.style.display = 'none';
+    }
+    // Prioridad 4 (máxima): Estado nunca se oculta
+  }
+
+  function initIslandResizeObserver() {
+    const leftBlock = document.getElementById('bottom-bar-left');
+    const subRow = document.getElementById('bottom-bar-sub-row');
+
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => {
+        fitIslandSecondaryLine();
+        checkBottomBarMarquee();
+      });
+      if (leftBlock) ro.observe(leftBlock);
+      if (subRow) ro.observe(subRow);
+    } else {
+      window.addEventListener('resize', () => {
+        fitIslandSecondaryLine();
+        checkBottomBarMarquee();
+      });
+    }
+  }
 
   function applyNowPlayingMetadata(song) {
     if (!song) {
@@ -1819,9 +1908,7 @@
       bottomBarName.title = `${song.title} — ${song.artist} (${currentStation.name})`;
       checkBottomBarMarquee();
     }
-    if (bottomBarFreq) {
-      bottomBarFreq.textContent = currentStation.name;
-    }
+    updateIslandSecondaryLine(currentStation, song);
 
     // 4. MediaSession & Bloqueo de pantalla
     updateMediaSession(currentStation, song);
@@ -1850,17 +1937,16 @@
         bottomBarName.title = currentStation.name;
         checkBottomBarMarquee();
       }
-      if (bottomBarFreq) {
-        bottomBarFreq.textContent = currentStation.freq || currentStation.genre || 'WEB STREAM';
-      }
+      updateIslandSecondaryLine(currentStation, null);
       updateMediaSession(currentStation);
     }
 
     if (fsSongCard) {
       if (fsSongTitle) fsSongTitle.textContent = isPlaying ? 'Sintonía en vivo' : (currentStation ? 'Transmisión pausada' : 'Sintonizador listo');
       if (fsSongArtist) {
+        const hasF = currentStation && currentStation.freq && !/^(WEB STREAM|WEB HI-FI|WEB|ONLINE)$/i.test(currentStation.freq.trim());
         fsSongArtist.textContent = currentStation 
-          ? `${currentStation.freq || 'WEB STREAM'} • ${currentStation.genre || 'Transmisión digital'}`
+          ? (hasF ? `${currentStation.freq.trim()} • ${currentStation.genre || 'Música'}` : (currentStation.genre || 'Transmisión digital'))
           : 'Selecciona una emisora para sintonizar';
       }
       fsSongCard.classList.remove('has-metadata');
@@ -1937,7 +2023,8 @@
 
     // Top Stage Updates
     if (activeStationName) activeStationName.textContent = station.name;
-    if (activeStationFreq) activeStationFreq.innerHTML = `<span>●</span> ${escapeHtml(station.freq || 'WEB STREAM')}`;
+    const hasTopFreq = station.freq && !/^(WEB STREAM|WEB HI-FI|WEB|ONLINE)$/i.test(station.freq.trim());
+    if (activeStationFreq) activeStationFreq.innerHTML = `<span>●</span> ${escapeHtml(hasTopFreq ? station.freq.trim() : (station.genre || 'En Vivo'))}`;
     const genreTextEl = document.getElementById('active-station-genre-text');
     if (genreTextEl) {
       genreTextEl.textContent = station.genre || 'General';
@@ -1959,9 +2046,7 @@
       bottomBarName.title = station.name;
       checkBottomBarMarquee();
     }
-    if (bottomBarFreq) {
-      bottomBarFreq.textContent = station.freq || station.genre || 'WEB STREAM';
-    }
+    updateIslandSecondaryLine(station, nowPlayingSong);
     if (bottomBarBitrateBadge) {
       const b = station.bitrate;
       const bitrateParent = document.getElementById('sub-item-bitrate');
@@ -2065,7 +2150,8 @@
       fsStationGenre.textContent = station.genre || 'General';
     }
     if (fsStationFreq) {
-      fsStationFreq.textContent = station.freq || 'WEB STREAM';
+      const hasFsFreq = station.freq && !/^(WEB STREAM|WEB HI-FI|WEB|ONLINE)$/i.test(station.freq.trim());
+      fsStationFreq.textContent = hasFsFreq ? station.freq.trim() : (station.genre || 'En Vivo');
     }
 
     updateFullscreenStarState();
@@ -3720,6 +3806,7 @@
     startTelemetryLoop();
     updateTelemetryDisplay();
     setupMediaSessionActionHandlers();
+    initIslandResizeObserver();
 
     // If auto-sync is enabled, download updates from cloud
     if (localStorage.getItem('at_radio_autosync') === 'true') {
@@ -3735,6 +3822,8 @@
     window.playStation = playStation;
     window.updateMediaSession = updateMediaSession;
     window.updateDocumentTitle = updateDocumentTitle;
+    window.fitIslandSecondaryLine = fitIslandSecondaryLine;
+    window.updateIslandSecondaryLine = updateIslandSecondaryLine;
   });
 
 })();
