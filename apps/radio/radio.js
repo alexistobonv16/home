@@ -458,11 +458,14 @@
     }
 
     if (bottomBarBitrateBadge) {
+      const bitrateParent = document.getElementById('sub-item-bitrate');
       if (activeBitrateText && activeBitrateText !== '-- kbps' && activeBitrateText !== '0 kbps') {
         bottomBarBitrateBadge.textContent = activeBitrateText;
-        bottomBarBitrateBadge.style.display = 'inline-block';
+        bottomBarBitrateBadge.style.display = 'inline-flex';
+        if (bitrateParent) bitrateParent.style.display = 'inline-flex';
       } else {
         bottomBarBitrateBadge.style.display = 'none';
+        if (bitrateParent) bitrateParent.style.display = 'none';
       }
     }
 
@@ -1961,11 +1964,14 @@
     }
     if (bottomBarBitrateBadge) {
       const b = station.bitrate;
+      const bitrateParent = document.getElementById('sub-item-bitrate');
       if (b && b !== '-- kbps' && b !== '0 kbps') {
         bottomBarBitrateBadge.textContent = b.includes('kbps') ? b : `${b} kbps`;
-        bottomBarBitrateBadge.style.display = 'inline-block';
+        bottomBarBitrateBadge.style.display = 'inline-flex';
+        if (bitrateParent) bitrateParent.style.display = 'inline-flex';
       } else {
         bottomBarBitrateBadge.style.display = 'none';
+        if (bitrateParent) bitrateParent.style.display = 'none';
       }
     }
 

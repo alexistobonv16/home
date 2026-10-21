@@ -849,13 +849,14 @@ button:active:not(:disabled),
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  min-width: 200px;
+  min-width: 180px;
   max-width: min(440px, 35vw);
   flex: 0 1 auto;
   cursor: pointer;
   outline: none;
   border-radius: 16px;
-  padding: 0.2rem 0.4rem 0.2rem 0.2rem;
+  padding: 0.2rem 18px 0.2rem 0.2rem !important;
+  margin-right: 16px !important;
   transition: background var(--transition-fast);
 }
 
@@ -961,7 +962,7 @@ button:active:not(:disabled),
 .bottom-bar-sub-row {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 8px;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   color: var(--text-muted);
@@ -976,21 +977,53 @@ button:active:not(:disabled),
   white-space: nowrap;
 }
 
-.sub-item .telemetry-dot-divider {
-  margin: 0 0.4rem;
-  opacity: 0.35;
+.sub-sep {
+  display: inline-block;
+  margin: 0 4px;
+  color: var(--text-muted);
+  opacity: 0.45;
+  font-weight: 700;
+  font-size: 0.75rem;
+  line-height: 1;
+  user-select: none;
   flex-shrink: 0;
 }
 
-/* Island secondary line priority breakpoints: Never cut text partially, hide whole items */
-@media (max-width: 850px) {
-  .sub-format-item {
+.bottom-bar-bitrate {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-left: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: inline-flex;
+  align-items: center;
+}
+
+[data-theme="light"] .bottom-bar-bitrate {
+  color: #0284c7;
+}
+
+/* Prioridad de ocultación de menor a mayor importancia:
+   bitrate (oculta primero) → formato (oculta segundo) → emisora (oculta tercero) → estado (nunca) */
+@media (max-width: 950px) {
+  .sub-item-bitrate {
     display: none !important;
   }
 }
 
-@media (max-width: 500px) {
-  .sub-freq-item {
+@media (max-width: 550px) {
+  .sub-item-format {
+    display: none !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .sub-item-freq {
     display: none !important;
   }
 }
@@ -4283,9 +4316,8 @@ button:active:not(:disabled),
     align-items: center !important;
     white-space: nowrap !important;
     overflow: hidden !important;
-    text-overflow: ellipsis !important;
     font-size: 0.64rem !important;
-    gap: 0.35rem !important;
+    gap: 8px !important;
     width: 100% !important;
   }
 
