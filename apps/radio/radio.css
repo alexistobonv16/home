@@ -1413,16 +1413,16 @@ button:active:not(:disabled),
   }
 }
 
-/* Island <= 1300px: Icon-only buttons for Sleep, Proxy, and Pantalla frees >= 120px for station meta */
+/* Island <= 1300px: Icon-only buttons for Sleep, Proxy, and Pantalla in Bottom Player Bar */
 @container island-bar (max-width: 1300px) {
-  .sleep-btn span:not(#sleep-badge),
-  .proxy-toggle-btn span,
-  .fullscreen-btn span {
+  .bottom-bar-tools .sleep-btn span:not(#sleep-badge),
+  .bottom-bar-tools .proxy-toggle-btn span,
+  .bottom-bar-tools .fullscreen-btn span {
     display: none !important;
   }
-  .sleep-btn,
-  .proxy-toggle-btn,
-  .fullscreen-btn {
+  .bottom-bar-tools .sleep-btn,
+  .bottom-bar-tools .proxy-toggle-btn,
+  .bottom-bar-tools .fullscreen-btn {
     width: 36px !important;
     height: 36px !important;
     padding: 0 !important;
@@ -1433,14 +1433,14 @@ button:active:not(:disabled),
 }
 
 @media (min-width: 681px) {
-  .sleep-btn span:not(#sleep-badge),
-  .proxy-toggle-btn span,
-  .fullscreen-btn span {
+  .bottom-bar-tools .sleep-btn span:not(#sleep-badge),
+  .bottom-bar-tools .proxy-toggle-btn span,
+  .bottom-bar-tools .fullscreen-btn span {
     display: none !important;
   }
-  .sleep-btn,
-  .proxy-toggle-btn,
-  .fullscreen-btn {
+  .bottom-bar-tools .sleep-btn,
+  .bottom-bar-tools .proxy-toggle-btn,
+  .bottom-bar-tools .fullscreen-btn {
     width: 36px !important;
     height: 36px !important;
     padding: 0 !important;
@@ -3456,12 +3456,84 @@ button:active:not(:disabled),
 
 .fs-tools-row .sleep-btn,
 .fs-tools-row .proxy-toggle-btn {
-  height: 2.25rem;
-  padding: 0 1rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  border-radius: var(--radius-full);
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.55rem !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 2.35rem !important;
+  padding: 0 1.25rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  border-radius: var(--radius-full) !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.fs-tools-row .sleep-btn span,
+.fs-tools-row .proxy-toggle-btn span {
+  display: inline !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+}
+
+.fs-tools-row .sleep-btn svg,
+.fs-tools-row .proxy-toggle-btn svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0 !important;
+}
+
+.fs-tools-row .sleep-btn:hover,
+.fs-tools-row .proxy-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: var(--border-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.fs-tools-row .sleep-btn.active {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border-color: var(--accent-amber) !important;
+  color: var(--accent-amber) !important;
+}
+
+.fs-tools-row .proxy-toggle-btn.active {
+  background: rgba(0, 240, 255, 0.16) !important;
+  border-color: var(--accent-cyan) !important;
+  color: var(--accent-cyan) !important;
+}
+
+[data-theme="light"] .fs-tools-row .sleep-btn,
+[data-theme="light"] .fs-tools-row .proxy-toggle-btn {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme="light"] .fs-tools-row .sleep-btn:hover,
+[data-theme="light"] .fs-tools-row .proxy-toggle-btn:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .fs-tools-row .sleep-btn.active {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: #d97706 !important;
+  color: #b45309 !important;
+}
+
+[data-theme="light"] .fs-tools-row .proxy-toggle-btn.active {
+  background: rgba(2, 132, 199, 0.12) !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
 }
 
 .fs-playback-row {
@@ -5004,9 +5076,16 @@ body.fs-scroll-locked {
 
   .fs-tools-row .sleep-btn,
   .fs-tools-row .proxy-toggle-btn {
-    height: 2.15rem !important;
-    padding: 0 0.95rem !important;
-    font-size: 0.75rem !important;
+    width: auto !important;
+    height: 2.2rem !important;
+    padding: 0 1.15rem !important;
+    font-size: 0.78rem !important;
+    gap: 0.5rem !important;
+    border-radius: var(--radius-full) !important;
+  }
+  .fs-tools-row .sleep-btn span,
+  .fs-tools-row .proxy-toggle-btn span {
+    display: inline !important;
   }
 
   .fs-playback-row {
