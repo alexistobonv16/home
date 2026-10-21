@@ -478,7 +478,12 @@
       fsTelemetryData.textContent = `RED: ${activeDataText}`;
     }
     if (fsStationBitrateBadge) {
-      fsStationBitrateBadge.textContent = activeBitrateText;
+      if (activeBitrateText && activeBitrateText !== '-- kbps' && activeBitrateText !== '0 kbps') {
+        fsStationBitrateBadge.textContent = activeBitrateText;
+        fsStationBitrateBadge.style.display = 'inline-flex';
+      } else {
+        fsStationBitrateBadge.style.display = 'none';
+      }
     }
     if (fsStationFormatBadge) {
       fsStationFormatBadge.textContent = fmt.ext;
@@ -624,6 +629,7 @@
     if (fsStatusText && fsPulseLed) {
       if (state === 'playing') {
         fsStatusText.textContent = 'EN VIVO';
+        fsPulseLed.className = 'pulse-led pulse-red';
         fsPulseLed.style.background = '#ef4444';
         fsPulseLed.style.boxShadow = '0 0 10px #ef4444';
         if (fsRetryBtn) fsRetryBtn.style.display = 'none';
@@ -634,11 +640,13 @@
         if (isFullscreenPlayerOpen) startFsVisualizer();
       } else if (state === 'buffering') {
         fsStatusText.textContent = 'CONECTANDO...';
+        fsPulseLed.className = 'pulse-led pulse-amber';
         fsPulseLed.style.background = '#f59e0b';
         fsPulseLed.style.boxShadow = '0 0 10px #f59e0b';
         if (fsRetryBtn) fsRetryBtn.style.display = 'none';
       } else if (state === 'error' || state === 'retrying') {
         fsStatusText.textContent = state === 'retrying' ? 'REINTENTANDO...' : 'ERROR';
+        fsPulseLed.className = 'pulse-led pulse-orange';
         fsPulseLed.style.background = '#f97316';
         fsPulseLed.style.boxShadow = '0 0 10px #f97316';
         stopFsVisualizer();
@@ -656,11 +664,13 @@
         }
       } else if (state === 'paused') {
         fsStatusText.textContent = 'PAUSADO';
+        fsPulseLed.className = 'pulse-led pulse-gray';
         fsPulseLed.style.background = '#64748b';
         fsPulseLed.style.boxShadow = 'none';
         if (fsRetryBtn) fsRetryBtn.style.display = 'none';
       } else {
         fsStatusText.textContent = 'LISTO';
+        fsPulseLed.className = 'pulse-led pulse-gray';
         fsPulseLed.style.background = '#64748b';
         fsPulseLed.style.boxShadow = 'none';
         if (fsRetryBtn) fsRetryBtn.style.display = 'none';
@@ -1112,6 +1122,11 @@
     if (!canvas || !canvasCtx) return;
     stopVisualizer();
 
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      drawIdleVisualizer();
+      return;
+    }
+
     // Do not run canvas loop on mobile (hidden) or when tab is backgrounded
     if (window.innerWidth <= 680 || document.hidden) {
       return;
@@ -1126,7 +1141,7 @@
     const dataArray = new Uint8Array(bufferLength);
 
     function renderFrame() {
-      if (window.innerWidth <= 680 || document.hidden || !isPlaying || isFullscreenPlayerOpen) {
+      if (window.innerWidth <= 680 || document.hidden || !isPlaying || isFullscreenPlayerOpen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         stopVisualizer();
         drawIdleVisualizer();
         return;
@@ -2858,6 +2873,8 @@
     if (!container) {
       container = document.createElement('div');
       container.className = 'toast-container';
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('role', 'status');
       document.body.appendChild(container);
     }
 
@@ -3229,6 +3246,11 @@
     if (!fsCanvas || !fsCanvasCtx) return;
     stopFsVisualizer();
 
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      drawIdleFsVisualizer();
+      return;
+    }
+
     if (!isFullscreenPlayerOpen || document.hidden) {
       return;
     }
@@ -3241,7 +3263,7 @@
     resizeFsCanvas();
 
     function renderFsFrame() {
-      if (!isFullscreenPlayerOpen || document.hidden || !isPlaying) {
+      if (!isFullscreenPlayerOpen || document.hidden || !isPlaying || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         stopFsVisualizer();
         drawIdleFsVisualizer();
         return;
@@ -3427,6 +3449,15 @@
     }
 
     if (e.key === 'Escape') {
+      const openDropdown = document.querySelector('.card-menu-dropdown.open');
+      if (openDropdown) {
+        openDropdown.classList.remove('open');
+        return;
+      }
+      if (headerMoreMenu && headerMoreMenu.classList.contains('open')) {
+        toggleMoreMenu(false);
+        return;
+      }
       const openModal = document.querySelector('.modal-backdrop.open');
       if (openModal) {
         openModal.classList.remove('open');

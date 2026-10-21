@@ -31,7 +31,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="radio.css?v=7.4">
+  <link rel="stylesheet" href="radio.css?v=7.5">
 </head>
 <body>
 
@@ -292,7 +292,7 @@
         </button>
 
         <div class="fs-header-center">
-          <div class="fs-header-badge" aria-live="polite"><span class="pulse-led pulse-red" id="fs-pulse-led"></span> <span id="fs-status-text">EN VIVO</span></div>
+          <div class="fs-header-badge" aria-live="polite"><span class="pulse-led pulse-gray" id="fs-pulse-led"></span> <span id="fs-status-text">LISTO</span></div>
           <div class="fs-header-subtitle">ALEXIS RADIO // CYBER-TUNER</div>
         </div>
 
@@ -308,103 +308,107 @@
         </div>
       </header>
 
-      <!-- 2. Main Stage -->
-      <main class="fs-stage">
-        <div class="fs-artwork-wrapper">
-          <div class="fs-artwork-glow" id="fs-artwork-glow"></div>
-          <img id="fs-station-logo" class="fs-station-logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23080f24' stroke='%2300f0ff' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='%2300f0ff' text-anchor='middle'%3ERA%3C/text%3E%3C/svg%3E" alt="Emisora">
+      <!-- 2. Body Deck (Responsive: 1 column on mobile/tall desktop, 2 columns on desktop <= 800px) -->
+      <div class="fs-body-deck">
+        <div class="fs-col-artwork">
+          <div class="fs-artwork-wrapper">
+            <div class="fs-artwork-glow" id="fs-artwork-glow"></div>
+            <img id="fs-station-logo" class="fs-station-logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23080f24' stroke='%2300f0ff' stroke-width='3.5'/%3E%3Ctext x='50' y='62' font-family='monospace' font-weight='800' font-size='36' fill='%2300f0ff' text-anchor='middle'%3ERA%3C/text%3E%3C/svg%3E" alt="Emisora">
+          </div>
         </div>
 
-        <div class="fs-info-group">
-          <div class="fs-badges-row">
-            <span id="fs-station-genre" class="fs-badge fs-badge-genre">Noticias</span>
-            <span id="fs-station-freq" class="fs-badge fs-badge-freq">100.9 FM</span>
-            <span id="fs-station-format-badge" class="fs-badge fs-badge-format format-badge badge-mp3">MP3</span>
-            <span id="fs-station-bitrate-badge" class="fs-badge fs-badge-bitrate highlight-bitrate">128 kbps</span>
-          </div>
-
-          <h2 id="fs-station-name" class="fs-station-name">Caracol Radio</h2>
-
-          <!-- Integrated Spectrum / Sine Visualizer -->
-          <div class="fs-visualizer-wrapper">
-            <canvas id="fs-visualizer-canvas" class="fs-visualizer-canvas" width="360" height="38" aria-hidden="true"></canvas>
-          </div>
-
-          <!-- Real-Time Now Playing (Apple Music Track & Artist) -->
-          <div id="fs-song-card" class="fs-song-card">
-            <div class="fs-song-badge">
-              <span class="fs-song-eq-bars">
-                <span></span><span></span><span></span>
-              </span>
-              <span id="fs-song-badge-text">SONANDO AHORA</span>
+        <div class="fs-col-content">
+          <div class="fs-info-group">
+            <div class="fs-badges-row">
+              <span id="fs-station-genre" class="fs-badge fs-badge-genre">Noticias</span>
+              <span id="fs-station-freq" class="fs-badge fs-badge-freq">100.9 FM</span>
+              <span id="fs-station-format-badge" class="fs-badge fs-badge-format format-badge badge-mp3">MP3</span>
+              <span id="fs-station-bitrate-badge" class="fs-badge fs-badge-bitrate highlight-bitrate" style="display: none;"></span>
             </div>
-            <div id="fs-song-title" class="fs-song-title">Sintonía en vivo</div>
-            <div id="fs-song-artist" class="fs-song-artist">Emisión digital de alta fidelidad</div>
-            <a id="fs-apple-link" class="fs-apple-link" href="#" target="_blank" rel="noopener noreferrer" style="display: none;" aria-label="Escuchar en Apple Music">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-2 .6-2.65 1.35-.58.67-1.08 1.74-.95 2.77.99.08 2.03-.52 2.68-1.27z"/></svg>
-              <span>Escuchar en Apple Music</span>
-            </a>
-            <button id="fs-retry-btn" class="fs-retry-btn" style="display: none;" title="Reintentar reproducción" aria-label="Reintentar reproducción">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Reintentar</span>
-            </button>
+
+            <h2 id="fs-station-name" class="fs-station-name">Caracol Radio</h2>
+
+            <!-- Integrated Spectrum / Sine Visualizer -->
+            <div class="fs-visualizer-wrapper">
+              <canvas id="fs-visualizer-canvas" class="fs-visualizer-canvas" width="360" height="38" aria-hidden="true"></canvas>
+            </div>
+
+            <!-- Real-Time Now Playing (Apple Music Track & Artist) -->
+            <div id="fs-song-card" class="fs-song-card">
+              <div class="fs-song-badge">
+                <span class="fs-song-eq-bars">
+                  <span></span><span></span><span></span>
+                </span>
+                <span id="fs-song-badge-text">SONANDO AHORA</span>
+              </div>
+              <div id="fs-song-title" class="fs-song-title">Sintonía en vivo</div>
+              <div id="fs-song-artist" class="fs-song-artist">Emisión digital de alta fidelidad</div>
+              <a id="fs-apple-link" class="fs-apple-link" href="#" target="_blank" rel="noopener noreferrer" style="display: none;" aria-label="Escuchar en Apple Music">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-2 .6-2.65 1.35-.58.67-1.08 1.74-.95 2.77.99.08 2.03-.52 2.68-1.27z"/></svg>
+                <span>Escuchar en Apple Music</span>
+              </a>
+              <button id="fs-retry-btn" class="fs-retry-btn" style="display: none;" title="Reintentar reproducción" aria-label="Reintentar reproducción">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Reintentar</span>
+              </button>
+            </div>
+
+            <div class="fs-telemetry-row">
+              <span class="fs-telemetry-item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span id="fs-telemetry-speed">VEL: 0.0 KB/s</span>
+              </span>
+              <span class="fs-telemetry-divider">•</span>
+              <span class="fs-telemetry-item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span id="fs-telemetry-data">RED: 0.00 MB</span>
+              </span>
+              <span class="fs-telemetry-divider">•</span>
+              <span id="fs-proxy-indicator" class="fs-telemetry-proxy">DIRECTO</span>
+            </div>
           </div>
 
-          <div class="fs-telemetry-row">
-            <span class="fs-telemetry-item">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <span id="fs-telemetry-speed">VEL: 0.0 KB/s</span>
-            </span>
-            <span class="fs-telemetry-divider">•</span>
-            <span class="fs-telemetry-item">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span id="fs-telemetry-data">RED: 0.00 MB</span>
-            </span>
-            <span class="fs-telemetry-divider">•</span>
-            <span id="fs-proxy-indicator" class="fs-telemetry-proxy">DIRECTO</span>
-          </div>
+          <!-- 3. Footer Controls Deck -->
+          <footer class="fs-footer">
+            <div class="fs-tools-row">
+              <button id="fs-sleep-btn" class="sleep-btn" title="Temporizador de apagado" aria-label="Temporizador de apagado">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Sleep</span>
+                <span id="fs-sleep-badge" style="color: var(--accent-amber); font-weight: bold;"></span>
+              </button>
+
+              <button id="fs-proxy-btn" class="proxy-toggle-btn" title="Activar/Desactivar Proxy Cloudflare" aria-label="Alternar Proxy Cloudflare">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                <span>Proxy</span>
+              </button>
+            </div>
+
+            <!-- Big Illuminated Transport Cluster -->
+            <div class="fs-playback-row">
+              <button id="fs-prev-btn" class="fs-nav-btn" title="Emisora anterior (←)" aria-label="Emisora anterior">
+                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+              </button>
+
+              <button id="fs-play-btn" class="fs-play-btn" title="Reproducir / Pausar (Espacio)" aria-label="Reproducir o pausar">
+                <svg id="fs-play-icon" xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+                <svg id="fs-pause-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+              </button>
+
+              <button id="fs-next-btn" class="fs-nav-btn" title="Siguiente emisora (→)" aria-label="Siguiente emisora">
+                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+              </button>
+            </div>
+
+            <!-- Volume Deck -->
+            <div class="fs-volume-row">
+              <button id="fs-mute-btn" class="fs-mute-btn" title="Silenciar / Activar sonido (M)" aria-label="Silenciar o activar sonido">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              </button>
+              <input type="range" id="fs-volume-slider" class="volume-slider fs-volume-slider" min="0" max="1" step="0.01" value="0.85" aria-label="Control de volumen en pantalla completa">
+            </div>
+          </footer>
         </div>
-      </main>
-
-      <!-- 3. Footer Controls Deck -->
-      <footer class="fs-footer">
-        <div class="fs-tools-row">
-          <button id="fs-sleep-btn" class="sleep-btn" title="Temporizador de apagado" aria-label="Temporizador de apagado">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <span>Sleep</span>
-            <span id="fs-sleep-badge" style="color: var(--accent-amber); font-weight: bold;"></span>
-          </button>
-
-          <button id="fs-proxy-btn" class="proxy-toggle-btn" title="Activar/Desactivar Proxy Cloudflare" aria-label="Alternar Proxy Cloudflare">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-            <span>Proxy</span>
-          </button>
-        </div>
-
-        <!-- Big Illuminated Transport Cluster -->
-        <div class="fs-playback-row">
-          <button id="fs-prev-btn" class="fs-nav-btn" title="Emisora anterior (←)" aria-label="Emisora anterior">
-            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
-          </button>
-
-          <button id="fs-play-btn" class="fs-play-btn" title="Reproducir / Pausar (Espacio)" aria-label="Reproducir o pausar">
-            <svg id="fs-play-icon" xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
-            <svg id="fs-pause-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-          </button>
-
-          <button id="fs-next-btn" class="fs-nav-btn" title="Siguiente emisora (→)" aria-label="Siguiente emisora">
-            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-          </button>
-        </div>
-
-        <!-- Volume Deck -->
-        <div class="fs-volume-row">
-          <button id="fs-mute-btn" class="fs-mute-btn" title="Silenciar / Activar sonido (M)" aria-label="Silenciar o activar sonido">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-          </button>
-          <input type="range" id="fs-volume-slider" class="volume-slider fs-volume-slider" min="0" max="1" step="0.01" value="0.85" aria-label="Control de volumen en pantalla completa">
-        </div>
-      </footer>
+      </div>
     </div>
   </div>
 
@@ -694,6 +698,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js" defer></script>
-  <script src="radio.js?v=7.4" defer></script>
+  <script src="radio.js?v=7.5" defer></script>
 </body>
 </html>
