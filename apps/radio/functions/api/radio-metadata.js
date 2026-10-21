@@ -14,7 +14,7 @@ const USER_AGENTS = [
 const stationMetadataCache = new Map(); // key: streamUrl -> { data, timestamp }
 const artworkCache = new Map();         // key: normalizedQuery -> { data, timestamp }
 
-const STREAM_CACHE_TTL_MS = 12000;      // 12 segundos para el stream
+const STREAM_CACHE_TTL_MS = 8000;      // 8 segundos para el stream
 const ARTWORK_CACHE_TTL_MS = 7200000;    // 2 horas para carátulas
 
 function isPrivateIPv4(ip) {
@@ -280,7 +280,7 @@ export async function onRequestGet(context) {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Cache-Control': 'public, max-age=12'
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
   };
 
   // 1. Si el cliente envió una consulta directa (por ejemplo, desde etiquetas ID3 de HLS)
@@ -360,7 +360,7 @@ export async function onRequestGet(context) {
       if (isBlockedHostname(u.hostname)) break;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4500);
+      const timeoutId = setTimeout(() => controller.abort(), 5500);
 
       const res = await fetch(currentUrl, {
         headers: {
@@ -382,7 +382,7 @@ export async function onRequestGet(context) {
 
       const metaintHeader = parseInt(res.headers.get('icy-metaint') || '0', 10);
       if (metaintHeader > 0 && res.body) {
-        rawStreamTitle = await extractIcyTitleFromStream(res, metaintHeader, 4000);
+        rawStreamTitle = await extractIcyTitleFromStream(res, metaintHeader, 4800);
       }
       break;
     } catch (e) {

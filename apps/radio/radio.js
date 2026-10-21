@@ -1109,6 +1109,16 @@
       if (isFullscreenPlayerOpen && !fsAnimFrameId && !document.hidden) {
         startFsVisualizer();
       }
+
+      // Latido de actualización de metadatos en segundo plano:
+      // Cuando la pestaña pasa a segundo plano, los navegadores (Chrome/Edge) pueden suspender o limitar setInterval.
+      // El evento timeupdate de audio sigue emitiéndose de forma fluida mientras suena el audio, garantizando
+      // que el título y la canción se refresquen automáticamente sin necesidad de volver a abrir la pestaña.
+      const now = Date.now();
+      if (isPlaying && (now - lastBackgroundMetadataPollTime >= 8000)) {
+        lastBackgroundMetadataPollTime = now;
+        fetchStationMetadata();
+      }
     }
   });
 
@@ -1597,13 +1607,20 @@
 
     isMetadataFetching = true;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+
     try {
-      let apiUrl = `/api/radio-metadata?url=${encodeURIComponent(currentStation.url)}&name=${encodeURIComponent(currentStation.name)}`;
+      let apiUrl = `/api/radio-metadata?url=${encodeURIComponent(currentStation.url)}&name=${encodeURIComponent(currentStation.name)}&_t=${Date.now()}`;
       if (forceQuery) {
         apiUrl += `&query=${encodeURIComponent(forceQuery)}`;
       }
 
-      const res = await fetch(apiUrl);
+      const res = await fetch(apiUrl, {
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      clearTimeout(timeoutId);
       if (!res.ok) return;
       const data = await res.json();
 
@@ -1629,6 +1646,7 @@
     } catch (err) {
       // Silencioso
     } finally {
+      if (typeof timeoutId !== 'undefined') clearTimeout(timeoutId);
       isMetadataFetching = false;
     }
   }
@@ -1696,20 +1714,24 @@
     return null;
   }
 
+  let lastBackgroundMetadataPollTime = 0;
+
   function startMetadataPolling() {
     stopMetadataPolling();
+    lastBackgroundMetadataPollTime = Date.now();
 
     // Consulta inicial ultra rápida (250ms tras iniciar reproducción)
     setTimeout(() => {
       if (isPlaying) fetchStationMetadata();
     }, 250);
 
-    // Sondeo periódico cada 10 segundos
+    // Sondeo periódico ininterrumpido cada 8 segundos (permanece activo incluso en segundo plano)
     metadataPollingTimer = setInterval(() => {
-      if (isPlaying && !document.hidden) {
+      if (isPlaying) {
+        lastBackgroundMetadataPollTime = Date.now();
         fetchStationMetadata();
       }
-    }, 10000);
+    }, 8000);
   }
 
   function stopMetadataPolling() {
