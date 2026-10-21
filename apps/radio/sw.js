@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alexis-radio-v36';
+const CACHE_NAME = 'alexis-radio-v37';
 const STATIC_ASSETS = [
   '/',
   '/radio.css',

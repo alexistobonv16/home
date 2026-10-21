@@ -2490,7 +2490,19 @@
       } else {
         playStation(station);
       }
+      // If clicked with mouse, blur to prevent persistent focus-within state
+      if (e.detail > 0) {
+        card.blur();
+      }
     });
+
+    // Ensure action pill disappears immediately when mouse leaves the card
+    stationsGrid.addEventListener('mouseleave', (e) => {
+      const card = e.target && e.target.closest ? e.target.closest('.station-card') : null;
+      if (card && card.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+    }, true);
 
     // Keyboard support on card and open card dropdown
     stationsGrid.addEventListener('keydown', (e) => {

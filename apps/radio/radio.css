@@ -2140,14 +2140,14 @@ button:active:not(:disabled),
   }
 
   .station-card:hover .station-card-actions,
-  .station-card:focus-within .station-card-actions {
+  .station-card:has(:focus-visible) .station-card-actions {
     border-color: rgba(255, 255, 255, 0.12);
     background: rgba(9, 14, 26, 0.96);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   }
 
   [data-theme="light"] .station-card:hover .station-card-actions,
-  [data-theme="light"] .station-card:focus-within .station-card-actions {
+  [data-theme="light"] .station-card:has(:focus-visible) .station-card-actions {
     border-color: rgba(15, 23, 42, 0.15);
     background: rgba(255, 255, 255, 0.96);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
@@ -2155,7 +2155,7 @@ button:active:not(:disabled),
 
   /* Fade out format pill smoothly on hover/focus so actions and format NEVER collide or touch */
   .station-card:hover .station-fmt-pill,
-  .station-card:focus-within .station-fmt-pill {
+  .station-card:has(:focus-visible) .station-fmt-pill {
     opacity: 0 !important;
     transform: translateY(3px);
     pointer-events: none;
@@ -2170,14 +2170,14 @@ button:active:not(:disabled),
 
   /* Secondary text keeps safe margin from actions pill on hover */
   .station-card:hover .station-sub-text,
-  .station-card:focus-within .station-sub-text {
+  .station-card:has(:focus-visible) .station-sub-text {
     max-width: calc(100% - 102px);
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   /* Starred station when NOT hovered: format pill leaves room for star icon */
-  .station-card:has(.star-btn.starred):not(:hover):not(:focus-within) .station-fmt-pill {
+  .station-card:has(.star-btn.starred):not(:hover):not(:has(:focus-visible)) .station-fmt-pill {
     margin-right: 32px;
   }
 
@@ -2200,7 +2200,7 @@ button:active:not(:disabled),
   }
 
   .station-card:hover .desktop-card-actions,
-  .station-card:focus-within .desktop-card-actions {
+  .station-card:has(:focus-visible) .desktop-card-actions {
     opacity: 1;
     pointer-events: auto;
   }
@@ -2212,7 +2212,7 @@ button:active:not(:disabled),
   }
 
   .station-card:hover .station-card-actions .star-btn,
-  .station-card:focus-within .station-card-actions .star-btn {
+  .station-card:has(:focus-visible) .station-card-actions .star-btn {
     opacity: 1;
     pointer-events: auto;
   }
@@ -3617,7 +3617,7 @@ button:active:not(:disabled),
 }
 
 [data-theme="light"] .station-card:hover .station-card-actions,
-[data-theme="light"] .station-card:focus-within .station-card-actions {
+[data-theme="light"] .station-card:has(:focus-visible) .station-card-actions {
   background: rgba(255, 255, 255, 0.94) !important;
   border-color: rgba(15, 23, 42, 0.12) !important;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
