@@ -3793,8 +3793,22 @@
   }
   window.addEventListener('resize', resizeCanvas);
 
+  // Testing and debug hooks (exposed immediately)
+  window.updatePlayerStatus = updatePlayerStatus;
+  window.applyNowPlayingMetadata = applyNowPlayingMetadata;
+  window.setPlayingState = setPlayingState;
+  window.openFullscreenPlayer = openFullscreenPlayer;
+  window.closeFullscreenPlayer = closeFullscreenPlayer;
+  window.playStation = playStation;
+  window.updateMediaSession = updateMediaSession;
+  window.updateDocumentTitle = updateDocumentTitle;
+  window.fitIslandSecondaryLine = fitIslandSecondaryLine;
+  window.updateIslandSecondaryLine = updateIslandSecondaryLine;
+  window.updateActiveStationCard = updateActiveStationCard;
+  window.setCurrentStation = (s) => { currentStation = s; };
+
   // Initialize
-  document.addEventListener('DOMContentLoaded', () => {
+  function bootApp() {
     initStorage();
     if (stations.length > 0) {
       currentStation = stations[0];
@@ -3812,20 +3826,12 @@
     if (localStorage.getItem('at_radio_autosync') === 'true') {
       downloadStationsFromCloud();
     }
+  }
 
-    // Testing and debug hooks
-    window.updatePlayerStatus = updatePlayerStatus;
-    window.applyNowPlayingMetadata = applyNowPlayingMetadata;
-    window.setPlayingState = setPlayingState;
-    window.openFullscreenPlayer = openFullscreenPlayer;
-    window.closeFullscreenPlayer = closeFullscreenPlayer;
-    window.playStation = playStation;
-    window.updateMediaSession = updateMediaSession;
-    window.updateDocumentTitle = updateDocumentTitle;
-    window.fitIslandSecondaryLine = fitIslandSecondaryLine;
-    window.updateIslandSecondaryLine = updateIslandSecondaryLine;
-    window.updateActiveStationCard = updateActiveStationCard;
-    window.setCurrentStation = (s) => { currentStation = s; };
-  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootApp);
+  } else {
+    bootApp();
+  }
 
 })();
