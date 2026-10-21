@@ -2161,9 +2161,9 @@ button:active:not(:disabled),
     pointer-events: none;
   }
 
-  /* Station name has full 100% card width at the top, completely free of any action buttons */
+  /* Station name reserves right space for actions pastilla with ellipsis so text never collides */
   .station-card-name {
-    max-width: 100%;
+    max-width: calc(100% - 102px);
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -2171,7 +2171,7 @@ button:active:not(:disabled),
   /* Secondary text keeps safe margin from actions pill on hover */
   .station-card:hover .station-sub-text,
   .station-card:focus-within .station-sub-text {
-    max-width: calc(100% - 96px);
+    max-width: calc(100% - 102px);
     overflow: hidden;
     text-overflow: ellipsis;
   }

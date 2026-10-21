@@ -3824,6 +3824,8 @@
     window.updateDocumentTitle = updateDocumentTitle;
     window.fitIslandSecondaryLine = fitIslandSecondaryLine;
     window.updateIslandSecondaryLine = updateIslandSecondaryLine;
+    window.updateActiveStationCard = updateActiveStationCard;
+    window.setCurrentStation = (s) => { currentStation = s; };
   });
 
 })();
