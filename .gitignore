@@ -15,3 +15,6 @@ yarn-error.log*
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Scratch and temporary scripts
+scratch/
