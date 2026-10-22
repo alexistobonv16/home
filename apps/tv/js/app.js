@@ -330,10 +330,14 @@ const CANALES_PARTIDO_HOY = [
     btnAtajos: $('#btn-atajos'),
 
     buscador: $('#buscador'),
+    btnLimpiarBusqueda: $('#btn-limpiar-busqueda'),
+    kbdBusqueda: $('#kbd-busqueda'),
     chips: $('#chips'),
     btnToggleFiltros: $('#btn-toggle-filtros'),
+    badgeFiltrosActivos: $('#badge-filtros-activos'),
     cajaFiltrosAvanzados: $('#caja-filtros-avanzados'),
     selGrupo: $('#sel-grupo'),
+    btnLimpiarFiltros: $('#btn-limpiar-filtros'),
     chkGlobal: $('#chk-global'),
     estadoGlobal: $('#estado-global'),
     chkGeo: $('#chk-geo'),
@@ -992,11 +996,17 @@ const CANALES_PARTIDO_HOY = [
     }
     // (los canales caídos se recuerdan por URL durante la sesión, aunque se cambie de lista)
     estado.grupo = '';
+    if (dom.selGrupo) dom.selGrupo.value = '';
     if (estado.filtro !== 'favoritos') {
       estado.filtro = 'todos';
-      document.querySelectorAll('.chip-filtro').forEach(c => {
-        c.classList.toggle('activo', c.dataset.filtro === 'todos');
+      dom.chips?.querySelectorAll('[data-filtro]').forEach((c) => {
+        const esTodos = c.dataset.filtro === 'todos';
+        c.setAttribute('aria-pressed', String(esTodos));
+        c.setAttribute('aria-selected', String(esTodos));
+        c.classList.toggle('activo', esTodos);
       });
+      if (dom.chips) dom.chips.scrollLeft = 0;
+      actualizarDegradadoChips();
     }
     estado.listaUrl = r.url;
     estado.version++;
@@ -1324,6 +1334,12 @@ const CANALES_PARTIDO_HOY = [
     dom.lista.innerHTML = '';
     pintarMas();
     actualizarContadores();
+    actualizarIndicadorFiltrosActivos();
+
+    // Actualiza visibilidad del botón de limpiar búsqueda y del atajo
+    const tieneTexto = !!estado.consulta.trim();
+    if (dom.btnLimpiarBusqueda) dom.btnLimpiarBusqueda.hidden = !tieneTexto;
+    if (dom.kbdBusqueda) dom.kbdBusqueda.hidden = tieneTexto;
 
     // Sin lista cargada se muestran los atajos de listas (salvo en Favoritos, que funciona sin lista).
     dom.panelVacio.hidden = !(estado.canales.length === 0 && estado.filtro !== 'favoritos');
@@ -1335,13 +1351,46 @@ const CANALES_PARTIDO_HOY = [
     const vacio = dom.panelVacio.hidden && estado.filtrados.length === 0;
     dom.sinResultados.hidden = !vacio;
     if (vacio) {
-      dom.sinResultados.textContent = estado.consulta.trim()
-        ? estado.globales.total
-          ? `«${estado.consulta.trim()}» no está en esta lista, pero sí en otras (abajo).`
-          : `Ningún canal coincide con «${estado.consulta.trim()}».`
-        : estado.filtro === 'favoritos'
-          ? 'Aún no tienes favoritos. Toca la ⭐ de un canal (o pulsa S mientras lo ves) para guardarlo.'
-          : 'No hay canales con estos filtros.';
+      const tieneConsulta = !!estado.consulta.trim();
+      const hayFiltros = estado.filtro !== 'todos' || !!estado.grupo || !estado.ocultarGeo || !estado.ocultarMuertos || !estado.buscarGlobal;
+      const hayGlobales = estado.globales && estado.globales.total > 0;
+
+      let mensaje = '';
+      if (tieneConsulta) {
+        mensaje = hayGlobales
+          ? `«${esc(estado.consulta.trim())}» no está en esta lista, pero encontramos coincidencias en otras listas (abajo).`
+          : `Ningún canal coincide con «${esc(estado.consulta.trim())}».`;
+      } else if (estado.filtro === 'favoritos') {
+        mensaje = 'Aún no tienes favoritos. Toca la ⭐ de un canal (o pulsa S mientras lo ves) para guardarlo.';
+      } else {
+        mensaje = 'No hay canales disponibles con la combinación de filtros actual.';
+      }
+
+      const acciones = [];
+      if (tieneConsulta) {
+        acciones.push('<button type="button" class="btn-accion-vacio" data-accion-vacio="borrar-busqueda"><svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span>Borrar búsqueda</span></button>');
+      }
+      if (hayFiltros && estado.filtro !== 'favoritos') {
+        acciones.push('<button type="button" class="btn-accion-vacio" data-accion-vacio="limpiar-filtros"><svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg><span>Restablecer filtros</span></button>');
+      }
+      if (tieneConsulta && hayFiltros && estado.filtro !== 'favoritos') {
+        acciones.push('<button type="button" class="btn-accion-vacio btn-accion-vacio-primario" data-accion-vacio="limpiar-todo">Limpiar todo</button>');
+      }
+      if (hayGlobales) {
+        acciones.push(`<button type="button" class="btn-accion-vacio" data-accion-vacio="ver-globales">Ver ${fmtNum.format(estado.globales.total)} en otras listas ↓</button>`);
+      }
+
+      dom.sinResultados.innerHTML = `
+        <div class="estado-vacio-contenido">
+          <svg viewBox="0 0 24 24" class="estado-vacio-icono" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+          <p class="estado-vacio-texto">${mensaje}</p>
+          ${acciones.length ? `<div class="estado-vacio-acciones">${acciones.join('')}</div>` : ''}
+        </div>
+      `;
     }
 
     const aVerificar = Math.min(estado.filtrados.length, CONFIG.maxVerificar);
@@ -1380,6 +1429,98 @@ const CANALES_PARTIDO_HOY = [
     dom.contador.textContent = total
       ? `${fmtNum.format(estado.filtrados.length)} de ${fmtNum.format(total)} ${estado.filtro === 'favoritos' ? 'favoritos' : 'canales'}`
       : '';
+    actualizarDegradadoChips();
+  }
+
+  function actualizarDegradadoChips() {
+    const el = dom.chips;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const tieneDesborde = maxScroll > 2;
+    const scrollIzq = el.scrollLeft;
+    const hayDerecha = tieneDesborde && scrollIzq < maxScroll - 3;
+    const hayIzquierda = tieneDesborde && scrollIzq > 3;
+
+    if (hayIzquierda && hayDerecha) {
+      el.dataset.desborde = 'ambos';
+    } else if (hayDerecha) {
+      el.dataset.desborde = 'fin';
+    } else if (hayIzquierda) {
+      el.dataset.desborde = 'inicio';
+    } else {
+      el.dataset.desborde = 'ninguno';
+    }
+  }
+
+  function actualizarIndicadorFiltrosActivos() {
+    let activos = 0;
+    if (estado.grupo) activos++;
+    if (!estado.ocultarGeo) activos++;
+    if (!estado.ocultarMuertos) activos++;
+    if (!estado.buscarGlobal) activos++;
+
+    if (dom.badgeFiltrosActivos) {
+      if (activos > 0) {
+        dom.badgeFiltrosActivos.textContent = String(activos);
+        dom.badgeFiltrosActivos.hidden = false;
+        dom.badgeFiltrosActivos.setAttribute('title', `${activos} filtro(s) activo(s)`);
+      } else {
+        dom.badgeFiltrosActivos.textContent = '';
+        dom.badgeFiltrosActivos.hidden = true;
+      }
+    }
+
+    const hayFiltros = activos > 0 || (estado.filtro !== 'todos' && estado.filtro !== 'favoritos');
+    if (dom.btnLimpiarFiltros) {
+      dom.btnLimpiarFiltros.hidden = !hayFiltros;
+    }
+  }
+
+  function borrarBusqueda() {
+    if (dom.buscador) dom.buscador.value = '';
+    if (dom.btnLimpiarBusqueda) dom.btnLimpiarBusqueda.hidden = true;
+    if (dom.kbdBusqueda) dom.kbdBusqueda.hidden = false;
+    estado.consulta = '';
+    estado.tokens = [];
+    aplicarFiltros();
+    dom.buscador?.focus();
+  }
+
+  function restablecerFiltros({ incluirBusqueda = false } = {}) {
+    estado.filtro = 'todos';
+    dom.chips?.querySelectorAll('[data-filtro]').forEach((c) => {
+      const esTodos = c.dataset.filtro === 'todos';
+      c.setAttribute('aria-pressed', String(esTodos));
+      c.setAttribute('aria-selected', String(esTodos));
+      c.classList.toggle('activo', esTodos);
+    });
+    if (dom.chips) dom.chips.scrollLeft = 0;
+    actualizarDegradadoChips();
+
+    estado.grupo = '';
+    if (dom.selGrupo) dom.selGrupo.value = '';
+
+    estado.ocultarGeo = true;
+    if (dom.chkGeo) dom.chkGeo.checked = true;
+    Memoria.guardar('ocultarGeo', true);
+
+    estado.ocultarMuertos = true;
+    if (dom.chkMuertos) dom.chkMuertos.checked = true;
+    Memoria.guardar('ocultarMuertos', true);
+
+    estado.buscarGlobal = true;
+    if (dom.chkGlobal) dom.chkGlobal.checked = true;
+    Memoria.guardar('buscarGlobal', true);
+
+    if (incluirBusqueda) {
+      if (dom.buscador) dom.buscador.value = '';
+      if (dom.btnLimpiarBusqueda) dom.btnLimpiarBusqueda.hidden = true;
+      if (dom.kbdBusqueda) dom.kbdBusqueda.hidden = false;
+      estado.consulta = '';
+      estado.tokens = [];
+    }
+
+    aplicarFiltros();
   }
 
   function insignias(c, { global = false } = {}) {
@@ -2538,6 +2679,9 @@ const CANALES_PARTIDO_HOY = [
   // y filtra de forma incremental sobre los resultados anteriores.
   let pendienteBusqueda = 0;
   dom.buscador.addEventListener('input', () => {
+    const val = dom.buscador.value;
+    if (dom.btnLimpiarBusqueda) dom.btnLimpiarBusqueda.hidden = !val;
+    if (dom.kbdBusqueda) dom.kbdBusqueda.hidden = !!val;
     clearTimeout(pendienteBusqueda);
     pendienteBusqueda = setTimeout(() => {
       estado.consulta = dom.buscador.value;
@@ -2546,17 +2690,40 @@ const CANALES_PARTIDO_HOY = [
     }, 16);
   });
 
+  dom.btnLimpiarBusqueda?.addEventListener('click', borrarBusqueda);
+  dom.btnLimpiarFiltros?.addEventListener('click', () => restablecerFiltros({ incluirBusqueda: false }));
+
+  dom.sinResultados?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-accion-vacio]');
+    if (!btn) return;
+    const accion = btn.dataset.accionVacio;
+    if (accion === 'borrar-busqueda') {
+      borrarBusqueda();
+    } else if (accion === 'limpiar-filtros') {
+      restablecerFiltros({ incluirBusqueda: false });
+    } else if (accion === 'limpiar-todo') {
+      restablecerFiltros({ incluirBusqueda: true });
+    } else if (accion === 'ver-globales') {
+      dom.seccionGlobal?.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+
   dom.chips.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-filtro]');
     if (!chip) return;
     estado.filtro = chip.dataset.filtro;
     dom.chips.querySelectorAll('[data-filtro]').forEach((c) => {
-      c.setAttribute('aria-pressed', String(c === chip));
-      c.setAttribute('aria-selected', String(c === chip));
+      const esActivo = c === chip;
+      c.setAttribute('aria-pressed', String(esActivo));
+      c.setAttribute('aria-selected', String(esActivo));
+      c.classList.toggle('activo', esActivo);
     });
     aplicarFiltros();
     actualizarFicha(); // la posición "Canal X de Y" depende de la vista
   });
+
+  dom.chips.addEventListener('scroll', actualizarDegradadoChips, { passive: true });
+  window.addEventListener('resize', actualizarDegradadoChips);
   dom.selGrupo.addEventListener('change', () => {
     estado.grupo = dom.selGrupo.value;
     aplicarFiltros();
@@ -2919,6 +3086,7 @@ const CANALES_PARTIDO_HOY = [
   actualizarEstadoGlobal();
   actualizarBotonGuardar();
   aplicarFiltros(); // muestra favoritos/contadores aunque aún no haya lista
+  actualizarDegradadoChips();
   dom.video.muted = true;
   dom.video.playsInline = true;
   capa('reposo');

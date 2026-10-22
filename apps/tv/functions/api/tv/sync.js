@@ -6,11 +6,37 @@
  * Auth: only session tokens issued by /api/tv/auth (stored in KV) are valid.
  * No hardcoded fallback PINs or plain-PIN headers are accepted.
  */
-import defaultConfig from '../../default-config.json';
 
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function getExpectedPin(env) {
+  // 1. Prioridad: PIN dinámico vigente guardado en KV (site_config.tvPin o site_config.adminPin)
+  if (env && env.HOME_KV) {
+    try {
+      const raw = await env.HOME_KV.get('site_config');
+      if (raw) {
+        const cfg = JSON.parse(raw);
+        if (cfg.tvPin && typeof cfg.tvPin === 'string' && cfg.tvPin.trim()) {
+          return cfg.tvPin.trim();
+        }
+        if (cfg.adminPin && typeof cfg.adminPin === 'string' && cfg.adminPin.trim()) {
+          return cfg.adminPin.trim();
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Prioridad: Secreto seguro configurado en variables de entorno de Cloudflare Pages
+  const envPin = env?.TV_PIN || env?.ADMIN_PIN;
+  if (envPin && typeof envPin === 'string' && envPin.trim()) {
+    return envPin.trim();
+  }
+
+  // 3. Sin fallback público: si no hay PIN en KV ni en secrets, no se autoriza
+  return '';
 }
 
 async function checkAuth(context) {
@@ -19,17 +45,7 @@ async function checkAuth(context) {
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return false;
   if (!context.env || !context.env.HOME_KV) return false;
 
-  // PIN vigente (tvPin o adminPin como respaldo inicial)
-  let expectedPin = defaultConfig.adminPin || '';
-  const raw = await context.env.HOME_KV.get('site_config');
-  if (raw) {
-    try {
-      const cfg = JSON.parse(raw);
-      if (cfg.tvPin) expectedPin = cfg.tvPin;
-      else if (cfg.adminPin) expectedPin = cfg.adminPin;
-    } catch {}
-  }
-  expectedPin = (expectedPin || '').trim();
+  const expectedPin = await getExpectedPin(context.env);
   if (!expectedPin) return false;
 
   const sessionRaw = await context.env.HOME_KV.get(`tv_session_${token}`);

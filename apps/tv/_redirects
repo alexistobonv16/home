@@ -2,3 +2,5 @@
 /data / 301
 /legacy /index.legacy.html 200
 /clasica /index.legacy.html 200
+/default-config.json / 301
+/wrangler.jsonc / 404

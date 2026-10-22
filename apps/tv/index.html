@@ -281,17 +281,21 @@
                 <input id="buscador" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
                   placeholder="Buscar canal, país, deporte…"
                   class="input-buscador w-full rounded-lg border border-linea bg-sup text-xs text-white placeholder:text-slate-500 focus:border-cancha/60 focus:outline-none focus:ring-1 focus:ring-cancha/20" />
-                <kbd class="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-linea px-1.5 text-[10px] text-slate-500 lg:block">/</kbd>
+                <button id="btn-limpiar-busqueda" type="button" class="btn-limpiar-busqueda absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Borrar búsqueda" aria-label="Borrar búsqueda" hidden>
+                  <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <kbd id="kbd-busqueda" class="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-linea px-1.5 text-[10px] text-slate-500 lg:block">/</kbd>
               </div>
-              <button id="btn-toggle-filtros" type="button" class="btn-toggle-filtros" title="Filtros avanzados" aria-expanded="false" aria-controls="caja-filtros-avanzados">
+              <button id="btn-toggle-filtros" type="button" class="btn-toggle-filtros relative" title="Filtros avanzados" aria-expanded="false" aria-controls="caja-filtros-avanzados">
                 <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                <span id="badge-filtros-activos" class="badge-filtros-activos" hidden aria-hidden="true"></span>
                 <span class="sr-only">Filtros</span>
               </button>
             </div>
 
             <!-- Fila 2: Chips compactos con scroll horizontal -->
             <div id="chips" class="filtros-contenido" role="tablist" aria-label="Filtrar por tipo de contenido">
-              <button type="button" class="chip" role="tab" data-filtro="todos" aria-pressed="true" aria-selected="true">Todos</button>
+              <button type="button" class="chip activo" role="tab" data-filtro="todos" aria-pressed="true" aria-selected="true">Todos</button>
               <button type="button" class="chip" role="tab" data-filtro="deportes" aria-pressed="false" aria-selected="false">⚽ Deportes <span data-cuenta="deportes" class="tabular-nums opacity-70"></span></button>
               <button type="button" class="chip" role="tab" data-filtro="noticias" aria-pressed="false" aria-selected="false">📰 Noticias <span data-cuenta="noticias" class="tabular-nums opacity-70"></span></button>
               <button type="button" class="chip" role="tab" data-filtro="peliculas" aria-pressed="false" aria-selected="false">🎬 Películas <span data-cuenta="peliculas" class="tabular-nums opacity-70"></span></button>
@@ -301,9 +305,13 @@
 
             <!-- Desplegable de filtros avanzados (oculto por defecto para ahorrar 100% del espacio) -->
             <div id="caja-filtros-avanzados" class="caja-filtros-avanzados" hidden>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center justify-between gap-2">
                 <label for="sel-grupo" class="sr-only">Categoría exacta de la lista</label>
                 <select id="sel-grupo" class="control min-w-0 flex-1 !py-1 text-xs" disabled><option value="">Todas las categorías</option></select>
+                <button id="btn-limpiar-filtros" type="button" class="btn-limpiar-filtros shrink-0" title="Restablecer filtros avanzados" hidden>
+                  <svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                  <span>Restablecer</span>
+                </button>
               </div>
 
               <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
@@ -345,7 +353,7 @@
 
           <ul id="lista-canales" class="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1" aria-label="Lista de canales"></ul>
           <div id="centinela" class="flex justify-center py-4 text-xs text-slate-600" hidden>Cargando más canales…</div>
-          <p id="sin-resultados" class="vacio" hidden></p>
+          <div id="sin-resultados" class="vacio" hidden role="status"></div>
 
           <!-- Resultados de la búsqueda global (canales de otras listas) -->
           <section id="seccion-global" class="mt-5 pb-4" hidden aria-label="Resultados en otras listas">

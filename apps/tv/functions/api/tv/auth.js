@@ -4,7 +4,6 @@
  * stored in Cloudflare KV. No hardcoded fallback PINs are accepted.
  * Includes per-IP brute-force rate limiting.
  */
-import defaultConfig from '../../default-config.json';
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 31; // 31 días (equivalente al token mensual anterior)
 const MAX_FAILED_ATTEMPTS = 5;
@@ -65,21 +64,30 @@ async function clearFailures(env, ip) {
 }
 
 async function getExpectedPin(env) {
-  let expectedPin = defaultConfig.adminPin || '';
+  // 1. Prioridad: PIN dinámico vigente guardado en KV (site_config.tvPin o site_config.adminPin)
   if (env && env.HOME_KV) {
-    const raw = await env.HOME_KV.get('site_config');
-    if (raw) {
-      try {
+    try {
+      const raw = await env.HOME_KV.get('site_config');
+      if (raw) {
         const cfg = JSON.parse(raw);
-        if (cfg.tvPin) {
-          expectedPin = cfg.tvPin;
-        } else if (cfg.adminPin) {
-          expectedPin = cfg.adminPin;
+        if (cfg.tvPin && typeof cfg.tvPin === 'string' && cfg.tvPin.trim()) {
+          return cfg.tvPin.trim();
         }
-      } catch {}
-    }
+        if (cfg.adminPin && typeof cfg.adminPin === 'string' && cfg.adminPin.trim()) {
+          return cfg.adminPin.trim();
+        }
+      }
+    } catch {}
   }
-  return (expectedPin || '').trim();
+
+  // 2. Prioridad: Secreto seguro configurado en variables de entorno de Cloudflare Pages
+  const envPin = env?.TV_PIN || env?.ADMIN_PIN;
+  if (envPin && typeof envPin === 'string' && envPin.trim()) {
+    return envPin.trim();
+  }
+
+  // 3. Sin fallback público: si no hay PIN en KV ni en secrets, no se autoriza
+  return '';
 }
 
 export async function onRequestPost(context) {
@@ -104,8 +112,12 @@ export async function onRequestPost(context) {
 
     const expectedPin = await getExpectedPin(context.env);
 
+    if (!expectedPin) {
+      return json({ success: false, error: 'Acceso no configurado. Falta definir TV_PIN o ADMIN_PIN en Cloudflare.' }, 503);
+    }
+
     // Sin bypass: solo el PIN vigente (tvPin o adminPin) es válido.
-    if (!expectedPin || pin.trim() !== expectedPin) {
+    if (pin.trim() !== expectedPin) {
       await registerFailure(context.env, ip);
       return json({ success: false, error: 'PIN o clave incorrecta.' }, 401);
     }
@@ -157,22 +169,26 @@ export async function onRequestPut(context) {
       return json({ success: false, error: 'Almacenamiento no disponible.' }, 503);
     }
 
-    // Read stored config from KV
-    let config = { ...defaultConfig };
-    const raw = await context.env.HOME_KV.get('site_config');
-    if (raw) {
-      try { config = JSON.parse(raw); } catch {}
+    const expectedPin = await getExpectedPin(context.env);
+
+    if (!expectedPin) {
+      return json({ success: false, error: 'Acceso no configurado. Falta definir TV_PIN o ADMIN_PIN en Cloudflare.' }, 503);
     }
 
-    const expectedPin = (config.tvPin || config.adminPin || defaultConfig.adminPin || '').trim();
-
-    // Sin bypass: exige la contraseña vigente (sin 'alexis2026' hardcoded).
-    if (!expectedPin || currentPassword.trim() !== expectedPin) {
+    // Sin bypass: exige la contraseña vigente.
+    if (currentPassword.trim() !== expectedPin) {
       await registerFailure(context.env, ip);
       return json({ success: false, error: 'La contraseña actual no es correcta.' }, 401);
     }
 
     await clearFailures(context.env, ip);
+
+    // Read stored config from KV (conserva claves previas de site_config)
+    let config = {};
+    const raw = await context.env.HOME_KV.get('site_config');
+    if (raw) {
+      try { config = JSON.parse(raw); } catch {}
+    }
 
     // Actualiza SOLO la clave de la TV. La clave de administrador
     // solo cambia desde /api/admin/data para no sincronizar privilegios.
