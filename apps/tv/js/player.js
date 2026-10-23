@@ -675,8 +675,19 @@
             if (streamType === 0x1B || streamType === 0x24) {
               this.hasH264Video = true;
               this.isActualMpeg2Stream = false;
+              const detectedCodec = streamType === 0x24 ? 'HEVC' : 'H.264';
+              if (this.canal && this.canal.codec !== detectedCodec) {
+                this.canal.codec = detectedCodec;
+                this.ev.onFormatoDetectado?.(this.canal, detectedCodec);
+              }
             } else if (streamType === 0x02) {
-              if (!this.hasH264Video) this.isActualMpeg2Stream = true;
+              if (!this.hasH264Video) {
+                this.isActualMpeg2Stream = true;
+                if (this.canal && this.canal.codec !== 'MPEG-2') {
+                  this.canal.codec = 'MPEG-2';
+                  this.ev.onFormatoDetectado?.(this.canal, 'MPEG-2');
+                }
+              }
             } else if (streamType === 0x03 || streamType === 0x04) {
               audioPids.add(elemPid);
               if (!this.selectedMp2Pid) this.selectedMp2Pid = elemPid;
@@ -1051,6 +1062,18 @@
       hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
         if (sesion !== this.sesion) return;
         this.ev.onCalidades?.(data.levels.map((n, i) => ({ indice: i, alto: n.height, bitrate: n.bitrate })));
+        const lvl0 = data.levels?.[0];
+        const vCodec = lvl0?.videoCodec || lvl0?.attrs?.CODECS;
+        if (vCodec && this.canal && !this.canal.codec) {
+          let detected = null;
+          if (/avc1/i.test(vCodec)) detected = 'H.264';
+          else if (/hvc1|hev1/i.test(vCodec)) detected = 'HEVC';
+          else if (/mp4v/i.test(vCodec)) detected = 'MPEG-4';
+          if (detected) {
+            this.canal.codec = detected;
+            this.ev.onFormatoDetectado?.(this.canal, detected);
+          }
+        }
         this._reproducir();
       });
 
@@ -1314,13 +1337,16 @@
     _medirProgreso() {
       const v = this.video;
       if (this.terminal) return;
-      if (!this.h264wActive && v.paused) return;
+      const isCanvasMode = this.h264wActive || this.isMpeg2Decoding;
+      if (!isCanvasMode && v.paused) return;
       const ahora = performance.now();
-      const cuadros = this.h264wActive ? (this.h264wPlayer?.renderedFrameCount || 0) : (v.getVideoPlaybackQuality?.().totalVideoFrames || 0);
+      const cuadros = this.isMpeg2Decoding
+        ? (this.mpeg2Player?.renderedFrameCount || 0)
+        : (this.h264wActive ? (this.h264wPlayer?.renderedFrameCount || 0) : (v.getVideoPlaybackQuality?.().totalVideoFrames || 0));
       if (cuadros > 0) this.cuadrosReportados = true;
-      const sinMetrica = !this.cuadrosReportados && (v.videoWidth > 0 || (this.h264wActive && cuadros > 0));
+      const sinMetrica = !this.cuadrosReportados && (v.videoWidth > 0 || (isCanvasMode && cuadros > 0));
 
-      const avanza = this.h264wActive
+      const avanza = isCanvasMode
         ? (cuadros > this.ultimosCuadros || cuadros > 0)
         : (v.currentTime > this.ultimoTiempo + .05 && v.readyState >= 2 && (cuadros > this.ultimosCuadros || sinMetrica || (v.videoWidth > 0 && !v.getVideoPlaybackQuality) || this.canal?.formato === 'audio'));
 
@@ -1328,7 +1354,7 @@
         const intervaloMs = ahora - this.ultimoAvance;
         if (intervaloMs > 1500) this.progresoConfirmacionMs = 0;
         if (this.diagnostico.inicioVideoMs != null && intervaloMs <= 1500) {
-          const deltaSec = this.h264wActive ? (intervaloMs / 1000) : (v.currentTime - this.ultimoTiempo);
+          const deltaSec = isCanvasMode ? (intervaloMs / 1000) : (v.currentTime - this.ultimoTiempo);
           this.progresoConfirmacionMs += Math.min(intervaloMs, deltaSec * 1000);
         }
         if (this.progresoConfirmacionMs > 2500) {
@@ -1342,7 +1368,7 @@
           this._emit('recuperado');
         }
         this.ultimosCuadros = cuadros;
-        this.ultimoTiempo = this.h264wActive ? (this._getVbPicPos() || (this.ultimoTiempo + 0.1)) : v.currentTime;
+        this.ultimoTiempo = isCanvasMode ? (this.h264wActive ? (this._getVbPicPos() || (this.ultimoTiempo + 0.1)) : (this.ultimoTiempo + 0.1)) : v.currentTime;
         this.ultimoAvance = ahora;
         this._cerrarBuffer();
         clearTimeout(this.tCongelado);
@@ -1354,10 +1380,13 @@
           this._emit('reproduciendo');
         }
         const minimoMs = this.canal?.minimoConfirmacionMs === 60000 ? 60000 : 15000;
-        if (!this.videoConfirmado && (v.videoWidth > 0 || this.h264wActive) && this.progresoConfirmacionMs >= minimoMs) {
+        if (!this.videoConfirmado && (v.videoWidth > 0 || isCanvasMode) && this.progresoConfirmacionMs >= minimoMs) {
           this.videoConfirmado = true;
           this.diagnostico.videoConfirmado15s = true;
-          this.ev.onConfirmacionVideo?.(this.canal, { duracionConfirmadaMs: this.progresoConfirmacionMs });
+          this.ev.onConfirmacionVideo?.(this.canal, {
+            duracionConfirmadaMs: this.progresoConfirmacionMs,
+            codec: this.isActualMpeg2Stream ? 'MPEG-2' : (this.hasH264Video ? 'H.264' : (this.canal?.codec || null))
+          });
         }
       } else if (this.diagnostico.inicioVideoMs != null) {
         if (ahora - this.ultimoAvance > 1500 && this.inicioBuffer == null) {

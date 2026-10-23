@@ -71,6 +71,7 @@
       const clasificacion = ok ? confirmado ? 'funcional' : 'accesible' : restringido ? 'restringido' : detalle.iniciado ? 'fallo-reproduccion' : 'no-verificado';
       this.salud.set(url, { ok, motivo, clasificacion, codigo: detalle.codigo || '', confirmadoAntes: detalle.confirmadoAntes === true,
         duracionConfirmadaMs: confirmado ? detalle.duracionConfirmadaMs || 15000 : 0,
+        codec: detalle.codec || this.salud.get(url)?.codec || null,
         reproduccion: !!confirmado, origen: 'reproductor', hora: Date.now() });
       this._programarGuardado();
     }
@@ -160,8 +161,53 @@
       const texto = new TextDecoder('utf-8').decode(muestra);
 
       if (texto.trimStart().startsWith('#EXTM3U')) {
-        if (/#EXT-X-(STREAM-INF|TARGETDURATION|MEDIA|MEDIA-SEQUENCE)/i.test(texto)) return { ok: true, hlsValido: true, respuestaMs: Math.max(0, Date.now() - inicio), motivo: 'manifiesto HLS válido' };
-        return { ok: true, motivo: 'manifiesto M3U' };
+        let codec = null;
+        const m = texto.match(/CODECS="([^"]+)"/i);
+        if (m) {
+          const cStr = m[1].toLowerCase();
+          if (cStr.includes('avc1') || cStr.includes('h264')) codec = 'H.264';
+          else if (cStr.includes('hvc1') || cStr.includes('hev1') || cStr.includes('265')) codec = 'HEVC';
+          else if (cStr.includes('mp4v') || cStr.includes('mpeg2')) codec = 'MPEG-2';
+        }
+        if (/#EXT-X-(STREAM-INF|TARGETDURATION|MEDIA|MEDIA-SEQUENCE)/i.test(texto)) return { ok: true, hlsValido: true, codec, respuestaMs: Math.max(0, Date.now() - inicio), motivo: 'manifiesto HLS válido' };
+        return { ok: true, codec, motivo: 'manifiesto M3U' };
+      }
+      if (muestra && muestra.length >= 188 && muestra[0] === 0x47) {
+        let codec = null;
+        let pmtPid = null;
+        for (let i = 0; i + 188 <= muestra.length; i += 188) {
+          if (muestra[i] !== 0x47) continue;
+          const pid = ((muestra[i + 1] & 0x1f) << 8) | muestra[i + 2];
+          const payloadStart = (muestra[i + 1] & 0x40) !== 0;
+          const afc = (muestra[i + 3] >> 4) & 3;
+          let off = i + 4;
+          if (afc === 2 || afc === 3) off += 1 + muestra[i + 4];
+          if (off >= i + 188) continue;
+          if (payloadStart) off += 1 + muestra[off];
+          if (off >= i + 188) continue;
+          if (pid === 0 && pmtPid === null) {
+            const secLen = ((muestra[off + 1] & 0x0f) << 8) | muestra[off + 2];
+            for (let p = off + 8; p < off + 3 + secLen - 4; p += 4) {
+              const progNum = (muestra[p] << 8) | muestra[p + 1];
+              if (progNum !== 0) { pmtPid = ((muestra[p + 2] & 0x1f) << 8) | muestra[p + 3]; break; }
+            }
+          } else if (pmtPid !== null && pid === pmtPid) {
+            const secLen = ((muestra[off + 1] & 0x0f) << 8) | muestra[off + 2];
+            const progInfoLen = ((muestra[off + 10] & 0x0f) << 8) | muestra[off + 11];
+            let p = off + 12 + progInfoLen;
+            const end = off + 3 + secLen - 4;
+            while (p < end) {
+              const st = muestra[p];
+              const esInfoLen = ((muestra[p + 3] & 0x0f) << 8) | muestra[p + 4];
+              if (st === 0x02) codec = 'MPEG-2';
+              else if (st === 0x1B) codec = 'H.264';
+              else if (st === 0x24) codec = 'HEVC';
+              p += 5 + esInfoLen;
+            }
+            break;
+          }
+        }
+        return { ok: true, codec, motivo: `responde stream TS${codec ? ` (${codec})` : ''}` };
       }
       if (/^(video|audio)\//.test(tipo) || tipo.includes('mpegurl') || tipo.includes('octet-stream')) {
         return { ok: true, motivo: `responde (${tipo.split(';')[0]})` };

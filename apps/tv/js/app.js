@@ -412,12 +412,103 @@ const CANALES_PARTIDO_HOY = [
   const fmtNum = new Intl.NumberFormat('es');
   const fmtHora = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' });
   const esMovil = () => window.matchMedia('(max-width: 1023px)').matches;
-  function indicadorSenal(c) {
-    const s = estadosCanales.resolver(c, verificador.estado(c.url));
-    if (s.estado === 'sin-verificar' && saludDestacados.get(c.url)?.ok) {
-      return '<span class="insignia estado-senal" title="Manifiesto HLS accesible; reproducción sostenida pendiente">HLS verificado</span>';
+  const CLAVE_MEMORIA_FORMATOS = 'at_tv_formatos_codecs';
+  const formatosMemoria = new Map();
+  try {
+    const raw = typeof Memoria !== 'undefined' && Memoria.leer ? Memoria.leer(CLAVE_MEMORIA_FORMATOS, null) : localStorage.getItem(CLAVE_MEMORIA_FORMATOS);
+    if (raw) {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed === 'object') {
+        for (const [k, v] of Object.entries(parsed)) formatosMemoria.set(k, v);
+      }
     }
-    return `<span class="insignia estado-senal" data-estado="${s.estado}" title="${esc(s.motivo)}">${s.etiqueta}</span>`;
+  } catch {}
+
+  function guardarFormatosMemoria() {
+    try {
+      const obj = Object.fromEntries(formatosMemoria.entries());
+      if (typeof Memoria !== 'undefined' && Memoria.guardar) Memoria.guardar(CLAVE_MEMORIA_FORMATOS, obj);
+      localStorage.setItem(CLAVE_MEMORIA_FORMATOS, JSON.stringify(obj));
+    } catch {}
+  }
+
+  function obtenerFormatoCanal(c) {
+    if (!c) return { etiqueta: 'N/A', formato: 'desconocido', detalle: '' };
+
+    // 1. Detección en tiempo real persistida o activa en canal
+    const codecGuardado = formatosMemoria.get(c.url) || c.codec || verificador?.estado?.(c.url)?.codec;
+    if (codecGuardado) {
+      const fLower = String(codecGuardado).toLowerCase();
+      if (fLower.includes('mpeg') || fLower.includes('mp2') || fLower.includes('mpg')) {
+        return { etiqueta: 'MPEG-2', formato: 'mpeg2', detalle: 'Video MPEG-2' };
+      }
+      if (fLower.includes('hevc') || fLower.includes('265')) {
+        return { etiqueta: 'HEVC', formato: 'hevc', detalle: 'Video HEVC / H.265' };
+      }
+      if (fLower.includes('264') || fLower.includes('avc')) {
+        return { etiqueta: 'H.264', formato: 'h264', detalle: 'Video AVC / H.264' };
+      }
+      return { etiqueta: String(codecGuardado).toUpperCase(), formato: fLower, detalle: `Video ${codecGuardado}` };
+    }
+
+    // 2. Si es el canal reproduciéndose actualmente en el reproductor
+    if (typeof reproductor !== 'undefined' && (estado.actual?.id === c.id || estado.actual?.url === c.url)) {
+      if (reproductor.isActualMpeg2Stream || reproductor.isMpeg2Decoding || reproductor.modo === 'mpeg2') {
+        return { etiqueta: 'MPEG-2', formato: 'mpeg2', detalle: 'Decodificador MPEG-2 activo' };
+      }
+      if (reproductor.hasH264Video || reproductor.modo === 'wasm') {
+        return { etiqueta: 'H.264', formato: 'h264', detalle: 'Video H.264' };
+      }
+    }
+
+    // 3. Pistas en el nombre del canal o etiquetas del M3U
+    const textoMeta = `${c.nombre || ''} ${(c.etiquetas || []).join(' ')} ${c.tvgId || ''}`.toLowerCase();
+    if (/\b(mpeg-?2|mpg-?2|mp2v)\b/i.test(textoMeta)) {
+      return { etiqueta: 'MPEG-2', formato: 'mpeg2', detalle: 'Formato MPEG-2 indicado en metadatos' };
+    }
+    if (/\b(hevc|h\.?265)\b/i.test(textoMeta)) {
+      return { etiqueta: 'HEVC', formato: 'hevc', detalle: 'Formato HEVC / H.265 indicado en metadatos' };
+    }
+    if (/\b(h\.?264|avc|avc1)\b/i.test(textoMeta)) {
+      return { etiqueta: 'H.264', formato: 'h264', detalle: 'Formato H.264 indicado en metadatos' };
+    }
+
+    // 4. Pistas en la URL o formato nativo
+    const urlLower = (c.url || '').toLowerCase();
+    if (/\b(mpeg-?2|mpg-?2)\b/i.test(urlLower)) {
+      return { etiqueta: 'MPEG-2', formato: 'mpeg2', detalle: 'MPEG-2 por ruta de stream' };
+    }
+    if (/\b(hevc|h\.?265)\b/i.test(urlLower)) {
+      return { etiqueta: 'HEVC', formato: 'hevc', detalle: 'HEVC por ruta de stream' };
+    }
+    if (/\.ts(\?|$)/i.test(urlLower) || c.formato === 'ts') {
+      return { etiqueta: 'TS', formato: 'ts', detalle: 'Transport Stream MPEG-TS' };
+    }
+    if (/\.m3u8?(\?|$)/i.test(urlLower) || c.formato === 'hls') {
+      return { etiqueta: 'HLS', formato: 'hls', detalle: 'HTTP Live Streaming' };
+    }
+    if (/\.mpd(\?|$)/i.test(urlLower) || c.formato === 'dash') {
+      return { etiqueta: 'DASH', formato: 'dash', detalle: 'MPEG-DASH' };
+    }
+    if (/\.(mp4|m4v|webm|mov)(\?|$)/i.test(urlLower) || c.formato === 'archivo') {
+      return { etiqueta: 'MP4', formato: 'archivo', detalle: 'Archivo MP4 / WebM' };
+    }
+    if (c.formato === 'audio' || /\.(mp3|aac|m4a|ogg|opus|wav)(\?|$)/i.test(urlLower)) {
+      return { etiqueta: 'AUDIO', formato: 'audio', detalle: 'Stream de audio' };
+    }
+    if (c.formato && c.formato !== 'desconocido') {
+      return { etiqueta: c.formato.toUpperCase(), formato: c.formato, detalle: `Formato ${c.formato}` };
+    }
+
+    return { etiqueta: 'HLS', formato: 'hls', detalle: 'Stream HLS' };
+  }
+
+  function indicadorSenal(c) {
+    const fmt = obtenerFormatoCanal(c);
+    const s = estadosCanales.resolver(c, verificador.estado(c.url));
+    const motivoTexto = s.motivo ? ` · ${s.motivo}` : '';
+    const titulo = esc(`${fmt.detalle || fmt.etiqueta} (${s.etiqueta}${motivoTexto})`);
+    return `<span class="insignia estado-senal" data-formato="${fmt.formato}" data-estado="${s.estado}" title="${titulo}">${fmt.etiqueta}</span>`;
   }
   function medirUnaVez(nombre, intento, parametros) {
     const clave = `${nombre}:${intento}`;
@@ -489,7 +580,7 @@ const CANALES_PARTIDO_HOY = [
   ------------------------------------------------- */
 
   const CAMPOS_FAVORITO = ['url', 'nombre', 'calidad', 'etiquetas', 'geobloqueado', 'no247', 'grupos',
-    'logo', 'formato', 'compatible', 'pais', 'referrer', 'userAgent', 'busqueda'];
+    'logo', 'formato', 'codec', 'compatible', 'pais', 'referrer', 'userAgent', 'busqueda'];
 
   function fichaFavorito(c, guardado = Date.now()) {
     const f = { guardado };
@@ -526,6 +617,7 @@ const CANALES_PARTIDO_HOY = [
       geobloqueado: !!f.geobloqueado,
       no247: !!f.no247,
       formato: f.formato || 'desconocido',
+      codec: f.codec || null,
       compatible: f.compatible !== false,
       pais: f.pais || '',
       referrer: f.referrer || null,
@@ -1634,8 +1726,20 @@ const CANALES_PARTIDO_HOY = [
   const reproductor = new ReproductorIPTV(dom.video, {
     onEstado: alCambiarEstado,
     onCambioVolumen: () => actualizarSonido(),
+    onFormatoDetectado: (canal, codec) => {
+      if (!canal || !codec) return;
+      canal.codec = codec;
+      formatosMemoria.set(canal.url, codec);
+      guardarFormatosMemoria();
+      refrescarTarjeta(canal);
+      if (estado.actual?.url === canal.url) actualizarFicha();
+    },
     onConfirmacionVideo: (canal, detalle) => {
-      verificador.marcar(canal.url, true, 'reproduce correctamente', { confirmado: true, ...detalle });
+      const codec = detalle?.codec || (reproductor.isActualMpeg2Stream ? 'MPEG-2' : (reproductor.hasH264Video ? 'H.264' : (canal.codec || 'HLS')));
+      canal.codec = codec;
+      formatosMemoria.set(canal.url, codec);
+      guardarFormatosMemoria();
+      verificador.marcar(canal.url, true, 'reproduce correctamente', { confirmado: true, codec, ...detalle });
       refrescarTarjeta(estado.actual?.url === canal.url ? estado.actual : canal);
       if (estado.actual?.url === canal.url) actualizarFicha();
     },
@@ -1783,6 +1887,11 @@ const CANALES_PARTIDO_HOY = [
       cancelarRespaldo();
       avisoRespaldo.hidden = true;
       if (est === 'reproduciendo' && canal) {
+        if (reproductor.isActualMpeg2Stream) {
+          canal.codec = 'MPEG-2';
+          formatosMemoria.set(canal.url, 'MPEG-2');
+          guardarFormatosMemoria();
+        }
         saludDestacados.set(canal.url, { ...saludDestacados.get(canal.url), ok: true, reproduciendo: true });
         pintarSenales();
       }
@@ -1925,7 +2034,8 @@ const CANALES_PARTIDO_HOY = [
 
     // Canal y formato
     const canalTexto = c ? `${c.nombre}${c.id || c.tvgId ? ` (${c.id || c.tvgId})` : ''}` : 'Ninguno';
-    const formatoTexto = c ? (c.formato ? c.formato.toUpperCase() : 'HLS') : 'N/A';
+    const fmtInfo = c ? obtenerFormatoCanal(c) : null;
+    const formatoTexto = fmtInfo ? `${fmtInfo.etiqueta}${c.formato && c.formato.toUpperCase() !== fmtInfo.etiqueta ? ` (${c.formato.toUpperCase()})` : ''}` : 'N/A';
 
     // Resolución de video y viewport
     const resVideo = v && v.videoWidth && v.videoHeight ? `${v.videoWidth}x${v.videoHeight}` : 'Esperando señal…';

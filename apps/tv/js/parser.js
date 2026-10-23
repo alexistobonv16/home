@@ -381,7 +381,7 @@
     if (/\.flv$/.test(ruta)) return 'flv';
     return 'desconocido'; // p. ej. .php que redirige a un .m3u8: se intentará como HLS
   }
-  const FORMATOS_INCOMPATIBLES = new Set(['dash', 'ts', 'flv']);
+  const FORMATOS_INCOMPATIBLES = new Set(['dash', 'flv']);
 
   /** Nombre de respaldo cuando la entrada no trae #EXTINF. */
   function nombreDesdeUrl(href) {
@@ -416,6 +416,11 @@
     const tvgId = a['tvg-id'] || '';
     const pais = (a['tvg-country'] || (tvgId.match(RE_PAIS_TVGID) || [])[1] || '').slice(0, 2).toUpperCase();
     const formato = detectarFormato(url);
+    let codec = null;
+    const metaTexto = `${nombre} ${etiquetas.join(' ')} ${url}`.toLowerCase();
+    if (/\b(mpeg-?2|mpg-?2|mp2v)\b/i.test(metaTexto)) codec = 'MPEG-2';
+    else if (/\b(hevc|h\.?265)\b/i.test(metaTexto)) codec = 'HEVC';
+    else if (/\b(h\.?264|avc1?)\b/i.test(metaTexto)) codec = 'H.264';
     let geobloqueado = false;
     let no247 = false;
     for (const e of etiquetas) {
@@ -427,7 +432,7 @@
     // Texto donde busca el buscador (nombre, categorías en inglés y español, país, calidad, sinónimos).
     const baseId = tvgId.split('.')[0];
     const sinonimos = SINONIMOS[baseId.toLowerCase()] || '';
-    const busqueda = normalizar(`${nombre} ${grupos.join(' ')} ${grupos.map(traducirGrupo).join(' ')} ${pais} ${calidad || ''} ${baseId} ${sinonimos}`);
+    const busqueda = normalizar(`${nombre} ${codec || ''} ${formato} ${grupos.join(' ')} ${grupos.map(traducirGrupo).join(' ')} ${pais} ${calidad || ''} ${baseId} ${sinonimos}`);
 
     return {
       id: `${indice}-${hash(url)}`,
@@ -440,7 +445,8 @@
       logo: urlSegura(a['tvg-logo'] || a.logo || ''),
       url,
       formato,
-      compatible: !FORMATOS_INCOMPATIBLES.has(formato),
+      codec,
+      compatible: !FORMATOS_INCOMPATIBLES.has(formato) || formato === 'ts',
       tvgId,
       pais,
       referrer: opciones.referrer || opciones.referer || a['http-referrer'] || a.referrer || null,

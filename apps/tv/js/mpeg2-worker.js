@@ -844,6 +844,11 @@ function demuxTransportStream(data, options = {}) {
     // mid-group-of-pictures yields a first PES payload that starts mid-picture. That data
     // references a sequence header and reference frames that were never captured, so it is
     // undecodable; keeping it only produces a stream that begins with a partial picture.
+    const requireSequenceHeader = options.requireSequenceHeader ?? true;
+    if (!requireSequenceHeader) {
+        return { video: assembled, pts: [], stats, videoPid };
+    }
+
     const firstSequenceHeader = findStartCodeWhere(
         assembled,
         0,
@@ -4609,6 +4614,8 @@ class Mpeg2Decoder {
         this.onError = options.onError ?? null;
         /** When false, a failed picture is reported and skipped instead of aborting. */
         this.strict = options.strict ?? false;
+        this.streaming = options.streaming ?? false;
+        this._pictureOpen = false;
 
         this.sequence = new SequenceState();
         this.picture = new PictureState();
@@ -4669,10 +4676,10 @@ class Mpeg2Decoder {
      */
     decode(video, options = {}) {
         const limit = options.limit ?? Infinity;
+        const flush = options.flush ?? !this.streaming;
         const reader = new BitReader(video);
 
-        let sequenceValidated = false;
-        let pictureOpen = false;
+        let sequenceValidated = Boolean(this.sequence && this.sequence.hasHeader && this.sequence.width > 0);
 
         for (;;) {
             const code = reader.nextStartCode();
@@ -4681,7 +4688,7 @@ class Mpeg2Decoder {
 
             try {
                 if (code === SEQUENCE_HEADER_CODE) {
-                    pictureOpen = this._finishPicture(pictureOpen);
+                    this._pictureOpen = this._finishPicture(this._pictureOpen);
                     parseSequenceHeader(reader, this.sequence, offset);
                 } else if (code === EXTENSION_START_CODE) {
                     const id = reader.read(4);
@@ -4709,7 +4716,7 @@ class Mpeg2Decoder {
                     } else if (id === EXT_PICTURE_CODING) {
                         parsePictureCodingExtension(reader, this.picture, offset);
                         this._beginPicture(offset);
-                        pictureOpen = true;
+                        this._pictureOpen = true;
                     }
                 } else if (code === GROUP_START_CODE) {
                     parseGopHeader(reader, this.gop);
@@ -4728,13 +4735,13 @@ class Mpeg2Decoder {
                     // hand must CLEAR a flag armed by an earlier random access entry.
                     this._dropLeadingB = this.gop.brokenLink || !this.newerReference;
                 } else if (code === PICTURE_START_CODE) {
-                    pictureOpen = this._finishPicture(pictureOpen);
+                    this._pictureOpen = this._finishPicture(this._pictureOpen);
                     if (!sequenceValidated) {
                         throw new BitstreamError('picture before sequence header', offset);
                     }
                     parsePictureHeader(reader, this.picture, offset);
                 } else if (code >= SLICE_START_CODE_MIN && code <= SLICE_START_CODE_MAX) {
-                    if (!pictureOpen) {
+                    if (!this._pictureOpen) {
                         throw new BitstreamError('slice outside a picture', offset);
                     }
                     if (this.currentFrame) {
@@ -4749,7 +4756,7 @@ class Mpeg2Decoder {
                         this.stats.slices++;
                     }
                 } else if (code === SEQUENCE_END_CODE) {
-                    pictureOpen = this._finishPicture(pictureOpen);
+                    this._pictureOpen = this._finishPicture(this._pictureOpen);
                 }
                 // User data and unrecognised extensions need nothing: the next start code
                 // scan steps over their payload.
@@ -4761,15 +4768,17 @@ class Mpeg2Decoder {
                 this.stats.skippedPictures++;
                 if (this.onError) this.onError(error);
                 this._abandonPicture();
-                pictureOpen = false;
+                this._pictureOpen = false;
                 if (this.stats.errors.length > 256) break;
             }
 
             if (this.stats.framesEmitted >= limit) break;
         }
 
-        this._finishPicture(pictureOpen);
-        this.flush();
+        if (flush) {
+            this._pictureOpen = this._finishPicture(this._pictureOpen);
+            this.flush();
+        }
         return this.stats;
     }
 
@@ -5170,15 +5179,26 @@ let decoder = null;
 let currentWidth = 0;
 let currentHeight = 0;
 let rgbaBuffer = null;
+let frameSequence = 0;
+let framePromiseChain = Promise.resolve();
+let streamEpoch = 0;
 
 function resetDecoder() {
+    streamEpoch++;
+    const thisEpoch = streamEpoch;
+    frameSequence = 0;
+    framePromiseChain = Promise.resolve();
+    currentWidth = 0;
+    currentHeight = 0;
+    rgbaBuffer = null;
+
     decoder = new Mpeg2Decoder({
         onFrame: (frame) => {
             const w = decoder.sequence ? decoder.sequence.width : frame.codedWidth;
             const h = decoder.sequence ? decoder.sequence.height : frame.codedHeight;
             if (!w || !h) return;
 
-            if (w !== currentWidth || h !== currentHeight) {
+            if (w !== currentWidth || h !== currentHeight || !rgbaBuffer) {
                 currentWidth = w;
                 currentHeight = h;
                 rgbaBuffer = new Uint8ClampedArray(w * h * 4);
@@ -5187,36 +5207,61 @@ function resetDecoder() {
             frameToRgba(frame, rgbaBuffer, w, h);
 
             const dar = decoder.sequence && decoder.sequence.aspectRatio ? decoder.sequence.aspectRatio.name : null;
-            let sent = false;
+            const fps = (decoder.sequence && typeof decoder.sequence.frameRate === 'number' && decoder.sequence.frameRate > 0)
+                ? decoder.sequence.frameRate
+                : 29.97;
+            const seq = frameSequence++;
+
+            // Clone frame bytes immediately so synchronous decode loop does not mutate
+            // this frame buffer while asynchronous createImageBitmap or postMessage is in flight.
+            const frameBytes = rgbaBuffer.slice(0, w * h * 4);
+
             if (typeof createImageBitmap === 'function' && typeof ImageData !== 'undefined') {
+                let imgData;
+                let bitmapPromise = null;
                 try {
-                    const imgData = new ImageData(rgbaBuffer, w, h);
-                    createImageBitmap(imgData).then((bitmap) => {
-                        self.postMessage(
-                            { type: 'frame', bitmap, width: w, height: h, pts: frame.pts, dar },
-                            [bitmap]
-                        );
-                    }).catch(() => {
-                        sendBufferFallback(frame, w, h, dar);
-                    });
-                    sent = true;
-                } catch (e) {
-                    // Fallback to array buffer transfer
+                    imgData = new ImageData(frameBytes, w, h);
+                    bitmapPromise = createImageBitmap(imgData);
+                } catch {
+                    bitmapPromise = null;
+                }
+
+                if (bitmapPromise) {
+                    framePromiseChain = framePromiseChain.then(async () => {
+                        if (thisEpoch !== streamEpoch) {
+                            try {
+                                const b = await bitmapPromise;
+                                if (b && typeof b.close === 'function') b.close();
+                            } catch {}
+                            return;
+                        }
+                        try {
+                            const bitmap = await bitmapPromise;
+                            self.postMessage(
+                                { type: 'frame', seq, bitmap, width: w, height: h, pts: frame.pts, dar, fps },
+                                [bitmap]
+                            );
+                        } catch {
+                            self.postMessage(
+                                { type: 'frame-buffer', seq, buffer: frameBytes.buffer, width: w, height: h, pts: frame.pts, dar, fps },
+                                [frameBytes.buffer]
+                            );
+                        }
+                    }).catch(() => {});
+                    return;
                 }
             }
-            if (!sent) {
-                sendBufferFallback(frame, w, h, dar);
-            }
+
+            // Fallback for environments without createImageBitmap or on construction error
+            framePromiseChain = framePromiseChain.then(() => {
+                if (thisEpoch !== streamEpoch) return;
+                self.postMessage(
+                    { type: 'frame-buffer', seq, buffer: frameBytes.buffer, width: w, height: h, pts: frame.pts, dar, fps },
+                    [frameBytes.buffer]
+                );
+            }).catch(() => {});
         },
     });
-}
-
-function sendBufferFallback(frame, w, h, dar) {
-    const copy = rgbaBuffer.slice(0, w * h * 4);
-    self.postMessage(
-        { type: 'frame-buffer', buffer: copy.buffer, width: w, height: h, pts: frame.pts, dar },
-        [copy.buffer]
-    );
 }
 
 resetDecoder();
@@ -5227,8 +5272,9 @@ self.onmessage = function (e) {
 
     if (msg.type === 'decode-ts') {
         try {
+            const hasSequence = Boolean(decoder && decoder.sequence && decoder.sequence.hasHeader && decoder.sequence.width > 0);
             const tsData = new Uint8Array(msg.buffer);
-            const demuxResult = demuxTransportStream(tsData);
+            const demuxResult = demuxTransportStream(tsData, { requireSequenceHeader: !hasSequence });
             if (demuxResult && demuxResult.video && demuxResult.video.length > 0) {
                 if (!decoder) resetDecoder();
                 decoder.decode(demuxResult.video);
@@ -5238,8 +5284,6 @@ self.onmessage = function (e) {
         }
     } else if (msg.type === 'reset') {
         resetDecoder();
-        currentWidth = 0;
-        currentHeight = 0;
     }
 };
 
